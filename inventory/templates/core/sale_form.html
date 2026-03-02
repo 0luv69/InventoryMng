@@ -1,0 +1,148 @@
+{% extends 'base.html' %}
+
+{% block title %}New Sale — DealerTrack{% endblock %}
+{% block page_title %}New Sale{% endblock %}
+{% block page_subtitle %}Record a goods out transaction{% endblock %}
+
+{% block content %}
+
+<div class="max-w-2xl">
+    <div class="bg-white rounded-xl border border-gray-200 p-8">
+
+        <!-- Form Errors (stock validation etc.) -->
+        {% if form.non_field_errors %}
+        <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+            {% for error in form.non_field_errors %}
+            <p class="text-red-700 text-sm font-medium">⚠️ {{ error }}</p>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <form method="POST">
+            {% csrf_token %}
+
+            <div class="space-y-6">
+                <!-- Customer -->
+                <div>
+                    <label class="block text-sm font-medium text-black mb-2">Customer</label>
+                    {{ form.customer }}
+                    {% if form.customer.errors %}
+                        <p class="text-red-500 text-xs mt-1">{{ form.customer.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <!-- Product -->
+                <div>
+                    <label class="block text-sm font-medium text-black mb-2">Product</label>
+                    {{ form.product }}
+                    {% if form.product.errors %}
+                        <p class="text-red-500 text-xs mt-1">{{ form.product.errors.0 }}</p>
+                    {% endif %}
+                    <!-- Stock info (filled by JS) -->
+                    <p id="stock-info" class="text-gray-400 text-xs mt-1"></p>
+                </div>
+
+                <!-- Quantity & Selling Price -->
+                <div class="grid grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-sm font-medium text-black mb-2">Quantity</label>
+                        {{ form.quantity }}
+                        {% if form.quantity.errors %}
+                            <p class="text-red-500 text-xs mt-1">{{ form.quantity.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-black mb-2">Selling Price per Unit (₹)</label>
+                        {{ form.selling_price }}
+                        {% if form.selling_price.errors %}
+                            <p class="text-red-500 text-xs mt-1">{{ form.selling_price.errors.0 }}</p>
+                        {% endif %}
+                        <p class="text-gray-400 text-xs mt-1">Auto-filled from default, change if needed</p>
+                    </div>
+                </div>
+
+                <!-- Payment Type & Date -->
+                <div class="grid grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-sm font-medium text-black mb-2">Payment Type</label>
+                        {{ form.payment_type }}
+                        {% if form.payment_type.errors %}
+                            <p class="text-red-500 text-xs mt-1">{{ form.payment_type.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-black mb-2">Date</label>
+                        {{ form.date }}
+                        {% if form.date.errors %}
+                            <p class="text-red-500 text-xs mt-1">{{ form.date.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Live Total Preview -->
+                <div class="bg-gray-50 rounded-lg p-4">
+                    <div class="flex items-center justify-between">
+                        <span class="text-sm text-gray-500">Estimated Total:</span>
+                        <span id="live-total" class="text-xl font-bold text-black">₹0.00</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Buttons -->
+            <div class="flex items-center gap-4 mt-8 pt-6 border-t border-gray-100">
+                <button type="submit"
+                        class="bg-primary hover:bg-primary-dark text-white px-6 py-2.5 rounded-lg text-sm font-medium transition">
+                    📤 Record Sale
+                </button>
+                <a href="{% url 'sale_list' %}"
+                   class="text-gray-500 hover:text-black text-sm font-medium transition">
+                    Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- JavaScript for Auto-fill & Live Total -->
+<script>
+    const products = {};
+    {% for id, data in products_data.items %}
+    products[{{ id }}] = {
+        selling_price: "{{ data.selling_price }}",
+        stock: "{{ data.stock }}",
+        unit: "{{ data.unit }}"
+    };
+    {% endfor %}
+
+    const productSelect = document.getElementById('id_product');
+    const priceInput = document.getElementById('id_selling_price');
+    const quantityInput = document.getElementById('id_quantity');
+    const stockInfo = document.getElementById('stock-info');
+    const liveTotal = document.getElementById('live-total');
+
+    productSelect.addEventListener('change', function() {
+        const productId = this.value;
+        if (products[productId]) {
+            priceInput.value = products[productId].selling_price;
+            stockInfo.innerHTML = '📦 In stock: <strong>' + products[productId].stock + '</strong> ' + products[productId].unit;
+            stockInfo.classList.remove('text-gray-400');
+            stockInfo.classList.add('text-primary');
+            updateTotal();
+        } else {
+            stockInfo.innerHTML = '';
+            priceInput.value = '';
+        }
+    });
+
+    function updateTotal() {
+        const qty = parseFloat(quantityInput.value) || 0;
+        const price = parseFloat(priceInput.value) || 0;
+        const total = qty * price;
+        liveTotal.textContent = '₹' + total.toFixed(2);
+    }
+
+    quantityInput.addEventListener('input', updateTotal);
+    priceInput.addEventListener('input', updateTotal);
+</script>
+
+{% endblock %}

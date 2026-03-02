@@ -1,0 +1,171 @@
+{% extends 'base.html' %}
+
+{% block title %}Collect Payment — DealerTrack{% endblock %}
+{% block page_title %}Collect Payment{% endblock %}
+{% block page_subtitle %}Record a credit payment from a customer{% endblock %}
+
+{% block content %}
+
+<div class="max-w-2xl">
+    <div class="bg-white rounded-xl border border-gray-200 p-8">
+
+        <!-- Form Errors -->
+        {% if form.non_field_errors %}
+        <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+            {% for error in form.non_field_errors %}
+            <p class="text-red-700 text-sm font-medium">⚠️ {{ error }}</p>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <form method="POST">
+            {% csrf_token %}
+
+            <div class="space-y-6">
+                <!-- Customer -->
+                <div>
+                    <label class="block text-sm font-medium text-black mb-2">Customer</label>
+                    {{ form.customer }}
+                    {% if form.customer.errors %}
+                        <p class="text-red-500 text-xs mt-1">{{ form.customer.errors.0 }}</p>
+                    {% endif %}
+                    <!-- Balance info (filled by JS) -->
+                    <p id="balance-info" class="text-gray-400 text-xs mt-1"></p>
+                </div>
+
+                <!-- Amount & Date -->
+                <div class="grid grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-sm font-medium text-black mb-2">Amount (₹)</label>
+                        {{ form.amount }}
+                        {% if form.amount.errors %}
+                            <p class="text-red-500 text-xs mt-1">{{ form.amount.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-black mb-2">Date</label>
+                        {{ form.date }}
+                        {% if form.date.errors %}
+                            <p class="text-red-500 text-xs mt-1">{{ form.date.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Quick Amount Buttons (filled by JS) -->
+                <div id="quick-amounts" class="hidden">
+                    <p class="text-xs text-gray-500 mb-2">Quick fill:</p>
+                    <div class="flex gap-2">
+                        <button type="button" id="btn-full"
+                                class="bg-primary-light text-primary-dark text-xs font-semibold px-3 py-1.5 rounded-lg hover:bg-primary hover:text-white transition">
+                            Full Amount
+                        </button>
+                        <button type="button" id="btn-half"
+                                class="bg-gray-100 text-gray-600 text-xs font-semibold px-3 py-1.5 rounded-lg hover:bg-gray-200 transition">
+                            Half
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Balance Preview -->
+                <div id="balance-preview" class="bg-gray-50 rounded-lg p-4 hidden">
+                    <div class="flex items-center justify-between">
+                        <span class="text-sm text-gray-500">Balance after payment:</span>
+                        <span id="new-balance" class="text-xl font-bold text-black">₹0.00</span>
+                    </div>
+                </div>
+
+                <!-- Notes -->
+                <div>
+                    <label class="block text-sm font-medium text-black mb-2">Notes <span class="text-gray-400">(optional)</span></label>
+                    {{ form.notes }}
+                    {% if form.notes.errors %}
+                        <p class="text-red-500 text-xs mt-1">{{ form.notes.errors.0 }}</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Buttons -->
+            <div class="flex items-center gap-4 mt-8 pt-6 border-t border-gray-100">
+                <button type="submit"
+                        class="bg-primary hover:bg-primary-dark text-white px-6 py-2.5 rounded-lg text-sm font-medium transition">
+                    💰 Record Payment
+                </button>
+                <a href="{% url 'payment_list' %}"
+                   class="text-gray-500 hover:text-black text-sm font-medium transition">
+                    Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- JavaScript -->
+<script>
+    const customers = {};
+    {% for id, data in customers_data.items %}
+    customers[{{ id }}] = {
+        balance: parseFloat("{{ data.balance }}"),
+        name: "{{ data.name }}"
+    };
+    {% endfor %}
+
+    const customerSelect = document.getElementById('id_customer');
+    const amountInput = document.getElementById('id_amount');
+    const balanceInfo = document.getElementById('balance-info');
+    const quickAmounts = document.getElementById('quick-amounts');
+    const balancePreview = document.getElementById('balance-preview');
+    const newBalance = document.getElementById('new-balance');
+    const btnFull = document.getElementById('btn-full');
+    const btnHalf = document.getElementById('btn-half');
+
+    let currentBalance = 0;
+
+    // When customer changes → show balance & quick buttons
+    customerSelect.addEventListener('change', function() {
+        const customerId = this.value;
+        if (customers[customerId]) {
+            currentBalance = customers[customerId].balance;
+            balanceInfo.innerHTML = '🔴 Owes: <strong class="text-red-600">₹' + currentBalance.toFixed(2) + '</strong>';
+            quickAmounts.classList.remove('hidden');
+            updatePreview();
+        } else {
+            balanceInfo.innerHTML = '';
+            quickAmounts.classList.add('hidden');
+            balancePreview.classList.add('hidden');
+        }
+    });
+
+    // Quick fill buttons
+    btnFull.addEventListener('click', function() {
+        amountInput.value = currentBalance.toFixed(2);
+        updatePreview();
+    });
+
+    btnHalf.addEventListener('click', function() {
+        amountInput.value = (currentBalance / 2).toFixed(2);
+        updatePreview();
+    });
+
+    // Live balance preview
+    function updatePreview() {
+        const amount = parseFloat(amountInput.value) || 0;
+        if (currentBalance > 0) {
+            balancePreview.classList.remove('hidden');
+            const remaining = currentBalance - amount;
+            newBalance.textContent = '₹' + remaining.toFixed(2);
+
+            if (remaining <= 0) {
+                newBalance.classList.remove('text-red-600', 'text-black');
+                newBalance.classList.add('text-primary');
+                newBalance.textContent = '₹0.00 ✓ Cleared!';
+            } else {
+                newBalance.classList.remove('text-primary', 'text-black');
+                newBalance.classList.add('text-red-600');
+            }
+        }
+    }
+
+    amountInput.addEventListener('input', updatePreview);
+</script>
+
+{% endblock %}

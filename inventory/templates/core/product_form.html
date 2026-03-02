@@ -1,0 +1,69 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if edit_mode %}Edit{% else %}Add{% endif %} Product — DealerTrack{% endblock %}
+{% block page_title %}{% if edit_mode %}Edit Product{% else %}Add New Product{% endif %}{% endblock %}
+{% block page_subtitle %}{% if edit_mode %}Update {{ product.name }}{% else %}Add a new product to your inventory{% endif %}{% endblock %}
+
+{% block content %}
+
+<div class="max-w-2xl">
+    <div class="bg-white rounded-xl border border-gray-200 p-8">
+        <form method="POST">
+            {% csrf_token %}
+
+            <div class="space-y-6">
+                <!-- Product Name -->
+                <div>
+                    <label class="block text-sm font-medium text-black mb-2">Product Name</label>
+                    {{ form.name }}
+                    {% if form.name.errors %}
+                        <p class="text-red-500 text-xs mt-1">{{ form.name.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <!-- Unit -->
+                <div>
+                    <label class="block text-sm font-medium text-black mb-2">Unit Type</label>
+                    {{ form.unit }}
+                    {% if form.unit.errors %}
+                        <p class="text-red-500 text-xs mt-1">{{ form.unit.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <!-- Price Row -->
+                <div class="grid grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-sm font-medium text-black mb-2">Cost Price (₹)</label>
+                        {{ form.cost_price }}
+                        {% if form.cost_price.errors %}
+                            <p class="text-red-500 text-xs mt-1">{{ form.cost_price.errors.0 }}</p>
+                        {% endif %}
+                        <p class="text-gray-400 text-xs mt-1">What you pay to buy</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-black mb-2">Selling Price (₹)</label>
+                        {{ form.selling_price }}
+                        {% if form.selling_price.errors %}
+                            <p class="text-red-500 text-xs mt-1">{{ form.selling_price.errors.0 }}</p>
+                        {% endif %}
+                        <p class="text-gray-400 text-xs mt-1">Default price you sell at</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Buttons -->
+            <div class="flex items-center gap-4 mt-8 pt-6 border-t border-gray-100">
+                <button type="submit"
+                        class="bg-primary hover:bg-primary-dark text-white px-6 py-2.5 rounded-lg text-sm font-medium transition">
+                    {% if edit_mode %}Update Product{% else %}Add Product{% endif %}
+                </button>
+                <a href="{% url 'product_list' %}"
+                   class="text-gray-500 hover:text-black text-sm font-medium transition">
+                    Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}

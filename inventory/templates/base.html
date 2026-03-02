@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Dealer Inventory{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#16a34a',
+                        'primary-dark': '#15803d',
+                        'primary-light': '#bbf7d0',
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-gray-100 min-h-screen flex">
+
+    <!-- Sidebar -->
+    <aside class="w-64 bg-black min-h-screen fixed left-0 top-0 flex flex-col">
+        <!-- Logo -->
+        <div class="p-6 border-b border-gray-800">
+            <h1 class="text-white text-xl font-bold">🏪 Dealer<span class="text-primary">Track</span></h1>
+            <p class="text-gray-500 text-xs mt-1">Inventory & Ledger</p>
+        </div>
+
+        <!-- Navigation -->
+        <nav class="flex-1 p-4 space-y-1">
+            <a href="{% url 'dashboard' %}"
+               class="flex items-center gap-3 px-4 py-3 rounded-lg text-sm
+               {% if request.resolver_match.url_name == 'dashboard' %}
+                   bg-primary text-white
+               {% else %}
+                   text-gray-400 hover:bg-gray-800 hover:text-white
+               {% endif %}">
+                <span>🏠</span> Dashboard
+            </a>
+
+            <a href="{% url 'product_list' %}"
+               class="flex items-center gap-3 px-4 py-3 rounded-lg text-sm
+               {% if 'product' in request.resolver_match.url_name %}
+                   bg-primary text-white
+               {% else %}
+                   text-gray-400 hover:bg-gray-800 hover:text-white
+               {% endif %}">
+                <span>📋</span> Products
+            </a>
+
+
+            <a href="{% url 'customer_list' %}"
+               class="flex items-center gap-3 px-4 py-3 rounded-lg text-sm
+               {% if 'customer' in request.resolver_match.url_name %}
+                   bg-primary text-white
+               {% else %}
+                   text-gray-400 hover:bg-gray-800 hover:text-white
+               {% endif %}">
+                <span>👤</span> Customers
+            </a>
+
+            <a href="{% url 'goods_in_list' %}"
+               class="flex items-center gap-3 px-4 py-3 rounded-lg text-sm
+               {% if 'goods_in' in request.resolver_match.url_name %}
+                   bg-primary text-white
+               {% else %}
+                   text-gray-400 hover:bg-gray-800 hover:text-white
+               {% endif %}">
+                <span>📦</span> Goods In
+            </a>
+         
+
+            <a href="{% url 'sale_list' %}"
+               class="flex items-center gap-3 px-4 py-3 rounded-lg text-sm
+               {% if 'sale' in request.resolver_match.url_name %}
+                   bg-primary text-white
+               {% else %}
+                   text-gray-400 hover:bg-gray-800 hover:text-white
+               {% endif %}">
+                <span>📤</span> Sales
+            </a>
+
+            <a href="{% url 'payment_list' %}"
+               class="flex items-center gap-3 px-4 py-3 rounded-lg text-sm
+               {% if 'payment' in request.resolver_match.url_name %}
+                   bg-primary text-white
+               {% else %}
+                   text-gray-400 hover:bg-gray-800 hover:text-white
+               {% endif %}">
+                <span>💰</span> Payments
+            </a>
+
+        
+        </nav>
+
+        <!-- Footer -->
+        <div class="p-4 border-t border-gray-800">
+            <p class="text-gray-600 text-xs text-center">MVP v1.0</p>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="ml-64 flex-1 p-8">
+        <!-- Top Bar -->
+        <div class="flex items-center justify-between mb-8">
+            <div>
+                <h2 class="text-2xl font-bold text-black">{% block page_title %}Dashboard{% endblock %}</h2>
+                <p class="text-gray-500 text-sm">{% block page_subtitle %}{% endblock %}</p>
+            </div>
+            <div class="text-sm text-gray-500">
+                📅 {{ today }}
+            </div>
+        </div>
+
+        <!-- Page Content -->
+        {% block content %}{% endblock %}
+    </main>
+
+</body>
+</html>

@@ -1,0 +1,94 @@
+{% extends 'base.html' %}
+
+{% block title %}Payments — DealerTrack{% endblock %}
+{% block page_title %}Payments{% endblock %}
+{% block page_subtitle %}Credit payment collection history{% endblock %}
+
+{% block content %}
+
+<!-- Stats Bar -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+    <div class="bg-white rounded-xl border border-gray-200 p-4 flex items-center justify-between">
+        <div>
+            <p class="text-gray-500 text-xs">Total Collected</p>
+            <p class="text-lg font-bold text-primary">₹{{ total_collected }}</p>
+        </div>
+        <span class="text-2xl">💰</span>
+    </div>
+    <div class="bg-white rounded-xl border border-gray-200 p-4 flex items-center justify-between">
+        <div>
+            <p class="text-gray-500 text-xs">Total Payments</p>
+            <p class="text-lg font-bold text-black">{{ total_payments }}</p>
+        </div>
+        <span class="text-2xl">🧾</span>
+    </div>
+</div>
+
+<!-- Top Action Bar -->
+<div class="flex items-center justify-between mb-6">
+    <p class="text-gray-500 text-sm">{{ total_payments }} payment{{ total_payments|pluralize }}</p>
+    <a href="{% url 'payment_add' %}"
+       class="bg-primary hover:bg-primary-dark text-white px-5 py-2.5 rounded-lg text-sm font-medium transition">
+        + Collect Payment
+    </a>
+</div>
+
+<!-- Payments Table -->
+<div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+    {% if payments %}
+    <table class="w-full">
+        <thead class="bg-gray-50 border-b border-gray-200">
+            <tr>
+                <th class="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Date</th>
+                <th class="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Customer</th>
+                <th class="text-right px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Amount</th>
+                <th class="text-right px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Balance After</th>
+                <th class="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Notes</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+            {% for payment in payments %}
+            <tr class="hover:bg-gray-50 transition">
+                <td class="px-6 py-4">
+                    <span class="text-sm text-gray-600">{{ payment.date }}</span>
+                </td>
+                <td class="px-6 py-4">
+                    <a href="{% url 'customer_ledger' payment.customer.pk %}"
+                       class="text-sm font-medium text-black hover:text-primary transition">
+                        {{ payment.customer.name }}
+                    </a>
+                </td>
+                <td class="px-6 py-4 text-right">
+                    <span class="text-sm font-bold text-primary">₹{{ payment.amount }}</span>
+                </td>
+                <td class="px-6 py-4 text-right">
+                    <span class="text-sm font-medium
+                        {% if payment.customer.balance > 0 %}text-red-600{% else %}text-primary{% endif %}">
+                        ₹{{ payment.customer.balance }}
+                    </span>
+                </td>
+                <td class="px-6 py-4">
+                    {% if payment.notes %}
+                        <span class="text-sm text-gray-500">{{ payment.notes|truncatewords:10 }}</span>
+                    {% else %}
+                        <span class="text-gray-300 text-sm">—</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <!-- Empty State -->
+    <div class="p-12 text-center">
+        <p class="text-4xl mb-4">💰</p>
+        <p class="text-gray-500 text-sm mb-4">No payments collected yet</p>
+        <a href="{% url 'payment_add' %}"
+           class="bg-primary hover:bg-primary-dark text-white px-5 py-2.5 rounded-lg text-sm font-medium transition">
+            + Collect First Payment
+        </a>
+    </div>
+    {% endif %}
+</div>
+
+{% endblock %}

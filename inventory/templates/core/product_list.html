@@ -1,0 +1,150 @@
+{% extends 'base.html' %}
+
+{% block title %}Products — DealerTrack{% endblock %}
+{% block page_title %}Products{% endblock %}
+{% block page_subtitle %}Manage your product inventory{% endblock %}
+
+{% block content %}
+
+
+<!-- Search & Filter -->
+<form method="GET" class="bg-white rounded-xl border border-gray-200 p-4 mb-6">
+    <div class="flex flex-wrap items-end gap-4">
+        <div class="flex-1 min-w-[200px]">
+            <label class="block text-xs text-gray-500 mb-1">Search</label>
+            <input type="text" name="search" value="{{ search }}"
+                   placeholder="Search by customer name..."
+                   class="w-full px-3 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm">
+        </div>
+        <div>
+            <label class="block text-xs text-gray-500 mb-1">From Date</label>
+            <input type="date" name="date_from" value="{{ date_from }}"
+                   class="px-3 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary text-sm">
+        </div>
+        <div>
+            <label class="block text-xs text-gray-500 mb-1">To Date</label>
+            <input type="date" name="date_to" value="{{ date_to }}"
+                   class="px-3 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary text-sm">
+        </div>
+        <div class="flex gap-2">
+            <button type="submit"
+                    class="bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg text-sm font-medium transition">
+                🔍 Search
+            </button>
+            <a href="{% url 'payment_list' %}"
+               class="border border-gray-300 hover:bg-gray-50 text-gray-600 px-4 py-2 rounded-lg text-sm font-medium transition">
+                Clear
+            </a>
+        </div>
+    </div>
+</form>
+
+<!-- Search & Filter -->
+<form method="GET" class="bg-white rounded-xl border border-gray-200 p-4 mb-6">
+    <div class="flex flex-wrap items-end gap-4">
+        <div class="flex-1 min-w-[200px]">
+            <label class="block text-xs text-gray-500 mb-1">Search</label>
+            <input type="text" name="search" value="{{ search }}"
+                   placeholder="Search products..."
+                   class="w-full px-3 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm">
+        </div>
+        <div>
+            <label class="block text-xs text-gray-500 mb-1">Stock Status</label>
+            <select name="stock"
+                    class="px-3 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary text-sm">
+                <option value="">All</option>
+                <option value="low" {% if stock_filter == 'low' %}selected{% endif %}>Low Stock (&lt;10)</option>
+                <option value="out" {% if stock_filter == 'out' %}selected{% endif %}>Out of Stock</option>
+            </select>
+        </div>
+        <div class="flex gap-2">
+            <button type="submit"
+                    class="bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg text-sm font-medium transition">
+                🔍 Search
+            </button>
+            <a href="{% url 'product_list' %}"
+               class="border border-gray-300 hover:bg-gray-50 text-gray-600 px-4 py-2 rounded-lg text-sm font-medium transition">
+                Clear
+            </a>
+        </div>
+    </div>
+</form>
+
+<!-- Top Action Bar -->
+<div class="flex items-center justify-between mb-6">
+    <p class="text-gray-500 text-sm">{{ products|length }} product{{ products|length|pluralize }}</p>
+    <a href="{% url 'product_add' %}"
+       class="bg-primary hover:bg-primary-dark text-white px-5 py-2.5 rounded-lg text-sm font-medium transition">
+        + Add Product
+    </a>
+</div>
+
+<!-- Products Table -->
+<div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+    {% if products %}
+    <table class="w-full">
+        <thead class="bg-gray-50 border-b border-gray-200">
+            <tr>
+                <th class="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Product</th>
+                <th class="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Unit</th>
+                <th class="text-right px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Cost Price</th>
+                <th class="text-right px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Selling Price</th>
+                <th class="text-right px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">In Stock</th>
+                <th class="text-right px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Stock Value</th>
+                <th class="text-center px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+            {% for product in products %}
+            <tr class="hover:bg-gray-50 transition">
+                <td class="px-6 py-4">
+                    <span class="text-sm font-medium text-black">{{ product.name }}</span>
+                </td>
+                <td class="px-6 py-4">
+                    <span class="bg-gray-100 text-gray-600 text-xs px-2.5 py-1 rounded-full">{{ product.get_unit_display }}</span>
+                </td>
+                <td class="px-6 py-4 text-right">
+                    <span class="text-sm text-gray-600">₹{{ product.cost_price }}</span>
+                </td>
+                <td class="px-6 py-4 text-right">
+                    <span class="text-sm text-gray-600">₹{{ product.selling_price }}</span>
+                </td>
+                <td class="px-6 py-4 text-right">
+                    <span class="text-sm font-semibold
+                        {% if product.quantity_in_stock < 10 %}text-red-600{% else %}text-black{% endif %}">
+                        {{ product.quantity_in_stock }}
+                    </span>
+                </td>
+                <td class="px-6 py-4 text-right">
+                    <span class="text-sm text-gray-600">₹{{ product.stock_value }}</span>
+                </td>
+                <td class="px-6 py-4 text-center">
+                    <div class="flex items-center justify-center gap-2">
+                        <a href="{% url 'product_edit' product.pk %}"
+                           class="text-primary hover:text-primary-dark text-sm font-medium">Edit</a>
+                        <span class="text-gray-300">|</span>
+                        <a href="{% url 'product_delete' product.pk %}"
+                           class="text-red-500 hover:text-red-700 text-sm font-medium">Delete</a>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="p-12 text-center">
+        <p class="text-4xl mb-4">📋</p>
+        {% if search or stock_filter %}
+            <p class="text-gray-500 text-sm">No products match your filters</p>
+        {% else %}
+            <p class="text-gray-500 text-sm mb-4">No products added yet</p>
+            <a href="{% url 'product_add' %}"
+               class="bg-primary hover:bg-primary-dark text-white px-5 py-2.5 rounded-lg text-sm font-medium transition">
+                + Add Your First Product
+            </a>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+
+{% endblock %}

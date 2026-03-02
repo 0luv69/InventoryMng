@@ -1,0 +1,190 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard — DealerTrack{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+{% block page_subtitle %}Overview of your dealer house{% endblock %}
+
+{% block content %}
+
+<!-- Quick Action Buttons -->
+<div class="flex flex-wrap gap-3 mb-8">
+    <a href="{% url 'goods_in_add' %}"
+       class="bg-white border border-gray-200 hover:border-primary hover:shadow-md text-sm px-4 py-2 rounded-lg transition flex items-center gap-2">
+        <span>📦</span> Record Goods In
+    </a>
+    <a href="{% url 'sale_add' %}"
+       class="bg-white border border-gray-200 hover:border-primary hover:shadow-md text-sm px-4 py-2 rounded-lg transition flex items-center gap-2">
+        <span>📤</span> New Sale
+    </a>
+    <a href="{% url 'payment_add' %}"
+       class="bg-white border border-gray-200 hover:border-primary hover:shadow-md text-sm px-4 py-2 rounded-lg transition flex items-center gap-2">
+        <span>💰</span> Collect Payment
+    </a>
+    <a href="{% url 'product_add' %}"
+       class="bg-white border border-gray-200 hover:border-primary hover:shadow-md text-sm px-4 py-2 rounded-lg transition flex items-center gap-2">
+        <span>📋</span> Add Product
+    </a>
+    <a href="{% url 'customer_add' %}"
+       class="bg-white border border-gray-200 hover:border-primary hover:shadow-md text-sm px-4 py-2 rounded-lg transition flex items-center gap-2">
+        <span>👤</span> Add Customer
+    </a>
+</div>
+
+<!-- Row 1: Main Stats -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+
+    <!-- Total Products -->
+    <div class="bg-white rounded-xl border border-gray-200 p-6">
+        <div class="flex items-center justify-between mb-4">
+            <span class="text-2xl">📋</span>
+            <span class="bg-primary-light text-primary-dark text-xs font-semibold px-3 py-1 rounded-full">Products</span>
+        </div>
+        <p class="text-3xl font-bold text-black">{{ total_products }}</p>
+        <p class="text-gray-500 text-sm mt-1">Total products</p>
+    </div>
+
+    <!-- Stock Value -->
+    <div class="bg-white rounded-xl border border-gray-200 p-6">
+        <div class="flex items-center justify-between mb-4">
+            <span class="text-2xl">📦</span>
+            <span class="bg-primary-light text-primary-dark text-xs font-semibold px-3 py-1 rounded-full">Stock</span>
+        </div>
+        <p class="text-3xl font-bold text-black">₹{{ stock_value }}</p>
+        <p class="text-gray-500 text-sm mt-1">Total stock value (at cost)</p>
+    </div>
+
+    <!-- Today's Sales -->
+    <div class="bg-white rounded-xl border border-gray-200 p-6">
+        <div class="flex items-center justify-between mb-4">
+            <span class="text-2xl">📤</span>
+            <span class="bg-primary-light text-primary-dark text-xs font-semibold px-3 py-1 rounded-full">Today</span>
+        </div>
+        <p class="text-3xl font-bold text-black">₹{{ today_sales }}</p>
+        <p class="text-gray-500 text-sm mt-1">{{ today_sales_count }} sale{{ today_sales_count|pluralize }} today</p>
+    </div>
+
+    <!-- Outstanding Credit -->
+    <div class="bg-white rounded-xl border border-gray-200 p-6">
+        <div class="flex items-center justify-between mb-4">
+            <span class="text-2xl">💰</span>
+            <span class="bg-red-100 text-red-700 text-xs font-semibold px-3 py-1 rounded-full">Credit</span>
+        </div>
+        <p class="text-3xl font-bold text-red-600">₹{{ total_credit }}</p>
+        <p class="text-gray-500 text-sm mt-1">Outstanding credit</p>
+    </div>
+
+</div>
+
+<!-- Row 2: Profit Stats -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+
+    <!-- This Month -->
+    <div class="bg-white rounded-xl border border-gray-200 p-6">
+        <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">📅 This Month</h3>
+        <div class="grid grid-cols-2 gap-4">
+            <div>
+                <p class="text-gray-400 text-xs mb-1">Revenue</p>
+                <p class="text-xl font-bold text-black">₹{{ month_revenue }}</p>
+            </div>
+            <div>
+                <p class="text-gray-400 text-xs mb-1">Profit</p>
+                <p class="text-xl font-bold {% if month_profit >= 0 %}text-primary{% else %}text-red-600{% endif %}">
+                    ₹{{ month_profit }}
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- All Time -->
+    <div class="bg-white rounded-xl border border-gray-200 p-6">
+        <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">📊 All Time</h3>
+        <div class="grid grid-cols-2 gap-4">
+            <div>
+                <p class="text-gray-400 text-xs mb-1">Total Revenue</p>
+                <p class="text-xl font-bold text-black">₹{{ total_revenue }}</p>
+            </div>
+            <div>
+                <p class="text-gray-400 text-xs mb-1">Total Profit</p>
+                <p class="text-xl font-bold {% if total_profit >= 0 %}text-primary{% else %}text-red-600{% endif %}">
+                    ₹{{ total_profit }}
+                </p>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- Row 3: Three Column Section -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+    <!-- Low Stock Alert -->
+    <div class="bg-white rounded-xl border border-gray-200 p-6">
+        <h3 class="text-sm font-bold text-black mb-4">⚠️ Low Stock Items</h3>
+        {% if low_stock_products %}
+            <div class="space-y-3">
+                {% for product in low_stock_products %}
+                <div class="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
+                    <span class="text-sm text-black font-medium">{{ product.name }}</span>
+                    <span class="text-sm font-bold text-red-600">{{ product.quantity_in_stock }} {{ product.get_unit_display }}</span>
+                </div>
+                {% endfor %}
+            </div>
+            <a href="{% url 'product_list' %}" class="text-primary text-xs font-medium mt-4 inline-block hover:underline">View all products →</a>
+        {% else %}
+            <p class="text-gray-400 text-sm">All stocked up! 👍</p>
+        {% endif %}
+    </div>
+
+    <!-- Top Credit Customers -->
+    <div class="bg-white rounded-xl border border-gray-200 p-6">
+        <h3 class="text-sm font-bold text-black mb-4">🔴 Top Credit Customers</h3>
+        {% if top_credit_customers %}
+            <div class="space-y-3">
+                {% for customer in top_credit_customers %}
+                <div class="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
+                    <a href="{% url 'customer_ledger' customer.pk %}" class="text-sm text-black font-medium hover:text-primary">{{ customer.name }}</a>
+                    <span class="text-sm font-bold text-red-600">₹{{ customer.balance }}</span>
+                </div>
+                {% endfor %}
+            </div>
+            <a href="{% url 'customer_list' %}" class="text-primary text-xs font-medium mt-4 inline-block hover:underline">View all customers →</a>
+        {% else %}
+            <p class="text-gray-400 text-sm">No pending credits! 🎉</p>
+        {% endif %}
+    </div>
+
+    <!-- Recent Activity -->
+    <div class="bg-white rounded-xl border border-gray-200 p-6">
+        <h3 class="text-sm font-bold text-black mb-4">🕐 Recent Activity</h3>
+        {% if activity %}
+            <div class="space-y-3">
+                {% for item in activity %}
+                <div class="flex items-start gap-3 py-2 border-b border-gray-100 last:border-0">
+                    <span class="text-lg mt-0.5">{{ item.icon }}</span>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm text-black truncate">{{ item.text }}</p>
+                        <div class="flex items-center gap-2 mt-1">
+                            <span class="text-xs text-gray-400">{{ item.date }}</span>
+                            {% if item.badge == 'credit' %}
+                                <span class="bg-red-100 text-red-700 text-xs px-1.5 py-0.5 rounded">Credit</span>
+                            {% elif item.badge == 'cash' %}
+                                <span class="bg-primary-light text-primary-dark text-xs px-1.5 py-0.5 rounded">Cash</span>
+                            {% elif item.badge == 'payment' %}
+                                <span class="bg-green-100 text-green-700 text-xs px-1.5 py-0.5 rounded">Payment</span>
+                            {% elif item.badge == 'stock' %}
+                                <span class="bg-blue-100 text-blue-700 text-xs px-1.5 py-0.5 rounded">Stock In</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <span class="text-sm font-semibold text-black whitespace-nowrap">{{ item.amount }}</span>
+                </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="text-gray-400 text-sm">No activity yet. Start by adding products!</p>
+        {% endif %}
+    </div>
+
+</div>
+
+{% endblock %}

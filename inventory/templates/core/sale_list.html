@@ -1,0 +1,155 @@
+{% extends 'base.html' %}
+
+{% block title %}Sales — DealerTrack{% endblock %}
+{% block page_title %}Sales{% endblock %}
+{% block page_subtitle %}Goods out — all sales history{% endblock %}
+
+{% block content %}
+
+<!-- Search & Filter -->
+<form method="GET" class="bg-white rounded-xl border border-gray-200 p-4 mb-6">
+    <div class="flex flex-wrap items-end gap-4">
+        <div class="flex-1 min-w-[200px]">
+            <label class="block text-xs text-gray-500 mb-1">Search</label>
+            <input type="text" name="search" value="{{ search }}"
+                   placeholder="Search by customer or product..."
+                   class="w-full px-3 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm">
+        </div>
+        <div>
+            <label class="block text-xs text-gray-500 mb-1">Payment Type</label>
+            <select name="payment"
+                    class="px-3 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary text-sm">
+                <option value="">All</option>
+                <option value="cash" {% if payment_filter == 'cash' %}selected{% endif %}>Cash</option>
+                <option value="credit" {% if payment_filter == 'credit' %}selected{% endif %}>Credit</option>
+            </select>
+        </div>
+        <div>
+            <label class="block text-xs text-gray-500 mb-1">From Date</label>
+            <input type="date" name="date_from" value="{{ date_from }}"
+                   class="px-3 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary text-sm">
+        </div>
+        <div>
+            <label class="block text-xs text-gray-500 mb-1">To Date</label>
+            <input type="date" name="date_to" value="{{ date_to }}"
+                   class="px-3 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary text-sm">
+        </div>
+        <div class="flex gap-2">
+            <button type="submit"
+                    class="bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg text-sm font-medium transition">
+                🔍 Search
+            </button>
+            <a href="{% url 'sale_list' %}"
+               class="border border-gray-300 hover:bg-gray-50 text-gray-600 px-4 py-2 rounded-lg text-sm font-medium transition">
+                Clear
+            </a>
+        </div>
+    </div>
+</form>
+
+<!-- Stats Bar -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+    <div class="bg-white rounded-xl border border-gray-200 p-4 flex items-center justify-between">
+        <div>
+            <p class="text-gray-500 text-xs">Total Revenue</p>
+            <p class="text-lg font-bold text-black">₹{{ total_revenue }}</p>
+        </div>
+        <span class="text-2xl">📤</span>
+    </div>
+    <div class="bg-white rounded-xl border border-gray-200 p-4 flex items-center justify-between">
+        <div>
+            <p class="text-gray-500 text-xs">Cash Sales</p>
+            <p class="text-lg font-bold text-primary">₹{{ total_cash_sales }}</p>
+        </div>
+        <span class="text-2xl">💵</span>
+    </div>
+    <div class="bg-white rounded-xl border border-gray-200 p-4 flex items-center justify-between">
+        <div>
+            <p class="text-gray-500 text-xs">Credit Sales</p>
+            <p class="text-lg font-bold text-red-600">₹{{ total_credit_sales }}</p>
+        </div>
+        <span class="text-2xl">🔴</span>
+    </div>
+</div>
+
+<!-- Top Action Bar -->
+<div class="flex items-center justify-between mb-6">
+    <p class="text-gray-500 text-sm">{{ total_sales }} sale{{ total_sales|pluralize }}</p>
+    <a href="{% url 'sale_add' %}"
+       class="bg-primary hover:bg-primary-dark text-white px-5 py-2.5 rounded-lg text-sm font-medium transition">
+        + New Sale
+    </a>
+</div>
+
+<!-- Sales Table -->
+<div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+    {% if sales %}
+    <table class="w-full">
+        <thead class="bg-gray-50 border-b border-gray-200">
+            <tr>
+                <th class="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Date</th>
+                <th class="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Customer</th>
+                <th class="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Product</th>
+                <th class="text-right px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Qty</th>
+                <th class="text-right px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Price</th>
+                <th class="text-right px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Total</th>
+                <th class="text-center px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Payment</th>
+                <th class="text-right px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Profit</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+            {% for sale in sales %}
+            <tr class="hover:bg-gray-50 transition">
+                <td class="px-6 py-4">
+                    <span class="text-sm text-gray-600">{{ sale.date }}</span>
+                </td>
+                <td class="px-6 py-4">
+                    <a href="{% url 'customer_ledger' sale.customer.pk %}"
+                       class="text-sm font-medium text-black hover:text-primary transition">
+                        {{ sale.customer.name }}
+                    </a>
+                </td>
+                <td class="px-6 py-4">
+                    <span class="text-sm text-gray-700">{{ sale.product.name }}</span>
+                </td>
+                <td class="px-6 py-4 text-right">
+                    <span class="text-sm font-semibold text-red-500">-{{ sale.quantity }}</span>
+                    <span class="text-gray-400 text-xs">{{ sale.product.get_unit_display }}</span>
+                </td>
+                <td class="px-6 py-4 text-right">
+                    <span class="text-sm text-gray-600">₹{{ sale.selling_price }}</span>
+                </td>
+                <td class="px-6 py-4 text-right">
+                    <span class="text-sm font-medium text-black">₹{{ sale.total_amount }}</span>
+                </td>
+                <td class="px-6 py-4 text-center">
+                    {% if sale.payment_type == 'cash' %}
+                        <span class="bg-primary-light text-primary-dark text-xs font-semibold px-2.5 py-1 rounded-full">Cash</span>
+                    {% else %}
+                        <span class="bg-red-100 text-red-700 text-xs font-semibold px-2.5 py-1 rounded-full">Credit</span>
+                    {% endif %}
+                </td>
+                <td class="px-6 py-4 text-right">
+                    <span class="text-sm font-medium
+                        {% if sale.profit >= 0 %}text-primary{% else %}text-red-600{% endif %}">
+                        ₹{{ sale.profit }}
+                    </span>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <!-- Empty State -->
+    <div class="p-12 text-center">
+        <p class="text-4xl mb-4">📤</p>
+        <p class="text-gray-500 text-sm mb-4">No sales recorded yet</p>
+        <a href="{% url 'sale_add' %}"
+           class="bg-primary hover:bg-primary-dark text-white px-5 py-2.5 rounded-lg text-sm font-medium transition">
+            + Record First Sale
+        </a>
+    </div>
+    {% endif %}
+</div>
+
+{% endblock %}

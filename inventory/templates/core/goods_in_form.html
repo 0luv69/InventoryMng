@@ -1,0 +1,96 @@
+{% extends 'base.html' %}
+
+{% block title %}Record Goods In — DealerTrack{% endblock %}
+{% block page_title %}Record Goods In{% endblock %}
+{% block page_subtitle %}Add new stock to your inventory{% endblock %}
+
+{% block content %}
+
+<div class="max-w-2xl">
+    <div class="bg-white rounded-xl border border-gray-200 p-8">
+        <form method="POST">
+            {% csrf_token %}
+
+            <div class="space-y-6">
+                <!-- Product -->
+                <div>
+                    <label class="block text-sm font-medium text-black mb-2">Product</label>
+                    {{ form.product }}
+                    {% if form.product.errors %}
+                        <p class="text-red-500 text-xs mt-1">{{ form.product.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <!-- Quantity & Cost Price Row -->
+                <div class="grid grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-sm font-medium text-black mb-2">Quantity</label>
+                        {{ form.quantity }}
+                        {% if form.quantity.errors %}
+                            <p class="text-red-500 text-xs mt-1">{{ form.quantity.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-black mb-2">Cost Price per Unit (₹)</label>
+                        {{ form.cost_price_at_entry }}
+                        {% if form.cost_price_at_entry.errors %}
+                            <p class="text-red-500 text-xs mt-1">{{ form.cost_price_at_entry.errors.0 }}</p>
+                        {% endif %}
+                        <p class="text-gray-400 text-xs mt-1">Price paid for this batch</p>
+                    </div>
+                </div>
+
+                <!-- Date & Supplier Row -->
+                <div class="grid grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-sm font-medium text-black mb-2">Date</label>
+                        {{ form.date }}
+                        {% if form.date.errors %}
+                            <p class="text-red-500 text-xs mt-1">{{ form.date.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-black mb-2">Supplier <span class="text-gray-400">(optional)</span></label>
+                        {{ form.supplier_name }}
+                        {% if form.supplier_name.errors %}
+                            <p class="text-red-500 text-xs mt-1">{{ form.supplier_name.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Notes -->
+                <div>
+                    <label class="block text-sm font-medium text-black mb-2">Notes <span class="text-gray-400">(optional)</span></label>
+                    {{ form.notes }}
+                    {% if form.notes.errors %}
+                        <p class="text-red-500 text-xs mt-1">{{ form.notes.errors.0 }}</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Buttons -->
+            <div class="flex items-center gap-4 mt-8 pt-6 border-t border-gray-100">
+                <button type="submit"
+                        class="bg-primary hover:bg-primary-dark text-white px-6 py-2.5 rounded-lg text-sm font-medium transition">
+                    📦 Record Goods In
+                </button>
+                <a href="{% url 'goods_in_list' %}"
+                   class="text-gray-500 hover:text-black text-sm font-medium transition">
+                    Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Helper Card -->
+    <div class="bg-gray-50 rounded-xl border border-gray-200 p-6 mt-6">
+        <h4 class="text-sm font-bold text-black mb-2">💡 How it works</h4>
+        <ul class="text-gray-500 text-sm space-y-1">
+            <li>• Stock quantity will <strong class="text-primary">automatically increase</strong> when you save</li>
+            <li>• Cost price can vary per batch — we track it separately</li>
+            <li>• This entry cannot be edited later to keep records accurate</li>
+        </ul>
+    </div>
+</div>
+
+{% endblock %}
