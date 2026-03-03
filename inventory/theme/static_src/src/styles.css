@@ -103,7 +103,7 @@ body { font-family: 'Inter', system-ui, sans-serif; background: #fffffc; color: 
       box-shadow:
         0 4px 24px rgba(0,0,0,0.06),
         0 1px 3px rgba(0,0,0,0.04),
-        inset 0 1px 0 rgba(255,255,255,0.8);
+        inset 0 1px 0 rgba(255,255,255,0.3);
 
       /* Entry */
       opacity: 0;
@@ -128,8 +128,8 @@ body { font-family: 'Inter', system-ui, sans-serif; background: #fffffc; color: 
     .toast.throw {
       opacity: 0;
       transform: translateX(120%) rotate(8deg) scale(0.9);
-      transition: opacity 0.4s cubic-bezier(0.4, 0, 1, 1),
-                  transform 0.4s cubic-bezier(0.4, 0, 1, 1);
+      transition: opacity 0.7s cubic-bezier(0.4, 0, 1, 1),
+                  transform 0.9s cubic-bezier(0.4, 0, 1, 1);
     }
 
     /* Top shimmer */
@@ -243,3 +243,286 @@ body { font-family: 'Inter', system-ui, sans-serif; background: #fffffc; color: 
         transform: translateX(140%) rotate(12deg) scale(0.85);
       }
     }
+
+
+
+
+
+    /* ══════════════════════════════════════
+       OVERLAY + MODAL SYSTEM
+       ══════════════════════════════════════ */
+
+    .overlay {
+      position: fixed; inset: 0;
+      background: rgba(0, 0, 0, 0.2);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .overlay.open {
+      opacity: 1;
+      pointer-events: all;
+    }
+
+
+    /* ══════════════════════════════════════
+       GLASS MODAL
+       ══════════════════════════════════════ */
+
+    .glass-modal {
+      width: 100%;
+      max-width: 420px;
+      max-height: calc(100vh - 40px);
+      overflow-y: auto;
+
+      /* White glass */
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(28px) saturate(1.2);
+      -webkit-backdrop-filter: blur(28px) saturate(1.2);
+      border: 1px solid rgba(0, 0, 0, 0.06);
+      border-radius: 24px;
+
+      box-shadow:
+        0 24px 80px rgba(0, 0, 0, 0.08),
+        0 4px 16px rgba(0, 0, 0, 0.04),
+        inset 0 1px 0 rgba(255, 255, 255, 0.9);
+
+      padding: 36px 32px 32px;
+      position: relative;
+
+      /* Entry */
+      transform: translateY(20px) scale(0.97);
+      transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+                  opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .overlay.open .glass-modal {
+      transform: translateY(0) scale(1);
+    }
+    .overlay:not(.open) .glass-modal {
+      transform: translateY(14px) scale(0.97);
+    }
+
+    /* Shimmer top edge */
+    .glass-modal::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 1px;
+      border-radius: 24px 24px 0 0;
+      background: linear-gradient(90deg,
+        transparent 5%,
+        rgba(255,255,255,0.95) 35%,
+        #fff 50%,
+        rgba(255,255,255,0.95) 65%,
+        transparent 95%
+      );
+    }
+
+    /* Scrollbar */
+    .glass-modal::-webkit-scrollbar { width: 4px; }
+    .glass-modal::-webkit-scrollbar-track { background: transparent; }
+    .glass-modal::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.08); border-radius: 4px; }
+
+
+    /* ── Close button ── */
+    .modal-close {
+      position: absolute;
+      top: 16px; right: 16px;
+      width: 32px; height: 32px;
+      border: none; border-radius: 10px;
+      background: rgba(0,0,0,0.03);
+      color: rgba(0,0,0,0.3);
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; transition: all 0.2s ease; padding: 0;
+    }
+    .modal-close:hover { background: rgba(0,0,0,0.06); color: rgba(0,0,0,0.6); }
+    .modal-close:active { transform: scale(0.88); }
+
+
+    /* ── Header ── */
+    .modal-icon {
+      width: 48px; height: 48px;
+      border-radius: 14px;
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 20px;
+      background: rgba(34,197,94,0.08);
+      border: 1px solid rgba(34,197,94,0.14);
+    }
+
+    .modal-title {
+      font-size: 1.35rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      color: #111;
+      margin-bottom: 6px;
+    }
+    .modal-sub {
+      font-size: 0.8125rem;
+      color: #999;
+      line-height: 1.5;
+      margin-bottom: 28px;
+    }
+
+
+    /* ── Form ── */
+    .form-group {
+      margin-bottom: 18px;
+    }
+    .form-group label {
+      display: block;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: #555;
+      margin-bottom: 7px;
+      letter-spacing: 0.01em;
+    }
+    .form-group .required {
+      color: #ef4444;
+      margin-left: 2px;
+    }
+
+    .form-input {
+      width: 100%;
+      padding: 12px 14px;
+      border-radius: 12px;
+      border: 1px solid rgba(0,0,0,0.08);
+      background: rgba(255,255,255,0.6);
+      font-family: inherit;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: #111;
+      outline: none;
+      transition: all 0.25s ease;
+    }
+    .form-input::placeholder { color: #bbb; font-weight: 400; }
+    .form-input:hover { border-color: rgba(0,0,0,0.12); }
+    .form-input:focus {
+      border-color: rgba(34,197,94,0.4);
+      box-shadow: 0 0 0 3px rgba(34,197,94,0.08);
+      background: rgba(255,255,255,0.85);
+    }
+
+    /* Error state */
+    .form-input.error {
+      border-color: rgba(239,68,68,0.4);
+      box-shadow: 0 0 0 3px rgba(239,68,68,0.06);
+    }
+    .form-error {
+      font-size: 0.7rem;
+      color: #ef4444;
+      margin-top: 5px;
+      display: none;
+      font-weight: 500;
+    }
+    .form-input.error + .form-error { display: block; }
+
+    /* Textarea */
+    textarea.form-input {
+      resize: vertical;
+      min-height: 72px;
+      line-height: 1.5;
+    }
+
+    /* ── Password toggle ── */
+    .input-wrap {
+      position: relative;
+    }
+    .input-wrap .form-input { padding-right: 44px; }
+    .pw-toggle {
+      position: absolute;
+      right: 4px; top: 50%; transform: translateY(-50%);
+      width: 34px; height: 34px;
+      border: none; border-radius: 8px;
+      background: transparent;
+      color: rgba(0,0,0,0.25);
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; transition: all 0.2s ease; padding: 0;
+    }
+    .pw-toggle:hover { color: rgba(0,0,0,0.5); background: rgba(0,0,0,0.03); }
+
+
+    /* ── Submit Button ── */
+    .btn-submit {
+      width: 100%;
+      padding: 14px;
+      border-radius: 14px;
+      border: none;
+      background: #111;
+      color: #fff;
+      font-family: inherit;
+      font-size: 0.875rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      margin-top: 24px;
+      position: relative;
+      overflow: hidden;
+    }
+    .btn-submit:hover {
+      background: #16a34a;
+      transform: translateY(-1px);
+      box-shadow: 0 6px 24px rgba(22,163,74,0.25);
+    }
+    .btn-submit:active { transform: translateY(0) scale(0.99); }
+    .btn-submit .arrow { transition: transform 0.25s ease; }
+    .btn-submit:hover .arrow { transform: translateX(3px); }
+
+    /* Loading state */
+    .btn-submit.loading {
+      pointer-events: none;
+      opacity: 0.75;
+    }
+    .spinner {
+      width: 16px; height: 16px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+      display: none;
+    }
+    .btn-submit.loading .spinner { display: block; }
+    .btn-submit.loading .btn-label { display: none; }
+    .btn-submit.loading .arrow { display: none; }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+
+    /* ── Divider ── */
+    .divider {
+      display: flex; align-items: center; gap: 14px;
+      margin: 22px 0;
+    }
+    .divider::before, .divider::after {
+      content: ''; flex: 1; height: 1px;
+      background: rgba(0,0,0,0.06);
+    }
+    .divider span {
+      font-size: 0.7rem; font-weight: 600;
+      color: #bbb; letter-spacing: 0.04em; text-transform: uppercase;
+    }
+
+
+    /* ── Switch link ── */
+    .switch-text {
+      text-align: center;
+      font-size: 0.8rem;
+      color: #999;
+      margin-top: 4px;
+    }
+    .switch-link {
+      color: #16a34a;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      transition: color 0.2s ease;
+    }
+    .switch-link:hover { color: #15803d; }

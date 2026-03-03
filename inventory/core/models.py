@@ -46,10 +46,21 @@ class UserProfile(TimeStampedModel):
     One user belongs to one company in this MVP.
     """
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="profile")
-    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name="users")
+    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name="users", null=True, blank=True)
 
     def __str__(self):
         return f"{self.user} @ {self.company.name}"
+    
+
+class RequestDemo(TimeStampedModel):
+    name = models.CharField(max_length=150)
+    email = models.EmailField()
+    phone = models.CharField(max_length=30, blank=True)
+    message = models.TextField(blank=True)
+    
+
+    def __str__(self):
+        return f"{self.name} ({self.email})"
 
 
 class Unit(TimeStampedModel):

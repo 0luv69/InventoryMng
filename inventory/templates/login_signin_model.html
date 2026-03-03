@@ -1,0 +1,337 @@
+
+ 
+ 
+ <!-- ══════════════════════════════════════
+       LOGIN MODAL
+       ══════════════════════════════════════ -->
+  <div class="overlay" id="loginOverlay" onclick="if(event.target===this) closeModal('login')">
+    <div class="glass-modal">
+      <button class="modal-close" onclick="closeModal('login')" aria-label="Close">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+
+      <div class="modal-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
+          <polyline points="10 17 15 12 10 7"/>
+          <line x1="15" y1="12" x2="3" y2="12"/>
+        </svg>
+      </div>
+
+      <h2 class="modal-title">Welcome back</h2>
+      <p class="modal-sub">Enter your credentials to access your account.</p>
+
+      <form id="loginForm" onsubmit="handleLogin(event)" novalidate>
+        <div class="form-group">
+          <label>Email<span class="required">*</span></label>
+          <input class="form-input" type="email" id="loginEmail" placeholder="you@example.com" autocomplete="email" required>
+          <div class="form-error">Please enter a valid email address.</div>
+        </div>
+
+        <div class="form-group">
+          <label>Password<span class="required">*</span></label>
+          <div class="input-wrap">
+            <input class="form-input" type="password" id="loginPassword" placeholder="••••••••" autocomplete="current-password" required>
+            <button type="button" class="pw-toggle" onclick="togglePw('loginPassword', this)" aria-label="Show password">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+          </div>
+          <div class="form-error">Password is required.</div>
+        </div>
+
+        <button class="btn-submit" type="submit" id="loginBtn">
+          <span class="btn-label">Log in</span>
+          <svg class="arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          <div class="spinner"></div>
+        </button>
+      </form>
+
+      <div class="divider"><span>or</span></div>
+
+      <p class="switch-text">
+        Don't have an account? <a class="switch-link" onclick="switchModal('login','register')">Register</a>
+      </p>
+    </div>
+  </div>
+
+
+  <!-- ══════════════════════════════════════
+       REGISTER MODAL
+       ══════════════════════════════════════ -->
+  <div class="overlay" id="registerOverlay" onclick="if(event.target===this) closeModal('register')">
+    <div class="glass-modal">
+      <button class="modal-close" onclick="closeModal('register')" aria-label="Close">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+
+      <div class="modal-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+          <circle cx="8.5" cy="7" r="4"/>
+          <line x1="20" y1="8" x2="20" y2="14"/>
+          <line x1="23" y1="11" x2="17" y2="11"/>
+        </svg>
+      </div>
+
+      <h2 class="modal-title">Contact us For Free Demo</h2>
+      <p class="modal-sub">Fill in your details to get started with InventoryChamps.</p>
+
+      <form id="registerForm" onsubmit="handleRegister(event)" novalidate>
+        <div class="form-group">
+          <label>Full Name<span class="required">*</span></label>
+          <input class="form-input" type="text" id="regName" placeholder="John Doe" autocomplete="name" required>
+          <div class="form-error">Name is required.</div>
+        </div>
+
+        <div class="form-group">
+          <label>Email<span class="required">*</span></label>
+          <input class="form-input" type="email" id="regEmail" placeholder="you@example.com" autocomplete="email" required>
+          <div class="form-error">Please enter a valid email address.</div>
+        </div>
+
+        <div class="form-group">
+          <label>Phone Number<span class="required">*</span></label>
+          <input class="form-input" type="tel" id="regPhone" placeholder="+1 (555) 000-0000" autocomplete="tel" required>
+          <div class="form-error">Please enter a valid phone number.</div>
+        </div>
+
+        <div class="form-group">
+          <label>Remarks <span style="color:#bbb; font-weight:400;">(optional)</span></label>
+          <textarea class="form-input" id="regRemarks" placeholder="Any additional notes..." rows="3"></textarea>
+        </div>
+
+        <button class="btn-submit" type="submit" id="regBtn">
+          <span class="btn-label">Contact Us</span>
+          <svg class="arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          <div class="spinner"></div>
+        </button>
+      </form>
+
+      <div class="divider"><span>or</span></div>
+
+      <p class="switch-text">
+        Already have an account? <a class="switch-link" onclick="switchModal('register','login')">Log in</a>
+      </p>
+    </div>
+  </div>
+
+
+<script>
+    /* ══════════════════════════════════════
+       MODAL CONTROLS
+       ══════════════════════════════════════ */
+
+    function openModal(name) {
+      const ov = document.getElementById(name + 'Overlay');
+      ov.classList.add('open');
+      // Focus first input after animation
+      setTimeout(() => {
+        const inp = ov.querySelector('.form-input');
+        if (inp) inp.focus();
+      }, 350);
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeModal(name) {
+      const ov = document.getElementById(name + 'Overlay');
+      ov.classList.remove('open');
+      document.body.style.overflow = '';
+      // Reset form
+      setTimeout(() => {
+        const form = ov.querySelector('form');
+        if (form) form.reset();
+        ov.querySelectorAll('.form-input').forEach(i => i.classList.remove('error'));
+        ov.querySelectorAll('.btn-submit').forEach(b => b.classList.remove('loading'));
+      }, 350);
+    }
+
+    function switchModal(from, to) {
+      closeModal(from);
+      setTimeout(() => openModal(to), 380);
+    }
+
+    // Escape key closes
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        ['login', 'register'].forEach(n => {
+          if (document.getElementById(n + 'Overlay').classList.contains('open')) {
+            closeModal(n);
+          }
+        });
+      }
+    });
+
+
+    /* ══════════════════════════════════════
+       PASSWORD TOGGLE
+       ══════════════════════════════════════ */
+
+    const eyeOpen  = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
+    const eyeShut  = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`;
+
+    function togglePw(id, btn) {
+      const inp = document.getElementById(id);
+      const showing = inp.type === 'text';
+      inp.type = showing ? 'password' : 'text';
+      btn.innerHTML = showing ? eyeOpen : eyeShut;
+    }
+
+
+    /* ══════════════════════════════════════
+       VALIDATION + SUBMIT
+       ══════════════════════════════════════ */
+
+    function validateEmail(v) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v); }
+    function validatePhone(v) { return /^[\d\s\-+().]{7,}$/.test(v); }
+
+    function setErr(el, show) {
+      if (show) el.classList.add('error');
+      else el.classList.remove('error');
+    }
+
+    // Clear errors on input
+    document.querySelectorAll('.form-input').forEach(inp => {
+      inp.addEventListener('input', () => inp.classList.remove('error'));
+    });
+
+
+    function handleLogin(e) {
+      e.preventDefault();
+      const email = document.getElementById('loginEmail');
+      const pw    = document.getElementById('loginPassword');
+      let ok = true;
+
+      if (!validateEmail(email.value.trim())) { setErr(email, true); ok = false; }
+      if (!pw.value.trim()) { setErr(pw, true); ok = false; }
+
+      if (!ok) {
+        toast.error('Please fix the errors above.');
+        return;
+      }
+
+      // Simulate submit
+      const btn = document.getElementById('loginBtn');
+      btn.classList.add('loading');
+
+      const infoToast = toast.info('Logging in...', 15000);
+
+      const getCookie = (name) => {
+        const match = document.cookie.match(new RegExp('(^|;\\s*)' + name + '=([^;]*)'));
+        return match ? decodeURIComponent(match[2]) : null;
+      };
+
+      const csrftoken = getCookie('csrftoken');
+
+      fetch('/login/api/', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(csrftoken ? { 'X-CSRFToken': csrftoken } : {}),
+        },
+        body: JSON.stringify({
+          email: email.value.trim(),
+          password: pw.value,
+        }),
+      })
+        .then(async (res) => {
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(data.detail || data.message || 'Login failed');
+          return data;
+        })
+        .then((data) => {
+          toast.success(data.message || 'Logged in successfully — welcome back!');
+          if (data.redirect) window.location.href = data.redirect;
+          else setTimeout(() => closeModal('login'), 600);
+        })
+        .catch((err) => {
+          toast.error(err.message || 'Unable to log in.');
+        })
+        .finally(() => {
+          btn.classList.remove('loading');
+          if (infoToast && typeof infoToast.dismiss === 'function') infoToast.dismiss('exit');
+        });
+
+      return;
+
+      setTimeout(() => {
+        btn.classList.remove('loading');
+        toast.success('Logged in successfully — welcome back!');
+        setTimeout(() => closeModal('login'), 600);
+      }, 1500);
+    }
+
+
+    function handleRegister(e) {
+      e.preventDefault();
+      const name   = document.getElementById('regName');
+      const email  = document.getElementById('regEmail');
+      const phone  = document.getElementById('regPhone');
+      let ok = true;
+
+      if (!name.value.trim())                 { setErr(name, true); ok = false; }
+      if (!validateEmail(email.value.trim()))  { setErr(email, true); ok = false; }
+      if (!validatePhone(phone.value.trim()))  { setErr(phone, true); ok = false; }
+
+      if (!ok) {
+        toast.error('Please fix the highlighted fields.');
+        return;
+      }
+
+      const btn = document.getElementById('regBtn');
+      btn.classList.add('loading');
+
+      const infoToast = toast.info('Submitting your details...');
+      const getCookie = (name) => {
+        const match = document.cookie.match(new RegExp('(^|;\\s*)' + name + '=([^;]*)'));
+        return match ? decodeURIComponent(match[2]) : null;
+      };
+
+      const csrftoken = getCookie('csrftoken');
+
+      fetch('/register/api/', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(csrftoken ? { 'X-CSRFToken': csrftoken } : {}),
+        },
+        body: JSON.stringify({
+          name: name.value.trim(),
+          email: email.value.trim(),
+          phone: phone.value.trim(),
+          remarks: document.getElementById('regRemarks').value.trim(),
+        }),
+      })
+        .then(async (res) => {
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(data.detail || data.message || 'Registration failed');
+          return data;
+        })
+        .then((data) => {
+          toast.success(data.message || 'Submitted successfully!');
+          if (data.redirect) window.location.href = data.redirect;
+          else setTimeout(() => switchModal('register', 'login'), 600);
+        })
+        .catch((err) => {
+          toast.error(err.message || 'Unable to submit.');
+        })
+        .finally(() => {
+          btn.classList.remove('loading');
+          if (infoToast && typeof infoToast.dismiss === 'function') infoToast.dismiss('exit');
+        });
+
+      return;
+
+
+      setTimeout(() => {
+        btn.classList.remove('loading');
+        toast.success('Account created successfully!');
+        setTimeout(() => {
+          toast.info('Redirecting to login...');
+          setTimeout(() => switchModal('register', 'login'), 800);
+        }, 400);
+      }, 1800);
+    }
+
+</script>

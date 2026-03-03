@@ -1,0 +1,102 @@
+{% load tailwind_tags static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>InventoryChamps — {{ title }}</title>
+  {% tailwind_css %}
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+
+<html>
+  <body class="bg-white text-surface-900 font-sans">
+    {% include 'login_signin_model.html' %}
+
+    <div class="min-h-screen flex items-center justify-center  text-black px-6">
+      <div class="text-center max-w-xl">
+        
+        <!-- Heading -->
+        <a href="/" class="inline-flex items-center gap-2.5 mb-4 no-underline">
+          <h1 class="text-5xl font-extrabold tracking-tight mb-6">
+            <span class="text-black">Inventory</span>
+            <span class="text-green-500">Champs</span>
+          </h1>
+        </a>
+
+        <!-- Subtitle -->
+        <p class="text-gray-400 text-lg mb-10 leading-relaxed">
+          Simple. Clean. Powerful <a href="/" class="text-green-500 hover:underline"> inventory management</a> for modern businesses.<br>
+          <span class="text-gray-500 text-base">
+            Track goods in, goods out, suppliers, customers, spoilage, and payments — all from one calm, focused dashboard built for 24/7 operations.
+          </span>
+        </p>
+
+
+
+        <!-- Buttons -->
+        <div class="flex justify-center gap-4">
+          
+          <!-- Login Button -->
+          <button 
+            onclick="openModal('login');"
+            class="group flex items-center gap-2 px-8 py-3 rounded-xl 
+                  bg-green-500 text-black font-semibold
+                  hover:bg-green-400 transition-all duration-300
+                  shadow-lg shadow-green-500/20">
+            Log In
+            <svg class="transition-transform duration-300 group-hover:translate-x-1"
+                width="16" height="16" viewBox="0 0 24 24"
+                fill="none" stroke="currentColor"
+                stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="5" y1="12" x2="19" y2="12"/>
+              <polyline points="12 5 19 12 12 19"/>
+            </svg>
+          </button>
+
+          <!-- Register Button -->
+          <button 
+            onclick="openModal('register');"
+            class="group flex items-center gap-2 px-8 py-3 rounded-xl
+                  border border-green-500 text-green-500 font-semibold
+                  hover:bg-green-500 hover:text-black
+                  transition-all duration-300">
+            Register
+            <svg class="transition-transform duration-300 group-hover:translate-x-1"
+                width="16" height="16" viewBox="0 0 24 24"
+                fill="none" stroke="currentColor"
+                stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="5" y1="12" x2="19" y2="12"/>
+              <polyline points="12 5 19 12 12 19"/>
+            </svg>
+          </button>
+
+        </div>
+
+          <!-- Toast Container -->
+        <div class="toast-container">
+          <div class="toast-stack" id="toastStack">
+            <div class="toast-peek p2"></div>
+            <div class="toast-peek p1"></div>
+            <div id="toastSlot"></div>
+            <div class="toast-badge" id="toastBadge"></div>
+          </div>
+        </div>
+
+
+      </div>
+    </div>
+<script src="{% static 'js/notification.js' %}"></script>
+
+    <script>
+      Title = "{{ title }}";
+      if (Title === "Login") {
+        openModal('login');
+      } else if (Title === "Register") {
+        openModal('register');
+      }
+    </script>
+  </body>
+</html>

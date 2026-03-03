@@ -2,9 +2,6 @@ const toast = (() => {
 
     const queue  = [];
     let active   = false;
-    let activeId = null;
-    let activeDismiss = null;
-    const controllers = new Map();
 
     const icons = {
         success: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`,
@@ -20,58 +17,22 @@ const toast = (() => {
     const badge = document.getElementById('toastBadge');
 
 
-    function makeId() {
-        try {
-            if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
-        } catch (_) {
-            // ignore
-        }
-        return 't_' + Date.now().toString(16) + Math.random().toString(16).slice(2);
-    }
-
-    function getController(id) {
-        if (controllers.has(id)) return controllers.get(id);
-        const controller = {
-            id,
-            dismiss: (reason = 'exit') => {
-                if (activeId === id && typeof activeDismiss === 'function') {
-                    activeDismiss(reason);
-                    return;
-                }
-                const idx = queue.findIndex((t) => t.id === id);
-                if (idx !== -1) {
-                    queue.splice(idx, 1);
-                    updatePeek();
-                }
-                controllers.delete(id);
-            },
-        };
-        controllers.set(id, controller);
-        return controller;
-    }
-
     function push(type, msg, duration = 3000) {
-        const id = makeId();
-        const item = { id, type, msg, duration };
-        queue.push(item);
+        queue.push({ type, msg, duration });
         updatePeek();
         if (!active) next();
-        return getController(id);
     }
 
     function next() {
         if (queue.length === 0) {
             active = false;
-            activeId = null;
-            activeDismiss = null;
             updatePeek();
             return;
         }
         active = true;
         const item = queue.shift();
-        activeId = item.id;
         updatePeek();
-        activeDismiss = render(item.id, item.type, item.msg, item.duration);
+        render(item.type, item.msg, item.duration);
     }
 
     function updatePeek() {
@@ -89,7 +50,7 @@ const toast = (() => {
     }
 
 
-    function render(id, type, msg, duration) {
+    function render(type, msg, duration) {
     slot.innerHTML = '';
 
     const el = document.createElement('div');
@@ -157,11 +118,6 @@ const toast = (() => {
         if (cleaned) return;
         cleaned = true;
         el.remove();
-        controllers.delete(id);
-        if (activeId === id) {
-            activeId = null;
-            activeDismiss = null;
-        }
         next();
         }
         el.addEventListener('transitionend', cleanup, { once: true });
@@ -183,7 +139,6 @@ const toast = (() => {
     });
 
     start();
-    return dismiss;
     }
 
 
