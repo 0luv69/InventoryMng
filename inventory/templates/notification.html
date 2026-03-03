@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Glass Toast System</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: #fffffc;
+      color: #171717;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      padding: 24px;
+    }
+
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      color: #111;
+      margin-bottom: 8px;
+    }
+    p.sub {
+      font-size: 0.875rem;
+      color: #999;
+      margin-bottom: 32px;
+      text-align: center;
+      line-height: 1.5;
+    }
+
+    .btn-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+    }
+
+    button {
+      font-family: inherit;
+      padding: 12px 22px;
+      border-radius: 10px;
+      border: 1px solid #e5e5e5;
+      background: #fff;
+      color: #333;
+      font-size: 0.8125rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    button:hover {
+      background: #f7f7f7;
+      border-color: #d4d4d4;
+    }
+    button:active { transform: scale(0.97); }
+
+    button.accent {
+      background: #f0fdf4;
+      border-color: #bbf7d0;
+      color: #15803d;
+    }
+    button.accent:hover {
+      background: #dcfce7;
+      border-color: #86efac;
+    }
+
+
+    /* ══════════════════════════════════════════
+       WHITE GLASS TOAST SYSTEM
+       ══════════════════════════════════════════ */
+
+    .toast-container {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 9999;
+      width: calc(100% - 32px);
+      max-width: 400px;
+      pointer-events: none;
+    }
+
+    .toast-stack { position: relative; }
+
+    /* ── Peek layers ── */
+    .toast-peek {
+      position: absolute;
+      bottom: 0; left: 50%;
+      height: 52px;
+      border-radius: 18px;
+      pointer-events: none;
+      opacity: 0;
+      transition: all 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .toast-peek.p1 {
+      width: 90%;
+      transform: translateX(-50%) translateY(7px);
+      background: rgba(255,255,255,0.5);
+      border: 1px solid rgba(0,0,0,0.05);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+    }
+    .toast-peek.p2 {
+      width: 80%;
+      transform: translateX(-50%) translateY(13px);
+      background: rgba(255,255,255,0.3);
+      border: 1px solid rgba(0,0,0,0.03);
+    }
+    .toast-stack.q1 .toast-peek.p1,
+    .toast-stack.q2 .toast-peek.p1,
+    .toast-stack.q2 .toast-peek.p2 { opacity: 1; }
+
+    /* ── Queue badge ── */
+    .toast-badge {
+      position: absolute;
+      top: -10px; right: -6px;
+      min-width: 22px; height: 22px;
+      padding: 0 6px;
+      border-radius: 100px;
+      background: rgba(255,255,255,0.85);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border: 1px solid rgba(0,0,0,0.08);
+      color: #525252;
+      font-size: 0.65rem;
+      font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      opacity: 0;
+      transform: scale(0.4);
+      transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+      pointer-events: none;
+      z-index: 2;
+    }
+    .toast-badge.show {
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    /* ── Toast ── */
+    .toast {
+      position: relative;
+      z-index: 1;
+
+      /* White glass */
+      background: rgba(255, 255, 255, 0.65);
+      backdrop-filter: blur(24px) saturate(1.2);
+      -webkit-backdrop-filter: blur(24px) saturate(1.2);
+      border: 1px solid rgba(0, 0, 0, 0.07);
+
+      padding: 14px 16px;
+      border-radius: 18px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      pointer-events: all;
+      overflow: hidden;
+
+      box-shadow:
+        0 4px 24px rgba(0,0,0,0.06),
+        0 1px 3px rgba(0,0,0,0.04),
+        inset 0 1px 0 rgba(255,255,255,0.8);
+
+      /* Entry */
+      opacity: 0;
+      transform: translateY(14px) scale(0.97);
+      transition: opacity 0.4s cubic-bezier(0.16,1,0.3,1),
+                  transform 0.4s cubic-bezier(0.16,1,0.3,1);
+    }
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+
+    /* Normal auto-dismiss: slide down & fade */
+    .toast.exit {
+      opacity: 0;
+      transform: translateY(8px) scale(0.96);
+      transition: opacity 0.28s ease,
+                  transform 0.28s ease;
+    }
+
+    /* THROW dismiss: fling right + rotate + fade */
+    .toast.throw {
+      opacity: 0;
+      transform: translateX(120%) rotate(8deg) scale(0.9);
+      transition: opacity 0.4s cubic-bezier(0.4, 0, 1, 1),
+                  transform 0.4s cubic-bezier(0.4, 0, 1, 1);
+    }
+
+    /* Top shimmer */
+    .toast::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg,
+        transparent 5%,
+        rgba(255,255,255,0.9) 35%,
+        rgba(255,255,255,1) 50%,
+        rgba(255,255,255,0.9) 65%,
+        transparent 95%
+      );
+    }
+
+    /* ── Icon ── */
+    .toast-icon {
+      width: 30px; height: 30px; min-width: 30px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .toast-icon.success {
+      background: rgba(34,197,94,0.1);
+      border: 1px solid rgba(34,197,94,0.18);
+    }
+    .toast-icon.error {
+      background: rgba(239,68,68,0.08);
+      border: 1px solid rgba(239,68,68,0.15);
+    }
+    .toast-icon.info {
+      background: rgba(59,130,246,0.08);
+      border: 1px solid rgba(59,130,246,0.15);
+    }
+    .toast-icon.warning {
+      background: rgba(245,158,11,0.08);
+      border: 1px solid rgba(245,158,11,0.15);
+    }
+
+    /* ── Message ── */
+    .toast-msg {
+      flex: 1;
+      font-size: 0.8125rem;
+      font-weight: 500;
+      line-height: 1.45;
+      color: #1a1a1a;
+    }
+
+    /* ── Close ── */
+    .toast-close {
+      width: 28px; height: 28px; min-width: 28px;
+      border: none;
+      border-radius: 8px;
+      background: rgba(0,0,0,0.03);
+      color: rgba(0,0,0,0.25);
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      padding: 0;
+      flex-shrink: 0;
+    }
+    .toast-close:hover {
+      background: rgba(0,0,0,0.06);
+      color: rgba(0,0,0,0.5);
+    }
+    .toast-close:active { transform: scale(0.85); }
+
+    /* ── Timer bar ── */
+    .toast-bar {
+      position: absolute;
+      bottom: 0; left: 0;
+      height: 2px;
+      width: 100%;
+      transform-origin: left;
+      border-radius: 0 0 18px 18px;
+      opacity: 0.5;
+    }
+    .toast-bar.success { background: linear-gradient(90deg, #22c55e, #86efac); }
+    .toast-bar.error   { background: linear-gradient(90deg, #ef4444, #fca5a5); }
+    .toast-bar.info    { background: linear-gradient(90deg, #3b82f6, #93c5fd); }
+    .toast-bar.warning { background: linear-gradient(90deg, #f59e0b, #fde68a); }
+
+    .toast:hover .toast-bar {
+      animation-play-state: paused !important;
+    }
+
+    @keyframes shrink {
+      from { transform: scaleX(1); }
+      to   { transform: scaleX(0); }
+    }
+
+    /* ── Mobile ── */
+    @media (max-width: 640px) {
+      .toast-container {
+        bottom: 16px;
+        left: 12px; right: 12px;
+        transform: none;
+        width: auto; max-width: none;
+      }
+      .toast { padding: 12px 14px; border-radius: 16px; gap: 10px; }
+      .toast-icon { width: 26px; height: 26px; min-width: 26px; }
+      .toast-close { width: 26px; height: 26px; min-width: 26px; }
+      .toast-msg { font-size: 0.78rem; }
+      .toast-peek.p1 { transform: translateX(-50%) translateY(6px); }
+      .toast-peek.p2 { transform: translateX(-50%) translateY(11px); }
+
+      /* On mobile throw goes further for satisfying feel */
+      .toast.throw {
+        transform: translateX(140%) rotate(12deg) scale(0.85);
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Glass Toast System</h1>
+  <p class="sub">Click buttons to queue notifications.<br>Hover to pause. Click ✕ to throw-dismiss.</p>
+
+  <div class="btn-row">
+    <button class="accent" onclick="toast.success('Item saved to inventory successfully.')">
+      ✓ &nbsp;Success
+    </button>
+    <button onclick="toast.error('Failed to connect to the server.')">
+      ✕ &nbsp;Error
+    </button>
+    <button onclick="toast.info('3 new shipments are pending review.')">
+      ℹ &nbsp;Info
+    </button>
+    <button onclick="toast.warning('Stock for &quot;Cement 50kg&quot; is running low.')">
+      ⚠ &nbsp;Warning
+    </button>
+  </div>
+
+  <div class="btn-row" style="margin-top: 4px;">
+    <button onclick="toast.success('Supplier registered.'); setTimeout(()=>toast.info('Syncing catalog...'),200); setTimeout(()=>toast.success('Catalog synced!'),400);">
+      Burst — 3 toasts
+    </button>
+    <button onclick="for(let i=1;i<=6;i++) setTimeout(()=>toast.success('Notification '+i+' of 6'),i*80);">
+      Burst — 6 toasts
+    </button>
+  </div>
+
+
+  <!-- Toast Container -->
+  <div class="toast-container">
+    <div class="toast-stack" id="toastStack">
+      <div class="toast-peek p2"></div>
+      <div class="toast-peek p1"></div>
+      <div id="toastSlot"></div>
+      <div class="toast-badge" id="toastBadge"></div>
+    </div>
+  </div>
+
+
+  <script>
+    const toast = (() => {
+
+      const queue  = [];
+      let active   = false;
+
+      const icons = {
+        success: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`,
+        error:   `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>`,
+        info:    `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>`,
+        warning: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`,
+      };
+
+      const closeIcon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
+
+      const slot  = document.getElementById('toastSlot');
+      const stack = document.getElementById('toastStack');
+      const badge = document.getElementById('toastBadge');
+
+
+      function push(type, msg, duration = 3000) {
+        queue.push({ type, msg, duration });
+        updatePeek();
+        if (!active) next();
+      }
+
+      function next() {
+        if (queue.length === 0) {
+          active = false;
+          updatePeek();
+          return;
+        }
+        active = true;
+        const item = queue.shift();
+        updatePeek();
+        render(item.type, item.msg, item.duration);
+      }
+
+      function updatePeek() {
+        const n = queue.length;
+        stack.classList.remove('q1', 'q2');
+        if (n === 1) stack.classList.add('q1');
+        if (n >= 2)  stack.classList.add('q2');
+
+        if (n > 0) {
+          badge.textContent = '+' + n;
+          badge.classList.add('show');
+        } else {
+          badge.classList.remove('show');
+        }
+      }
+
+
+      function render(type, msg, duration) {
+        slot.innerHTML = '';
+
+        const el = document.createElement('div');
+        el.className = 'toast';
+        el.innerHTML = `
+          <div class="toast-icon ${type}">${icons[type]}</div>
+          <span class="toast-msg">${esc(msg)}</span>
+          <button class="toast-close" aria-label="Dismiss">${closeIcon}</button>
+          <div class="toast-bar ${type}"></div>
+        `;
+        slot.appendChild(el);
+
+        // Timer bar
+        const bar = el.querySelector('.toast-bar');
+        bar.style.animation = `shrink ${duration}ms linear forwards`;
+
+        // Animate in
+        requestAnimationFrame(() =>
+          requestAnimationFrame(() => el.classList.add('show'))
+        );
+
+        // ── Timer ──
+        let remaining = duration;
+        let started   = Date.now();
+        let timeout   = null;
+        let done      = false;
+
+        function start() {
+          started = Date.now();
+          timeout = setTimeout(() => dismiss('auto'), remaining);
+          bar.style.animationPlayState = 'running';
+        }
+
+        function pause() {
+          if (timeout) { clearTimeout(timeout); timeout = null; }
+          remaining = Math.max(0, remaining - (Date.now() - started));
+          bar.style.animationPlayState = 'paused';
+        }
+
+        /**
+         * @param {'auto'|'manual'} reason
+         *   auto   = timer expired → normal slide-down exit
+         *   manual = user clicked ✕ → throw animation
+         */
+        function dismiss(reason) {
+          if (done) return;
+          done = true;
+          if (timeout) { clearTimeout(timeout); timeout = null; }
+
+          el.removeEventListener('mouseenter', pause);
+          el.removeEventListener('mouseleave', start);
+          el.removeEventListener('touchstart', pause);
+          el.removeEventListener('touchend', start);
+
+          // Pick animation based on reason
+          el.classList.remove('show');
+          if (reason === 'manual') {
+            el.classList.add('throw');   // fling right + rotate
+          } else {
+            el.classList.add('exit');    // gentle slide down
+          }
+
+          let cleaned = false;
+          function cleanup() {
+            if (cleaned) return;
+            cleaned = true;
+            el.remove();
+            next();
+          }
+          el.addEventListener('transitionend', cleanup, { once: true });
+          setTimeout(cleanup, 500);
+        }
+
+        // Hover pause (desktop)
+        el.addEventListener('mouseenter', pause);
+        el.addEventListener('mouseleave', start);
+
+        // Touch pause (mobile)
+        el.addEventListener('touchstart', pause, { passive: true });
+        el.addEventListener('touchend', start, { passive: true });
+
+        // Close button → THROW
+        el.querySelector('.toast-close').addEventListener('click', (e) => {
+          e.stopPropagation();
+          dismiss('manual');
+        });
+
+        start();
+      }
+
+
+      function esc(s) {
+        const d = document.createElement('div');
+        d.textContent = s;
+        return d.innerHTML;
+      }
+
+      return {
+        success: (msg, ms) => push('success', msg, ms),
+        error:   (msg, ms) => push('error',   msg, ms),
+        info:    (msg, ms) => push('info',    msg, ms),
+        warning: (msg, ms) => push('warning', msg, ms),
+      };
+
+    })();
+    window.tost = toast;
+    // For testing: expose toast to global scope
+    tost.success('Welcome to the inventory system!');
+    tost.info('Your dashboard is up to date.');
+    tost.warning('Stock for "Cement 50kg" is running low.');
+    tost.error('Failed to connect to the server. Retrying...');
+  </script>
+
+</body>
+</html>

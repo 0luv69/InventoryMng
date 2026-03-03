@@ -1,32 +1,75 @@
 from django.contrib import admin
-from .models import Product, Customer, GoodsIn, Sale, Payment
+from .models import Company, UserProfile, Unit 
+from .models import (
+    Company,
+    UserProfile,
+    Unit,
+    # Supplier,
+    # Customer,
+    # Item,
+)
 
 
-@admin.register(Product)
-class ProductAdmin(admin.ModelAdmin):
-    list_display = ('name', 'unit', 'cost_price', 'selling_price', 'quantity_in_stock')
-    search_fields = ('name',)
+@admin.register(Company)
+class CompanyAdmin(admin.ModelAdmin):
+    list_display = ("name", "slug", "phone", "email", "currency", "created_at")
+    search_fields = ("name", "slug", "phone", "email", "city", "state", "country")
+    prepopulated_fields = {"slug": ("name",)}
+    list_filter = ("currency", "created_at", "updated_at")
+    ordering = ("name",)
 
 
-@admin.register(Customer)
-class CustomerAdmin(admin.ModelAdmin):
-    list_display = ('name', 'phone', 'balance')
-    search_fields = ('name', 'phone')
+@admin.register(UserProfile)
+class UserProfileAdmin(admin.ModelAdmin):
+    list_display = ("user", "company", "created_at")
+    search_fields = ("user__username", "user__email", "company__name")
+    list_filter = ("company", "created_at")
+    autocomplete_fields = ("user", "company")
+    ordering = ("company__name", "user__username")
 
 
-@admin.register(GoodsIn)
-class GoodsInAdmin(admin.ModelAdmin):
-    list_display = ('product', 'quantity', 'cost_price_at_entry', 'supplier_name', 'date')
-    list_filter = ('date', 'product')
+@admin.register(Unit)
+class UnitAdmin(admin.ModelAdmin):
+    list_display = ("name", "short_name", "company", "created_at")
+    search_fields = ("name", "short_name", "company__name")
+    list_filter = ("company", "created_at")
+    autocomplete_fields = ("company",)
+    ordering = ("company__name", "name")
 
 
-@admin.register(Sale)
-class SaleAdmin(admin.ModelAdmin):
-    list_display = ('customer', 'product', 'quantity', 'selling_price', 'payment_type', 'date')
-    list_filter = ('payment_type', 'date', 'product')
+# @admin.register(Supplier)
+# class SupplierAdmin(admin.ModelAdmin):
+#     list_display = ("name", "company", "contact_person", "phone", "balance", "created_at")
+#     search_fields = ("name", "contact_person", "phone", "email", "company__name")
+#     list_filter = ("company", "created_at", "updated_at")
+#     autocomplete_fields = ("company",)
+#     ordering = ("company__name", "name")
 
 
-@admin.register(Payment)
-class PaymentAdmin(admin.ModelAdmin):
-    list_display = ('customer', 'amount', 'date')
-    list_filter = ('date',)
+# @admin.register(Customer)
+# class CustomerAdmin(admin.ModelAdmin):
+#     list_display = ("name", "company", "contact_person", "phone", "balance", "credit_limit", "created_at")
+#     search_fields = ("name", "contact_person", "phone", "email", "company__name")
+#     list_filter = ("company", "created_at", "updated_at")
+#     autocomplete_fields = ("company",)
+#     ordering = ("company__name", "name")
+
+
+# @admin.register(Item)
+# class ItemAdmin(admin.ModelAdmin):
+#     list_display = (
+#         "name",
+#         "company",
+#         "sku",
+#         "unit",
+#         "cost_price",
+#         "selling_price",
+#         "quantity_in_stock",
+#         "low_stock_threshold",
+#         "is_active",
+#         "created_at",
+#     )
+#     search_fields = ("name", "sku", "description", "company__name", "unit__name", "unit__short_name")
+#     list_filter = ("company", "unit", "is_active", "created_at", "updated_at")
+#     autocomplete_fields = ("company", "unit")
+#     ordering = ("company__name", "name")

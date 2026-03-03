@@ -1,0 +1,683 @@
+{% load tailwind_tags static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>StockFlow — Inventory Management</title>
+  {% comment %} <script src="https://cdn.tailwindcss.com"></script> {% endcomment %}
+  {% tailwind_css %}
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+
+
+    /* ── Navbar ── */
+    .navbar {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      background: rgba(255,255,255,0.85);
+      backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid rgba(0,0,0,0.06);
+      transition: box-shadow 0.3s ease;
+    }
+    .navbar.scrolled { box-shadow: 0 1px 12px rgba(0,0,0,0.06); }
+
+    /* ── Buttons ── */
+    .btn-primary {
+      background: #171917;
+      color: #fff;
+      padding: 14px 32px;
+      border-radius: 12px;
+      font-weight: 600;
+      font-size: 0.95rem;
+      transition: all 0.25s cubic-bezier(.4,0,.2,1);
+      display: inline-flex; align-items: center; gap: 8px;
+      border: none; cursor: pointer;
+      position: relative; overflow: hidden;
+    }
+    .btn-primary:hover {
+      background: #16a34a;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 30px rgba(22,163,74,0.3);
+    }
+    .btn-primary:active { transform: translateY(0); }
+    .btn-primary .arrow {
+      transition: transform 0.25s ease;
+    }
+    .btn-primary:hover .arrow { transform: translateX(4px); }
+
+    .btn-secondary {
+      background: transparent;
+      color: #171917;
+      padding: 14px 32px;
+      border-radius: 12px;
+      font-weight: 600;
+      font-size: 0.95rem;
+      border: 1.5px solid #e5e5e5;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      display: inline-flex; align-items: center; gap: 8px;
+    }
+    .btn-secondary:hover {
+      border-color: #171917;
+      background: #fafafa;
+      transform: translateY(-2px);
+    }
+
+    .btn-login {
+      background: transparent;
+      color: #171917;
+      padding: 10px 24px;
+      border-radius: 10px;
+      font-weight: 500;
+      font-size: 0.875rem;
+      border: 1.5px solid #e5e5e5;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .btn-login:hover {
+      border-color: #16a34a;
+      color: #16a34a;
+      background: #f0fdf4;
+    }
+
+    /* ── Animated Flow Diagram ── */
+    .flow-container { position: relative; width: 100%; max-width: 560px; margin: 0 auto; }
+
+    .flow-node {
+      background: #fff;
+      border: 1.5px solid #e5e5e5;
+      border-radius: 16px;
+      padding: 18px 22px;
+      display: flex; align-items: center; gap: 14px;
+      transition: all 0.35s cubic-bezier(.4,0,.2,1);
+      cursor: default;
+      position: relative;
+    }
+    .flow-node:hover {
+      border-color: #22c55e;
+      box-shadow: 0 8px 32px rgba(22,163,74,0.1);
+      transform: translateY(-3px);
+    }
+    .flow-node .icon-wrap {
+      width: 44px; height: 44px;
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      transition: transform 0.3s ease;
+    }
+    .flow-node:hover .icon-wrap { transform: scale(1.08); }
+
+    /* Pulse dot for active node */
+    .pulse-dot {
+      position: absolute; top: 12px; right: 12px;
+      width: 8px; height: 8px;
+      background: #22c55e;
+      border-radius: 50%;
+      opacity: 0;
+      transition: opacity 0.4s ease;
+    }
+    .pulse-dot.active {
+      opacity: 1;
+      animation: pulse 1.8s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(34,197,94,0.4); }
+      50% { box-shadow: 0 0 0 8px rgba(34,197,94,0); }
+    }
+
+    /* Connector lines */
+    .connector {
+      width: 2px; height: 28px;
+      background: linear-gradient(to bottom, #e5e5e5, #d4d4d4);
+      margin: 0 auto;
+      position: relative;
+      overflow: hidden;
+    }
+    .connector::after {
+      content: '';
+      position: absolute; top: -100%; left: 0; right: 0;
+      height: 100%;
+      background: linear-gradient(to bottom, transparent, #22c55e);
+      animation: flowDown 2.5s ease-in-out infinite;
+    }
+    @keyframes flowDown {
+      0% { top: -100%; }
+      50% { top: 100%; }
+      100% { top: 100%; }
+    }
+
+    /* ── Feature Cards ── */
+    .feature-card {
+      background: #fff;
+      border: 1px solid #f0f0f0;
+      border-radius: 20px;
+      padding: 36px 28px;
+      transition: all 0.35s cubic-bezier(.4,0,.2,1);
+      position: relative;
+      overflow: hidden;
+    }
+    .feature-card::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, #22c55e, #4ade80);
+      transform: scaleX(0);
+      transform-origin: left;
+      transition: transform 0.4s ease;
+    }
+    .feature-card:hover::before { transform: scaleX(1); }
+    .feature-card:hover {
+      border-color: #dcfce7;
+      box-shadow: 0 16px 48px rgba(0,0,0,0.06);
+      transform: translateY(-4px);
+    }
+    .feature-icon {
+      width: 52px; height: 52px;
+      border-radius: 14px;
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 20px;
+      transition: transform 0.3s ease;
+    }
+    .feature-card:hover .feature-icon { transform: scale(1.1) rotate(-3deg); }
+
+    /* ── Scroll Reveal ── */
+    .reveal {
+      opacity: 0;
+      transform: translateY(30px);
+      transition: all 0.7s cubic-bezier(.4,0,.2,1);
+    }
+    .reveal.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+
+
+    /* ── Badge ── */
+    .badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: #f0fdf4;
+      color: #16a34a;
+      padding: 6px 14px;
+      border-radius: 100px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      border: 1px solid #dcfce7;
+    }
+
+    /* ── Stat Counter ── */
+    .stat-number {
+      font-size: 2.5rem;
+      font-weight: 800;
+      line-height: 1;
+      background: linear-gradient(135deg, #171917, #16a34a);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    /* ── Mobile Nav ── */
+    .mobile-menu {
+      position: fixed; inset: 0;
+      background: rgba(255,255,255,0.98);
+      backdrop-filter: blur(20px);
+      z-index: 150;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 24px;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+    .mobile-menu.open { opacity: 1; pointer-events: all; }
+    .mobile-menu a {
+      font-size: 1.25rem; font-weight: 600; color: #171917;
+      text-decoration: none;
+      padding: 8px 16px;
+      transition: color 0.2s;
+    }
+    .mobile-menu a:hover { color: #16a34a; }
+
+    /* ── Responsive ── */
+    @media (max-width: 768px) {
+      .stat-number { font-size: 2rem; }
+      .flow-node { padding: 14px 16px; }
+      .flow-node .icon-wrap { width: 38px; height: 38px; }
+    }
+  </style>
+</head>
+<body>
+
+  <nav class="navbar" id="navbar">
+    <div class="max-w-7xl mx-auto px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16 lg:h-[72px]">
+
+        <!-- Logo -->
+        <a href="#" class="flex items-center gap-2.5 no-underline">
+          <div class="w-9 h-9 bg-brand-500 rounded-xl flex items-center justify-center">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+              <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+              <line x1="12" y1="22.08" x2="12" y2="12"/>
+            </svg>
+          </div>
+          <span class="text-lg font-bold text-surface-900 tracking-tight">StockFlow</span>
+        </a>
+
+        <!-- Desktop Links -->
+        <div class="hidden md:flex items-center gap-8">
+          <a href="#features" class="text-sm font-medium text-surface-500 hover:text-surface-900 transition-colors">Features</a>
+          <a href="#how-it-works" class="text-sm font-medium text-surface-500 hover:text-surface-900 transition-colors">How It Works</a>
+          <a href="#" class="text-sm font-medium text-surface-500 hover:text-surface-900 transition-colors">Pricing</a>
+        </div>
+
+        <!-- Desktop CTA -->
+        <div class="hidden md:flex items-center gap-3">
+          <button class="btn-login" onclick="toast.info('Redirecting to login...')">Log in</button>
+          <button class="btn-primary text-sm !py-2.5 !px-5 !rounded-[10px]" onclick="toast.info('Welcome! Loading your demo...')">
+            Start Free
+            <svg class="arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          </button>
+        </div>
+
+        <!-- Mobile Hamburger -->
+        <button class="md:hidden flex flex-col gap-1.5 p-2" id="menuToggle" aria-label="Toggle menu">
+          <span class="block w-5 h-0.5 bg-surface-800 transition-all" id="bar1"></span>
+          <span class="block w-5 h-0.5 bg-surface-800 transition-all" id="bar2"></span>
+          <span class="block w-3.5 h-0.5 bg-surface-800 transition-all" id="bar3"></span>
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Mobile Menu -->
+  <div class="mobile-menu" id="mobileMenu">
+    <button class="absolute top-5 right-6 text-2xl font-light text-surface-400" id="menuClose">&times;</button>
+    <a href="#features" onclick="closeMobile()">Features</a>
+    <a href="#how-it-works" onclick="closeMobile()">How It Works</a>
+    <a href="#" onclick="closeMobile()">Pricing</a>
+    <button class="btn-login mt-2" onclick="toast.info('Redirecting to login...'); closeMobile();">Log in</button>
+    <button class="btn-primary" onclick="toast.info('Welcome! Loading your demo...'); closeMobile();">Start Free Demo</button>
+  </div>
+
+
+  <!-- ║         HERO SECTION          ║ -->
+  <section class="pt-32 lg:pt-40 pb-20 lg:pb-32 px-6 lg:px-8">
+    <div class="max-w-7xl mx-auto">
+      <div class="grid lg:grid-cols-2 gap-16 lg:gap-20 items-center">
+
+        <!-- Left: Copy -->
+        <div class="max-w-xl">
+          <div class="badge mb-6 reveal">
+            <span class="w-2 h-2 bg-brand-500 rounded-full animate-pulse"></span>
+            Inventory made simple
+          </div>
+
+          <h1 class="text-4xl sm:text-5xl lg:text-[3.4rem] font-extrabold leading-[1.1] tracking-tight text-surface-900 mb-6 reveal">
+            Manage your<br>
+            inventory with<br>
+            <span class="text-brand-600">total clarity.</span>
+          </h1>
+
+          <p class="text-lg text-surface-500 leading-relaxed mb-10 max-w-md reveal">
+            Track goods in, goods out, suppliers, customers, spoilage, and payments — all from one calm, focused dashboard built for 24/7 operations.
+          </p>
+
+          <div class="flex flex-wrap gap-4 mb-12 reveal">
+            <button class="btn-primary" onclick="toast.info('🚀 Demo is loading — hang tight!')">
+              Start Demo
+              <svg class="arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+            </button>
+            <button class="btn-secondary" onclick="document.getElementById('features').scrollIntoView({behavior:'smooth'}); toast.info('Scrolling to features ↓')">
+              See Features
+            </button>
+          </div>
+
+          <!-- Trust Stats -->
+          <div class="flex gap-10 reveal">
+            <div>
+              <div class="stat-number" data-target="10">0</div>
+              <p class="text-xs text-surface-400 font-medium mt-1 uppercase tracking-wider">Businesses</p>
+            </div>
+            <div>
+              <div class="stat-number" data-target="10">0</div>
+              <p class="text-xs text-surface-400 font-medium mt-1 uppercase tracking-wider">Countries</p>
+            </div>
+            <div>
+              <div class="stat-number" data-target="100">0</div>
+              <p class="text-xs text-surface-400 font-medium mt-1 uppercase tracking-wider">Uptime %</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Animated Flow Diagram -->
+        <div class="flow-container reveal ">
+          <div class="bg-surface-50 rounded-3xl border border-surface-200/60 p-6 sm:p-8">
+            <div class="flex items-center justify-between mb-6">
+              <span class="text-xs font-semibold text-surface-400 uppercase tracking-widest">Live Inventory Flow</span>
+              <span class="flex items-center gap-1.5 text-xs font-medium text-brand-600">
+                <span class="w-1.5 h-1.5 bg-brand-500 rounded-full animate-pulse"></span>
+                Active
+              </span>
+            </div>
+
+            <!-- Node 1 — Supplier -->
+            <div class="flow-node" id="node-1">
+              <div class="pulse-dot" id="dot-1"></div>
+              <div class="icon-wrap bg-blue-50">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+              </div>
+              <div>
+                <p class="text-sm font-semibold text-surface-800">Supplier Added</p>
+                <p class="text-xs text-surface-400 mt-0.5">New vendor registered</p>
+              </div>
+            </div>
+
+            <div class="connector"></div>
+
+            <!-- Node 2 — Goods In (Warehouse) -->
+            <div class="flow-node" id="node-2">
+              <div class="pulse-dot" id="dot-2"></div>
+              <div class="icon-wrap bg-brand-50">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+              </div>
+              <div>
+                <p class="text-sm font-semibold text-surface-800">Goods In — Warehouse</p>
+                <p class="text-xs text-surface-400 mt-0.5">+240 units received</p>
+              </div>
+            </div>
+
+            <div class="connector"></div>
+
+            <!-- Node 3 — Goods Out (Sale) -->
+            <div class="flow-node" id="node-3">
+              <div class="pulse-dot" id="dot-3"></div>
+              <div class="icon-wrap bg-amber-50">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 3v5a1 1 0 0 1-1 1h-1"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+              </div>
+              <div>
+                <p class="text-sm font-semibold text-surface-800">Goods Out — Sale</p>
+                <p class="text-xs text-surface-400 mt-0.5">120 units dispatched</p>
+              </div>
+            </div>
+
+            <div class="connector"></div>
+
+            <!-- Node 4 — Payment Received -->
+            <div class="flow-node" id="node-4">
+              <div class="pulse-dot" id="dot-4"></div>
+              <div class="icon-wrap bg-emerald-50">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+              </div>
+              <div>
+                <p class="text-sm font-semibold text-surface-800">Payment Received</p>
+                <p class="text-xs text-surface-400 mt-0.5">Cash · $4,200</p>
+              </div>
+            </div>
+
+            <div class="connector"></div>
+
+            <!-- Node 5 — Spoilage Tracked -->
+            <div class="flow-node" id="node-5">
+              <div class="pulse-dot" id="dot-5"></div>
+              <div class="icon-wrap bg-red-50">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              </div>
+              <div>
+                <p class="text-sm font-semibold text-surface-800">Spoilage Logged</p>
+                <p class="text-xs text-surface-400 mt-0.5">8 units expired — tracked</p>
+              </div>
+            </div>
+
+            <!-- Feedback bar at end of flow (Peek & End Rule) -->
+            <div class="mt-6 flex items-center gap-3 bg-brand-50 border border-brand-100 rounded-xl px-4 py-3">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+              <span class="text-xs font-semibold text-brand-700">All operations synced — inventory up to date</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ║      FEATURES SECTION         ║ -->
+  <section class="py-20 lg:py-32 px-6 lg:px-8 bg-surface-50/50" id="features">
+    <div class="max-w-7xl mx-auto">
+
+      <div class="text-center max-w-2xl mx-auto mb-16 lg:mb-20">
+        <div class="badge mx-auto mb-5 reveal">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          Core Features
+        </div>
+        <h2 class="text-3xl sm:text-4xl font-extrabold tracking-tight text-surface-900 reveal">
+          Everything you need,<br>nothing you don't.
+        </h2>
+        <p class="text-surface-500 mt-4 text-lg reveal">
+          Built for teams that manage inventory around the clock.
+        </p>
+      </div>
+
+      <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+
+        <!-- Card 1 -->
+        <div class="feature-card reveal">
+          <div class="feature-icon bg-blue-50">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          </div>
+          <h3 class="text-lg font-bold text-surface-900 mb-2">Suppliers & Customers</h3>
+          <p class="text-sm text-surface-500 leading-relaxed">Manage your entire vendor and client network. Add contacts, track history, and keep relationships organised.</p>
+        </div>
+
+        <!-- Card 2 -->
+        <div class="feature-card reveal">
+          <div class="feature-icon bg-brand-50">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+          </div>
+          <h3 class="text-lg font-bold text-surface-900 mb-2">Items & Goods</h3>
+          <p class="text-sm text-surface-500 leading-relaxed">Catalogue every product with SKUs, categories, and quantities. Searchable, sortable, always accurate.</p>
+        </div>
+
+        <!-- Card 3 -->
+        <div class="feature-card reveal">
+          <div class="feature-icon bg-amber-50">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 3v5a1 1 0 0 1-1 1h-1"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+          </div>
+          <h3 class="text-lg font-bold text-surface-900 mb-2">Goods In & Out</h3>
+          <p class="text-sm text-surface-500 leading-relaxed">Warehouse receiving and sales dispatch in real time. Know exactly what's moving and where.</p>
+        </div>
+
+        <!-- Card 4 -->
+        <div class="feature-card reveal">
+          <div class="feature-icon bg-red-50">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          </div>
+          <h3 class="text-lg font-bold text-surface-900 mb-2">Spoilage Tracking</h3>
+          <p class="text-sm text-surface-500 leading-relaxed">Log expired, damaged, or lost items. Understand shrinkage and reduce waste intelligently.</p>
+        </div>
+
+        <!-- Card 5 -->
+        <div class="feature-card reveal">
+          <div class="feature-icon bg-emerald-50">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+          </div>
+          <h3 class="text-lg font-bold text-surface-900 mb-2">Payment Types</h3>
+          <p class="text-sm text-surface-500 leading-relaxed">Cash, credit, bank transfer, and custom methods. Every transaction is logged and reconciled.</p>
+        </div>
+
+        <!-- Card 6 -->
+        <div class="feature-card reveal">
+          <div class="feature-icon bg-violet-50">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>
+          </div>
+          <h3 class="text-lg font-bold text-surface-900 mb-2">Live Reports</h3>
+          <p class="text-sm text-surface-500 leading-relaxed">Instant insights on stock levels, cash flow, and performance. Designed for quick glances.</p>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ║     HOW IT WORKS SECTION      ║ -->
+  <section class="py-20 lg:py-32 px-6 lg:px-8" id="how-it-works">
+    <div class="max-w-7xl mx-auto">
+
+      <div class="text-center max-w-2xl mx-auto mb-16 lg:mb-20">
+        <div class="badge mx-auto mb-5 reveal">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          Simple Process
+        </div>
+        <h2 class="text-3xl sm:text-4xl font-extrabold tracking-tight text-surface-900 reveal">
+          Up and running in minutes.
+        </h2>
+      </div>
+
+      <div class="grid sm:grid-cols-3 gap-8 lg:gap-12 max-w-4xl mx-auto">
+        <div class="text-center reveal">
+          <div class="w-14 h-14 rounded-2xl bg-surface-900 text-white flex items-center justify-center text-xl font-bold mx-auto mb-5">1</div>
+          <h3 class="text-base font-bold text-surface-900 mb-2">Create your account</h3>
+          <p class="text-sm text-surface-400 leading-relaxed">Sign up in seconds. No credit card required.</p>
+        </div>
+        <div class="text-center reveal">
+          <div class="w-14 h-14 rounded-2xl bg-surface-900 text-white flex items-center justify-center text-xl font-bold mx-auto mb-5">2</div>
+          <h3 class="text-base font-bold text-surface-900 mb-2">Add your inventory</h3>
+          <p class="text-sm text-surface-400 leading-relaxed">Import or add items, suppliers, and customers.</p>
+        </div>
+        <div class="text-center reveal">
+          <div class="w-14 h-14 rounded-2xl bg-surface-900 text-white flex items-center justify-center text-xl font-bold mx-auto mb-5">3</div>
+          <h3 class="text-base font-bold text-surface-900 mb-2">Start tracking</h3>
+          <p class="text-sm text-surface-400 leading-relaxed">Goods in, goods out, payments — all automated.</p>
+          <!-- End-of-process feedback (Peek & End Rule) -->
+          <div class="inline-flex items-center gap-2 mt-4 bg-brand-50 border border-brand-100 rounded-lg px-3 py-1.5">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            <span class="text-[11px] font-semibold text-brand-700">You're all set!</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+
+  <!-- ║       CTA / FOOTER            ║ -->
+  <section class="py-20 lg:py-28 px-6 lg:px-8">
+    <div class="max-w-3xl mx-auto text-center reveal ">
+      <h2 class="text-3xl sm:text-4xl font-extrabold tracking-tight text-surface-900 mb-5">
+        Ready to simplify your<br>inventory management?
+      </h2>
+      <p class="text-surface-500 text-lg mb-10 max-w-lg mx-auto">
+        Join thousands of businesses that trust StockFlow to manage their stock, suppliers, and sales.
+      </p>
+      <button class="btn-primary text-base !py-4 !px-10" onclick="toast.info('🎉 Welcome aboard! Setting up your account...')">
+        Start Free Demo
+        <svg class="arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+      </button>
+    </div>
+  </section>
+
+  <footer class="border-t border-surface-100 py-8 px-6 lg:px-8">
+    <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div class="flex items-center gap-2">
+        <div class="w-7 h-7 bg-brand-500 rounded-lg flex items-center justify-center">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+        </div>
+        <span class="text-sm font-semibold text-surface-600">StockFlow</span>
+      </div>
+      <p class="text-xs text-surface-400">&copy; 2026 StockFlow. All rights reserved.</p>
+    </div>
+  </footer>
+
+
+  <div class="hidden hover:rotate-180 transition-transform hover:text-red" id="debugNode"></div>
+  <div>
+
+
+  <!-- Toast Container -->
+  <div class="toast-container">
+    <div class="toast-stack" id="toastStack">
+      <div class="toast-peek p2"></div>
+      <div class="toast-peek p1"></div>
+      <div id="toastSlot"></div>
+      <div class="toast-badge" id="toastBadge"></div>
+    </div>
+  </div>
+
+
+<script src="{% static 'js/notification.js' %}"></script>
+
+<script>
+    // ── Navbar scroll effect ──
+    window.addEventListener('scroll', () => {
+      document.getElementById('navbar').classList.toggle('scrolled', window.scrollY > 10);
+    });
+
+    // ── Mobile menu ──
+    document.getElementById('menuToggle').addEventListener('click', () => {
+      document.getElementById('mobileMenu').classList.add('open');
+    });
+    document.getElementById('menuClose').addEventListener('click', closeMobile);
+    function closeMobile() {
+      document.getElementById('mobileMenu').classList.remove('open');
+    }
+
+    // ── Scroll reveal ──
+    const reveals = document.querySelectorAll('.reveal');
+    const revealObserver = new IntersectionObserver((entries) => {
+      entries.forEach((entry, i) => {
+        if (entry.isIntersecting) {
+          setTimeout(() => entry.target.classList.add('visible'), i * 80);
+          revealObserver.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.15 });
+    reveals.forEach(el => revealObserver.observe(el));
+
+    // ── Stat counter animation ──
+    const stats = document.querySelectorAll('.stat-number[data-target]');
+    const statObserver = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          const el = entry.target;
+          const target = parseFloat(el.dataset.target);
+          const isDecimal = target % 1 !== 0;
+          const duration = 1900;
+          const start = performance.now();
+          const suffix = isDecimal ? '%' : '+';
+
+          function tick(now) {
+            const progress = Math.min((now - start) / duration, 1);
+            const eased = 1 - Math.pow(1 - progress, 4); // ease-out quart
+            const current = eased * target;
+            el.textContent = (isDecimal ? current.toFixed(1) : Math.floor(current).toLocaleString()) + suffix;
+            if (progress < 1) requestAnimationFrame(tick);
+          }
+          requestAnimationFrame(tick);
+          statObserver.unobserve(el);
+        }
+      });
+    }, { threshold: 0.5 });
+    stats.forEach(el => statObserver.observe(el));
+
+    // ── Animated flow nodes — cycling highlight ──
+    const nodes = [1, 2, 3, 4, 5];
+    let currentNode = 0;
+    function cycleNodes() {
+      // Reset all
+      nodes.forEach(n => {
+        document.getElementById(`node-${n}`).style.borderColor = '#e5e5e5';
+        document.getElementById(`dot-${n}`).classList.remove('active');
+      });
+      // Activate current
+      const n = nodes[currentNode];
+      document.getElementById(`node-${n}`).style.borderColor = '#22c55e';
+      document.getElementById(`dot-${n}`).classList.add('active');
+      currentNode = (currentNode + 1) % nodes.length;
+    }
+    cycleNodes();
+    setInterval(cycleNodes, 2200);
+</script>
+
+</body>
+</html>
