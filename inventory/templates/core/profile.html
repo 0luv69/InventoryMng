@@ -1,0 +1,498 @@
+{% extends 'base.html' %}
+
+{% block title %}Profile — InventoryChamps{% endblock %}
+{% block page_title %}Profile{% endblock %}
+{% block page_subtitle %}Manage your profile information{% endblock %}
+
+{% block content %}
+
+<!-- ══════════════════════════════════════════════════════════
+     SETTINGS / PROFILE PAGE
+     ══════════════════════════════════════════════════════════ -->
+
+<!-- Page Header -->
+<div class="mb-8">
+  <h1 class="text-2xl font-extrabold text-neutral-900 tracking-tight">Settings</h1>
+  <p class="text-sm text-neutral-400 mt-1">Manage your personal profile, company details, and system preferences.</p>
+</div>
+
+<!-- Settings Layout: Sidebar Nav + Content -->
+<div class="flex flex-col lg:flex-row gap-6">
+
+  <!-- ── Settings Sidebar ── -->
+  <div class="lg:w-56 shrink-0">
+    <nav class="lg:sticky lg:top-24 space-y-1">
+      <button onclick="switchSection('profile')" id="secBtnProfile" class="sec-btn w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-semibold text-green-700 bg-green-50 transition-all duration-200 text-left">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        My Profile
+      </button>
+      <button onclick="switchSection('password')" id="secBtnPassword" class="sec-btn w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-neutral-500 hover:bg-neutral-50 hover:text-neutral-700 transition-all duration-200 text-left">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        Password &amp; Security
+      </button>
+      <button onclick="switchSection('company')" id="secBtnCompany" class="sec-btn w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-neutral-500 hover:bg-neutral-50 hover:text-neutral-700 transition-all duration-200 text-left">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+        Company
+      </button>
+      <button onclick="switchSection('preferences')" id="secBtnPreferences" class="sec-btn w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-neutral-500 hover:bg-neutral-50 hover:text-neutral-700 transition-all duration-200 text-left">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        Preferences
+      </button>
+      <button onclick="switchSection('notifications')" id="secBtnNotifications" class="sec-btn w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-neutral-500 hover:bg-neutral-50 hover:text-neutral-700 transition-all duration-200 text-left">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        Notifications
+      </button>
+      <div class="pt-4 mt-4 border-t border-neutral-100">
+        <button onclick="confirmDangerAction('logout')" class="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-red-500 hover:bg-red-50 transition-all duration-200 text-left">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          Log Out
+        </button>
+      </div>
+    </nav>
+  </div>
+
+  <!-- ── Content Panels ── -->
+  <div class="flex-1 min-w-0 max-w-3xl">
+
+    <!-- ═���═ MY PROFILE ═══ -->
+    <div id="secProfile" class="settings-section">
+      <form onsubmit="saveProfile(event)" class="space-y-6">
+
+        <!-- Avatar + header -->
+        <div class="bg-white border border-neutral-100 rounded-2xl overflow-hidden">
+          <div class="h-28 bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50 relative">
+            <div class="absolute -bottom-10 left-6">
+              <div class="relative group">
+                <div id="avatarPreview" class="w-20 h-20 rounded-2xl bg-white border-4 border-white shadow-lg flex items-center justify-center text-2xl font-extrabold text-green-600 overflow-hidden">
+                  <span id="avatarInitials">JD</span>
+                  <img id="avatarImg" class="hidden absolute inset-0 w-full h-full object-cover" alt="Avatar"/>
+                </div>
+                <label class="absolute inset-0 rounded-2xl bg-black/0 group-hover:bg-black/30 flex items-center justify-center cursor-pointer transition-all duration-200 opacity-0 group-hover:opacity-100">
+                  <svg class="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                  <input type="file" accept="image/*" onchange="previewAvatar(this)" class="hidden"/>
+                </label>
+              </div>
+            </div>
+          </div>
+          <div class="pt-14 pb-6 px-6">
+            <h3 id="profileDisplayName" class="text-lg font-bold text-neutral-900">John Doe</h3>
+            <p class="text-sm text-neutral-400">Admin · Member since Jan 2026</p>
+          </div>
+        </div>
+
+        <!-- Personal Info -->
+        <div class="bg-white border border-neutral-100 rounded-2xl p-6">
+          <div class="flex items-center justify-between mb-5">
+            <h3 class="text-sm font-bold text-neutral-900">Personal Information</h3>
+            <span class="text-[0.6rem] font-bold text-neutral-400 uppercase tracking-widest">Required fields marked *</span>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-semibold text-neutral-600 mb-1.5">First Name <span class="text-red-400">*</span></label>
+              <input type="text" id="pFirstName" value="John" required
+                     class="w-full px-4 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200"/>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-neutral-600 mb-1.5">Last Name <span class="text-red-400">*</span></label>
+              <input type="text" id="pLastName" value="Doe" required
+                     class="w-full px-4 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200"/>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-neutral-600 mb-1.5">Email <span class="text-red-400">*</span></label>
+              <input type="email" id="pEmail" value="john.doe@stockflow.com" required
+                     class="w-full px-4 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200"/>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-neutral-600 mb-1.5">Phone</label>
+              <input type="tel" id="pPhone" value="+977 9841234567" placeholder="+977 ..."
+                     class="w-full px-4 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200"/>
+            </div>
+          </div>
+          <div class="mt-4">
+            <label class="block text-xs font-semibold text-neutral-600 mb-1.5">Role</label>
+            <div class="px-4 py-2.5 text-sm text-neutral-500 bg-neutral-50 border border-neutral-100 rounded-xl flex items-center gap-2">
+              <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[0.65rem] font-bold bg-green-50 text-green-600 border border-green-200">Admin</span>
+              <span class="text-xs text-neutral-400">Managed by system administrator</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Save -->
+        <div class="flex items-center justify-between">
+          <p class="text-xs text-neutral-400" id="profileLastSaved">Last saved: just now</p>
+          <div class="flex items-center gap-3">
+            <button type="button" onclick="resetProfile()" class="px-5 py-2.5 text-sm font-semibold text-neutral-600 bg-white border border-neutral-200 rounded-xl hover:bg-neutral-50 hover:border-neutral-300 transition-all duration-200">Discard</button>
+            <button type="submit" id="profileSaveBtn" class="px-6 py-2.5 text-sm font-semibold text-white bg-green-500 rounded-xl hover:bg-green-600 active:scale-[0.97] transition-all duration-200 flex items-center gap-2">
+              <span id="profileSaveText">Save Changes</span>
+              <svg id="profileSpinner" class="hidden w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" stroke-dasharray="32" stroke-linecap="round"/></svg>
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+
+    <!-- ═══ PASSWORD & SECURITY ═══ -->
+    <div id="secPassword" class="settings-section hidden">
+      <form onsubmit="savePassword(event)" class="space-y-6">
+        <div class="bg-white border border-neutral-100 rounded-2xl p-6">
+          <h3 class="text-sm font-bold text-neutral-900 mb-5">Change Password</h3>
+          <div class="space-y-4 max-w-md">
+            <div>
+              <label class="block text-xs font-semibold text-neutral-600 mb-1.5">Current Password <span class="text-red-400">*</span></label>
+              <div class="relative">
+                <input type="password" id="pwCurrent" required placeholder="••••••••"
+                       class="w-full px-4 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200 pr-10"/>
+                <button type="button" onclick="togglePwVis(this)" class="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600 transition-colors"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+              </div>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-neutral-600 mb-1.5">New Password <span class="text-red-400">*</span></label>
+              <input type="password" id="pwNew" required placeholder="Min 8 characters" oninput="checkPwStrength(this.value)"
+                     class="w-full px-4 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200"/>
+              <div class="flex items-center gap-1.5 mt-2">
+                <div class="flex-1 h-1 rounded-full bg-neutral-200" id="pwBar1"></div>
+                <div class="flex-1 h-1 rounded-full bg-neutral-200" id="pwBar2"></div>
+                <div class="flex-1 h-1 rounded-full bg-neutral-200" id="pwBar3"></div>
+                <div class="flex-1 h-1 rounded-full bg-neutral-200" id="pwBar4"></div>
+                <span id="pwStrengthText" class="text-[0.6rem] font-bold text-neutral-400 ml-2 w-12">—</span>
+              </div>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-neutral-600 mb-1.5">Confirm New Password <span class="text-red-400">*</span></label>
+              <input type="password" id="pwConfirm" required placeholder="Re-enter new password"
+                     class="w-full px-4 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200"/>
+              <p id="pwMatchError" class="hidden text-xs text-red-500 mt-1">Passwords do not match.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Active Sessions -->
+        <div class="bg-white border border-neutral-100 rounded-2xl p-6">
+          <h3 class="text-sm font-bold text-neutral-900 mb-4">Active Sessions</h3>
+          <div class="space-y-3" id="sessionsContainer">
+            <div class="flex items-center gap-4 p-3 bg-green-50/50 border border-green-200/50 rounded-xl">
+              <div class="w-9 h-9 rounded-lg bg-green-100 flex items-center justify-center shrink-0"><svg class="w-4 h-4 text-green-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></div>
+              <div class="flex-1 min-w-0"><div class="text-sm font-semibold text-neutral-800">Chrome on macOS</div><div class="text-xs text-neutral-400">Kathmandu, Nepal · Current session</div></div>
+              <span class="text-[0.6rem] font-bold text-green-600 bg-green-100 px-2 py-0.5 rounded-md">Active</span>
+            </div>
+            <div class="flex items-center gap-4 p-3 border border-neutral-100 rounded-xl">
+              <div class="w-9 h-9 rounded-lg bg-neutral-100 flex items-center justify-center shrink-0"><svg class="w-4 h-4 text-neutral-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg></div>
+              <div class="flex-1 min-w-0"><div class="text-sm font-semibold text-neutral-800">Safari on iPhone</div><div class="text-xs text-neutral-400">Last active 2 hours ago</div></div>
+              <button onclick="revokeSession(this)" class="text-xs font-semibold text-red-500 hover:text-red-700 transition-colors">Revoke</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex justify-end">
+          <button type="submit" class="px-6 py-2.5 text-sm font-semibold text-white bg-green-500 rounded-xl hover:bg-green-600 active:scale-[0.97] transition-all duration-200 flex items-center gap-2">
+            <span id="pwSaveText">Update Password</span>
+            <svg id="pwSpinner" class="hidden w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" stroke-dasharray="32" stroke-linecap="round"/></svg>
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- ═══ COMPANY ═══ -->
+    <div id="secCompany" class="settings-section hidden">
+      <form onsubmit="saveCompany(event)" class="space-y-6">
+
+        <!-- Company Logo + Name -->
+        <div class="bg-white border border-neutral-100 rounded-2xl p-6">
+          <h3 class="text-sm font-bold text-neutral-900 mb-5">Company Profile</h3>
+          <div class="flex flex-col sm:flex-row items-start gap-6 mb-6">
+            <div class="relative group shrink-0">
+              <div id="compLogoPreview" class="w-24 h-24 rounded-2xl bg-green-500 flex items-center justify-center text-white text-3xl font-extrabold overflow-hidden">
+                <span id="compLogoInitial">S</span>
+                <img id="compLogoImg" class="hidden absolute inset-0 w-full h-full object-cover" alt="Logo"/>
+              </div>
+              <label class="absolute inset-0 rounded-2xl bg-black/0 group-hover:bg-black/30 flex items-center justify-center cursor-pointer transition-all duration-200 opacity-0 group-hover:opacity-100">
+                <svg class="w-6 h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                <input type="file" accept="image/*" onchange="previewCompLogo(this)" class="hidden"/>
+              </label>
+            </div>
+            <div class="flex-1 space-y-4 w-full">
+              <div>
+                <label class="block text-xs font-semibold text-neutral-600 mb-1.5">Company Name <span class="text-red-400">*</span></label>
+                <input type="text" id="cName" value="StockFlow Inc." required
+                       class="w-full px-4 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200"/>
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-neutral-600 mb-1.5">Slug</label>
+                <div class="flex items-center gap-0">
+                  <span class="px-3 py-2.5 text-sm text-neutral-400 bg-neutral-50 border border-r-0 border-neutral-200 rounded-l-xl">stockflow.app/</span>
+                  <input type="text" id="cSlug" value="stockflow-inc" readonly
+                         class="flex-1 px-4 py-2.5 text-sm border border-neutral-200 rounded-r-xl bg-neutral-50 text-neutral-500 cursor-not-allowed"/>
+                </div>
+                <p class="text-[0.6rem] text-neutral-400 mt-1">Auto-generated from company name</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Contact & Address -->
+        <div class="bg-white border border-neutral-100 rounded-2xl p-6">
+          <h3 class="text-sm font-bold text-neutral-900 mb-5">Contact &amp; Address</h3>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-semibold text-neutral-600 mb-1.5">Email</label>
+              <input type="email" id="cEmail" value="info@stockflow.com" placeholder="company@example.com"
+                     class="w-full px-4 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200"/>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-neutral-600 mb-1.5">Phone</label>
+              <input type="tel" id="cPhone" value="+977 01-5523456" placeholder="+977 ..."
+                     class="w-full px-4 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200"/>
+            </div>
+          </div>
+          <div class="mt-4">
+            <label class="block text-xs font-semibold text-neutral-600 mb-1.5">Address</label>
+            <textarea id="cAddress" rows="2" placeholder="Street address, building name…"
+                      class="w-full px-4 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white resize-none placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200">Putalisadak, Kathmandu</textarea>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
+            <div>
+              <label class="block text-xs font-semibold text-neutral-600 mb-1.5">City</label>
+              <input type="text" id="cCity" value="Kathmandu"
+                     class="w-full px-4 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200"/>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-neutral-600 mb-1.5">State / Province</label>
+              <input type="text" id="cState" value="Bagmati"
+                     class="w-full px-4 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200"/>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-neutral-600 mb-1.5">Country</label>
+              <input type="text" id="cCountry" value="Nepal"
+                     class="w-full px-4 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200"/>
+            </div>
+          </div>
+        </div>
+
+        <!-- Currency & Financial -->
+        <div class="bg-white border border-neutral-100 rounded-2xl p-6">
+          <h3 class="text-sm font-bold text-neutral-900 mb-5">Financial Settings</h3>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-semibold text-neutral-600 mb-1.5">Currency <span class="text-red-400">*</span></label>
+              <select id="cCurrency" class="w-full px-4 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200">
+                <option value="NPR" selected>NPR — Nepalese Rupee (रू)</option>
+                <option value="INR">INR — Indian Rupee (₹)</option>
+                <option value="USD">USD — US Dollar ($)</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-neutral-600 mb-1.5">Fiscal Year Start</label>
+              <select id="cFiscalYear" class="w-full px-4 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200">
+                <option value="shrawan" selected>Shrawan (Mid-July)</option>
+                <option value="jan">January</option>
+                <option value="apr">April</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-neutral-600 mb-1.5">PAN / Tax ID</label>
+              <input type="text" id="cTaxId" value="" placeholder="e.g. 123456789"
+                     class="w-full px-4 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200"/>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-neutral-600 mb-1.5">Low Stock Threshold</label>
+              <input type="number" id="cLowStock" value="20" min="1"
+                     class="w-full px-4 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200"/>
+              <p class="text-[0.6rem] text-neutral-400 mt-1">Alert when item stock falls below this number</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between">
+          <p class="text-xs text-neutral-400" id="companyLastSaved">Last saved: just now</p>
+          <div class="flex items-center gap-3">
+            <button type="button" onclick="resetCompany()" class="px-5 py-2.5 text-sm font-semibold text-neutral-600 bg-white border border-neutral-200 rounded-xl hover:bg-neutral-50 hover:border-neutral-300 transition-all duration-200">Discard</button>
+            <button type="submit" id="companySaveBtn" class="px-6 py-2.5 text-sm font-semibold text-white bg-green-500 rounded-xl hover:bg-green-600 active:scale-[0.97] transition-all duration-200 flex items-center gap-2">
+              <span id="companySaveText">Save Company</span>
+              <svg id="companySpinner" class="hidden w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" stroke-dasharray="32" stroke-linecap="round"/></svg>
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+
+    <!-- ═══ PREFERENCES ═══ -->
+    <div id="secPreferences" class="settings-section hidden">
+      <div class="space-y-6">
+        <div class="bg-white border border-neutral-100 rounded-2xl p-6">
+          <h3 class="text-sm font-bold text-neutral-900 mb-5">Display &amp; Locale</h3>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-semibold text-neutral-600 mb-1.5">Date Format</label>
+              <select id="prefDateFmt" class="w-full px-4 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200"><option value="mdy" selected>MM/DD/YYYY</option><option value="dmy">DD/MM/YYYY</option><option value="ymd">YYYY-MM-DD</option></select>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-neutral-600 mb-1.5">Timezone</label>
+              <select id="prefTimezone" class="w-full px-4 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200"><option value="asia_kathmandu" selected>Asia/Kathmandu (UTC+5:45)</option><option value="asia_kolkata">Asia/Kolkata (UTC+5:30)</option><option value="utc">UTC</option></select>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-neutral-600 mb-1.5">Items Per Page</label>
+              <select id="prefPerPage" class="w-full px-4 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200"><option value="10" selected>10</option><option value="25">25</option><option value="50">50</option><option value="100">100</option></select>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-neutral-600 mb-1.5">Language</label>
+              <select id="prefLang" class="w-full px-4 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200"><option value="en" selected>English</option><option value="ne">नेपाली</option></select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Toggles -->
+        <div class="bg-white border border-neutral-100 rounded-2xl p-6">
+          <h3 class="text-sm font-bold text-neutral-900 mb-5">Features</h3>
+          <div class="space-y-4">
+            <div class="flex items-center justify-between"><div><div class="text-sm font-semibold text-neutral-800">Sidebar Collapsed by Default</div><div class="text-xs text-neutral-400 mt-0.5">Start with icon-only sidebar on desktop</div></div><button type="button" onclick="toggleSwitch(this)" data-key="sidebarCollapsed" class="toggle-switch relative w-11 h-6 rounded-full bg-neutral-200 transition-colors duration-200 shrink-0"><div class="toggle-dot absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform duration-200"></div></button></div>
+            <div class="flex items-center justify-between"><div><div class="text-sm font-semibold text-neutral-800">Auto-deduct Stock on Sale</div><div class="text-xs text-neutral-400 mt-0.5">Automatically reduce inventory when goods out is confirmed</div></div><button type="button" onclick="toggleSwitch(this)" data-key="autoDeduct" class="toggle-switch active relative w-11 h-6 rounded-full bg-green-500 transition-colors duration-200 shrink-0"><div class="toggle-dot absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform duration-200 translate-x-5"></div></button></div>
+            <div class="flex items-center justify-between"><div><div class="text-sm font-semibold text-neutral-800">Show Cost Prices in Reports</div><div class="text-xs text-neutral-400 mt-0.5">Display cost-level data in report views</div></div><button type="button" onclick="toggleSwitch(this)" data-key="showCost" class="toggle-switch active relative w-11 h-6 rounded-full bg-green-500 transition-colors duration-200 shrink-0"><div class="toggle-dot absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform duration-200 translate-x-5"></div></button></div>
+            <div class="flex items-center justify-between"><div><div class="text-sm font-semibold text-neutral-800">Require Notes on Spoilage</div><div class="text-xs text-neutral-400 mt-0.5">Make the notes field mandatory when logging spoilage & loss</div></div><button type="button" onclick="toggleSwitch(this)" data-key="requireSpoilageNotes" class="toggle-switch relative w-11 h-6 rounded-full bg-neutral-200 transition-colors duration-200 shrink-0"><div class="toggle-dot absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform duration-200"></div></button></div>
+          </div>
+        </div>
+        <div class="flex justify-end"><button onclick="savePreferences()" class="px-6 py-2.5 text-sm font-semibold text-white bg-green-500 rounded-xl hover:bg-green-600 active:scale-[0.97] transition-all duration-200">Save Preferences</button></div>
+      </div>
+    </div>
+
+    <!-- ═══ NOTIFICATIONS ═══ -->
+    <div id="secNotifications" class="settings-section hidden">
+      <div class="space-y-6">
+        <div class="bg-white border border-neutral-100 rounded-2xl p-6">
+          <h3 class="text-sm font-bold text-neutral-900 mb-5">Email Notifications</h3>
+          <div class="space-y-4">
+            <div class="flex items-center justify-between"><div><div class="text-sm font-semibold text-neutral-800">Low Stock Alerts</div><div class="text-xs text-neutral-400 mt-0.5">Email when item drops below threshold</div></div><button type="button" onclick="toggleSwitch(this)" data-key="notifLowStock" class="toggle-switch active relative w-11 h-6 rounded-full bg-green-500 transition-colors duration-200 shrink-0"><div class="toggle-dot absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform duration-200 translate-x-5"></div></button></div>
+            <div class="flex items-center justify-between"><div><div class="text-sm font-semibold text-neutral-800">New Sale / Purchase</div><div class="text-xs text-neutral-400 mt-0.5">Summary email for each transaction</div></div><button type="button" onclick="toggleSwitch(this)" data-key="notifTransactions" class="toggle-switch relative w-11 h-6 rounded-full bg-neutral-200 transition-colors duration-200 shrink-0"><div class="toggle-dot absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform duration-200"></div></button></div>
+            <div class="flex items-center justify-between"><div><div class="text-sm font-semibold text-neutral-800">Spoilage Logged</div><div class="text-xs text-neutral-400 mt-0.5">Immediate alert when spoilage is recorded</div></div><button type="button" onclick="toggleSwitch(this)" data-key="notifSpoilage" class="toggle-switch active relative w-11 h-6 rounded-full bg-green-500 transition-colors duration-200 shrink-0"><div class="toggle-dot absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform duration-200 translate-x-5"></div></button></div>
+            <div class="flex items-center justify-between"><div><div class="text-sm font-semibold text-neutral-800">Payment Pending Reminder</div><div class="text-xs text-neutral-400 mt-0.5">Remind about unpaid invoices</div></div><button type="button" onclick="toggleSwitch(this)" data-key="notifPayments" class="toggle-switch active relative w-11 h-6 rounded-full bg-green-500 transition-colors duration-200 shrink-0"><div class="toggle-dot absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform duration-200 translate-x-5"></div></button></div>
+            <div class="flex items-center justify-between"><div><div class="text-sm font-semibold text-neutral-800">Weekly Summary Report</div><div class="text-xs text-neutral-400 mt-0.5">Digest email every Monday morning</div></div><button type="button" onclick="toggleSwitch(this)" data-key="notifWeekly" class="toggle-switch active relative w-11 h-6 rounded-full bg-green-500 transition-colors duration-200 shrink-0"><div class="toggle-dot absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform duration-200 translate-x-5"></div></button></div>
+          </div>
+        </div>
+        <div class="flex justify-end"><button onclick="saveNotifications()" class="px-6 py-2.5 text-sm font-semibold text-white bg-green-500 rounded-xl hover:bg-green-600 active:scale-[0.97] transition-all duration-200">Save Notification Preferences</button></div>
+      </div>
+    </div>
+
+  </div><!-- /Content -->
+</div><!-- /Layout -->
+
+<!-- ═══ DANGER DIALOG ═══ -->
+<div id="dangerBackdrop" class="fixed inset-0 bg-black/30 backdrop-blur-sm z-[80] opacity-0 pointer-events-none transition-opacity duration-200 flex items-center justify-center">
+  <div id="dangerDialog" class="bg-white rounded-2xl shadow-xl w-full max-w-sm mx-4 p-6 scale-95 opacity-0 transition-all duration-200">
+    <div class="w-12 h-12 bg-red-50 rounded-xl flex items-center justify-center mx-auto mb-4" id="dangerIconWrap"></div>
+    <h3 id="dangerTitle" class="text-base font-bold text-neutral-900 text-center mb-1"></h3>
+    <p id="dangerMsg" class="text-sm text-neutral-500 text-center mb-6"></p>
+    <div class="flex gap-3"><button onclick="closeDangerDialog()" class="flex-1 px-4 py-2.5 text-sm font-semibold text-neutral-600 bg-white border border-neutral-200 rounded-xl hover:bg-neutral-50 transition-all duration-200">Cancel</button><button onclick="executeDanger()" id="dangerConfirmBtn" class="flex-1 px-4 py-2.5 text-sm font-semibold text-white bg-red-500 rounded-xl hover:bg-red-600 active:scale-[0.97] transition-all duration-200">Confirm</button></div>
+  </div>
+</div>
+
+<!-- ═══ TOAST ═══ -->
+<div id="feedbackToast" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[90] flex items-center gap-3 px-5 py-3 rounded-xl shadow-lg border text-sm font-semibold pointer-events-none opacity-0 translate-y-4 transition-all duration-300"><svg id="toastIcon" class="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></svg><span id="toastText"></span></div>
+
+
+<script>
+(function(){
+
+  /* ═══ SECTION NAVIGATION ═══ */
+  window.switchSection=sec=>{
+    document.querySelectorAll('.sec-btn').forEach(b=>{b.classList.remove('text-green-700','font-semibold','bg-green-50');b.classList.add('text-neutral-500','font-medium');});
+    const btn=document.getElementById('secBtn'+sec.charAt(0).toUpperCase()+sec.slice(1));
+    btn.classList.remove('text-neutral-500','font-medium');btn.classList.add('text-green-700','font-semibold','bg-green-50');
+    document.querySelectorAll('.settings-section').forEach(s=>s.classList.add('hidden'));
+    document.getElementById('sec'+sec.charAt(0).toUpperCase()+sec.slice(1)).classList.remove('hidden');
+  };
+
+  /* ═══ AVATAR PREVIEW ═══ */
+  window.previewAvatar=input=>{if(!input.files||!input.files[0])return;const r=new FileReader();r.onload=e=>{const img=document.getElementById('avatarImg');img.src=e.target.result;img.classList.remove('hidden');document.getElementById('avatarInitials').classList.add('hidden');};r.readAsDataURL(input.files[0]);showToast('Photo selected — save to apply','info');};
+
+  /* ═══ COMPANY LOGO PREVIEW ═══ */
+  window.previewCompLogo=input=>{if(!input.files||!input.files[0])return;const r=new FileReader();r.onload=e=>{const img=document.getElementById('compLogoImg');img.src=e.target.result;img.classList.remove('hidden');document.getElementById('compLogoInitial').classList.add('hidden');};r.readAsDataURL(input.files[0]);showToast('Logo selected — save to apply','info');};
+
+  /* ═══ SAVE PROFILE ═══ */
+  window.saveProfile=e=>{e.preventDefault();
+    const btn=document.getElementById('profileSaveBtn');btn.disabled=true;document.getElementById('profileSaveText').textContent='Saving…';document.getElementById('profileSpinner').classList.remove('hidden');
+    setTimeout(()=>{
+      const fn=document.getElementById('pFirstName').value,ln=document.getElementById('pLastName').value;
+      document.getElementById('profileDisplayName').textContent=fn+' '+ln;
+      document.getElementById('avatarInitials').textContent=(fn.charAt(0)+ln.charAt(0)).toUpperCase();
+      document.getElementById('profileLastSaved').textContent='Last saved: just now';
+      btn.disabled=false;document.getElementById('profileSaveText').textContent='Save Changes';document.getElementById('profileSpinner').classList.add('hidden');
+      showToast('Profile updated successfully','success');
+    },700);
+  };
+  window.resetProfile=()=>{document.getElementById('pFirstName').value='John';document.getElementById('pLastName').value='Doe';document.getElementById('pEmail').value='john.doe@stockflow.com';document.getElementById('pPhone').value='+977 9841234567';showToast('Changes discarded','info');};
+
+  /* ═══ PASSWORD ═══ */
+  window.checkPwStrength=val=>{
+    const bars=[document.getElementById('pwBar1'),document.getElementById('pwBar2'),document.getElementById('pwBar3'),document.getElementById('pwBar4')];
+    const txt=document.getElementById('pwStrengthText');
+    let score=0;if(val.length>=8)score++;if(/[A-Z]/.test(val))score++;if(/[0-9]/.test(val))score++;if(/[^A-Za-z0-9]/.test(val))score++;
+    const colors=['bg-neutral-200','bg-red-400','bg-amber-400','bg-green-400','bg-green-500'];
+    const labels=['—','Weak','Fair','Good','Strong'];const tColors=['text-neutral-400','text-red-500','text-amber-500','text-green-500','text-green-600'];
+    bars.forEach((b,i)=>{b.className='flex-1 h-1 rounded-full transition-colors duration-300 '+(i<score?colors[score]:'bg-neutral-200');});
+    txt.textContent=labels[score];txt.className='text-[0.6rem] font-bold ml-2 w-12 '+tColors[score];
+  };
+
+  window.togglePwVis=btn=>{const input=btn.previousElementSibling;input.type=input.type==='password'?'text':'password';};
+
+  window.savePassword=e=>{e.preventDefault();
+    const pw=document.getElementById('pwNew').value,cf=document.getElementById('pwConfirm').value;
+    if(pw!==cf){document.getElementById('pwMatchError').classList.remove('hidden');return;}
+    document.getElementById('pwMatchError').classList.add('hidden');
+    document.getElementById('pwSaveText').textContent='Updating…';document.getElementById('pwSpinner').classList.remove('hidden');
+    setTimeout(()=>{
+      document.getElementById('pwCurrent').value='';document.getElementById('pwNew').value='';document.getElementById('pwConfirm').value='';
+      checkPwStrength('');
+      document.getElementById('pwSaveText').textContent='Update Password';document.getElementById('pwSpinner').classList.add('hidden');
+      showToast('Password updated — all other sessions will be asked to re-authenticate','success');
+    },800);
+  };
+
+  window.revokeSession=btn=>{const row=btn.closest('.flex');row.style.opacity='0.5';btn.textContent='Revoking…';setTimeout(()=>{row.remove();showToast('Session revoked','success');},600);};
+
+  /* ═══ SAVE COMPANY ═══ */
+  window.saveCompany=e=>{e.preventDefault();
+    const btn=document.getElementById('companySaveBtn');btn.disabled=true;document.getElementById('companySaveText').textContent='Saving…';document.getElementById('companySpinner').classList.remove('hidden');
+    setTimeout(()=>{
+      const name=document.getElementById('cName').value;
+      document.getElementById('cSlug').value=name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'');
+      document.getElementById('compLogoInitial').textContent=name.charAt(0).toUpperCase();
+      document.getElementById('companyLastSaved').textContent='Last saved: just now';
+      btn.disabled=false;document.getElementById('companySaveText').textContent='Save Company';document.getElementById('companySpinner').classList.add('hidden');
+      showToast('Company details saved','success');
+    },700);
+  };
+  window.resetCompany=()=>{showToast('Changes discarded','info');};
+
+  /* ═══ TOGGLE SWITCH ═══ */
+  window.toggleSwitch=btn=>{
+    const dot=btn.querySelector('.toggle-dot'),isActive=btn.classList.contains('active');
+    if(isActive){btn.classList.remove('active','bg-green-500');btn.classList.add('bg-neutral-200');dot.classList.remove('translate-x-5');}
+    else{btn.classList.add('active','bg-green-500');btn.classList.remove('bg-neutral-200');dot.classList.add('translate-x-5');}
+    showToast(`${btn.dataset.key} ${isActive?'disabled':'enabled'}`,'info');
+  };
+
+  /* ═══ PREFERENCES ═══ */
+  window.savePreferences=()=>{showToast('Preferences saved','success');};
+  window.saveNotifications=()=>{showToast('Notification preferences saved','success');};
+
+  /* ═══ DANGER DIALOG ═══ */
+  let dangerAction=null;
+  window.confirmDangerAction=action=>{dangerAction=action;
+    const iw=document.getElementById('dangerIconWrap');
+    if(action==='logout'){
+      iw.innerHTML='<svg class="w-6 h-6 text-red-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>';
+      document.getElementById('dangerTitle').textContent='Log Out?';document.getElementById('dangerMsg').textContent='You will be returned to the login screen.';document.getElementById('dangerConfirmBtn').textContent='Log Out';
+    }
+    const bd=document.getElementById('dangerBackdrop'),dg=document.getElementById('dangerDialog');bd.classList.remove('opacity-0','pointer-events-none');bd.classList.add('opacity-100','pointer-events-auto');setTimeout(()=>{dg.classList.remove('scale-95','opacity-0');dg.classList.add('scale-100','opacity-100');},50);
+  };
+  window.closeDangerDialog=()=>{const bd=document.getElementById('dangerBackdrop'),dg=document.getElementById('dangerDialog');dg.classList.remove('scale-100','opacity-100');dg.classList.add('scale-95','opacity-0');setTimeout(()=>{bd.classList.remove('opacity-100','pointer-events-auto');bd.classList.add('opacity-0','pointer-events-none');},200);};
+  window.executeDanger=()=>{closeDangerDialog();if(dangerAction==='logout'){showToast('Logging out…','info');}dangerAction=null;};
+
+  document.addEventListener('keydown',e=>{if(e.key==='Escape')closeDangerDialog();});
+
+  /* ═══ TOAST ═══ */
+  window.showToast=(msg,type)=>{const t=document.getElementById('feedbackToast'),ic=document.getElementById('toastIcon'),tx=document.getElementById('toastText');t.className='fixed bottom-6 left-1/2 -translate-x-1/2 z-[90] flex items-center gap-3 px-5 py-3 rounded-xl shadow-lg border text-sm font-semibold pointer-events-none transition-all duration-300';if(type==='success'){t.classList.add('bg-green-50','border-green-200','text-green-700');ic.innerHTML='<polyline points="20 6 9 17 4 12"/>';}else if(type==='error'){t.classList.add('bg-red-50','border-red-200','text-red-700');ic.innerHTML='<circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>';}else{t.classList.add('bg-neutral-50','border-neutral-200','text-neutral-700');ic.innerHTML='<circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>';}tx.textContent=msg;requestAnimationFrame(()=>{t.classList.remove('opacity-0','translate-y-4');t.classList.add('opacity-100','translate-y-0');});setTimeout(()=>{t.classList.remove('opacity-100','translate-y-0');t.classList.add('opacity-0','translate-y-4');},2800);};
+
+})();
+</script>
+
+{% endblock %}

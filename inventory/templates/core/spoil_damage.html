@@ -1,0 +1,478 @@
+{% extends 'base.html' %}
+
+{% block title %}Spoilage & Loss — InventoryChamps{% endblock %}
+{% block page_title %}Spoilage & Loss{% endblock %}
+{% block page_subtitle %}Manage your spoilage and loss records{% endblock %}
+
+
+{% block content %}
+
+<!-- ══════════════════════════════════════════════════════════
+     SPOILAGE & LOSS PAGE
+     ══════════════════════════════════════════════════════════ -->
+
+<!-- ── Page Header ── -->
+<div class="mb-8">
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-extrabold text-neutral-900 tracking-tight">Spoilage &amp; Loss</h1>
+      <p class="text-sm text-neutral-400 mt-1">Review expired, damaged, lost, sampled, or written-off inventory.</p>
+    </div>
+    <button onclick="openRecordForm()"
+            class="inline-flex items-center gap-2 px-5 py-2.5 bg-amber-500 text-white text-sm font-semibold rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.05)] hover:bg-amber-600 active:scale-[0.97] transition-all duration-200 self-start">
+      <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Log Spoilage / Loss
+    </button>
+  </div>
+</div>
+
+<!-- ── Summary Strip ── -->
+<div class="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
+  <div class="bg-white border border-neutral-100 rounded-2xl px-5 py-4 hover:shadow-[0_2px_12px_rgba(0,0,0,0.04)] transition-all duration-300">
+    <div class="text-[0.65rem] font-semibold text-neutral-400 uppercase tracking-wide mb-1">Total Records</div>
+    <div class="text-xl font-extrabold text-neutral-900 tracking-tight" id="statTotal">14</div>
+  </div>
+  <div class="bg-white border border-neutral-100 rounded-2xl px-5 py-4 hover:shadow-[0_2px_12px_rgba(0,0,0,0.04)] transition-all duration-300">
+    <div class="text-[0.65rem] font-semibold text-neutral-400 uppercase tracking-wide mb-1">Units Lost</div>
+    <div class="text-xl font-extrabold text-red-500 tracking-tight" id="statUnits">186</div>
+  </div>
+  <div class="bg-white border border-neutral-100 rounded-2xl px-5 py-4 hover:shadow-[0_2px_12px_rgba(0,0,0,0.04)] transition-all duration-300">
+    <div class="text-[0.65rem] font-semibold text-neutral-400 uppercase tracking-wide mb-1">Estimated Loss</div>
+    <div class="text-xl font-extrabold text-red-500 tracking-tight" id="statLoss">$1,824</div>
+  </div>
+  <div class="bg-white border border-neutral-100 rounded-2xl px-5 py-4 hover:shadow-[0_2px_12px_rgba(0,0,0,0.04)] transition-all duration-300">
+    <div class="text-[0.65rem] font-semibold text-neutral-400 uppercase tracking-wide mb-1">This Month</div>
+    <div class="text-xl font-extrabold text-amber-600 tracking-tight" id="statMonth">5</div>
+  </div>
+  <div class="bg-white border border-neutral-100 rounded-2xl px-5 py-4 hover:shadow-[0_2px_12px_rgba(0,0,0,0.04)] transition-all duration-300">
+    <div class="text-[0.65rem] font-semibold text-neutral-400 uppercase tracking-wide mb-1">Recoverable</div>
+    <div class="text-xl font-extrabold text-green-600 tracking-tight" id="statRecover">$120</div>
+  </div>
+</div>
+
+<!-- ── Reason breakdown pills ── -->
+<div class="flex flex-wrap items-center gap-2 mb-5">
+  <button onclick="switchReason('all')" id="reasonAll" class="reason-pill px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all duration-200 bg-neutral-900 text-white">All</button>
+  <button onclick="switchReason('expired')" id="reasonExpired" class="reason-pill px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all duration-200 bg-white text-neutral-500 border border-neutral-200 hover:border-neutral-300">
+    <span class="inline-block w-2 h-2 rounded-full bg-red-400 mr-1.5"></span>Expired
+  </button>
+  <button onclick="switchReason('damaged')" id="reasonDamaged" class="reason-pill px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all duration-200 bg-white text-neutral-500 border border-neutral-200 hover:border-neutral-300">
+    <span class="inline-block w-2 h-2 rounded-full bg-orange-400 mr-1.5"></span>Damaged
+  </button>
+  <button onclick="switchReason('lost')" id="reasonLost" class="reason-pill px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all duration-200 bg-white text-neutral-500 border border-neutral-200 hover:border-neutral-300">
+    <span class="inline-block w-2 h-2 rounded-full bg-purple-400 mr-1.5"></span>Lost / Theft
+  </button>
+  <button onclick="switchReason('sample')" id="reasonSample" class="reason-pill px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all duration-200 bg-white text-neutral-500 border border-neutral-200 hover:border-neutral-300">
+    <span class="inline-block w-2 h-2 rounded-full bg-blue-400 mr-1.5"></span>Sample / Giveaway
+  </button>
+  <button onclick="switchReason('writeoff')" id="reasonWriteoff" class="reason-pill px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all duration-200 bg-white text-neutral-500 border border-neutral-200 hover:border-neutral-300">
+    <span class="inline-block w-2 h-2 rounded-full bg-neutral-400 mr-1.5"></span>Write-off / Other
+  </button>
+</div>
+
+<!-- ── Toolbar ── -->
+<div class="bg-white border border-neutral-100 rounded-2xl mb-4">
+  <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 p-4">
+    <div class="relative flex-1">
+      <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input id="searchInput" type="text" placeholder="Search by item, reported by, or notes…"
+             oninput="handleSearch(this.value)"
+             class="w-full pl-10 pr-4 py-2.5 text-sm border border-neutral-200 rounded-xl bg-neutral-50/50 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-400 transition-all duration-200"/>
+    </div>
+    <button onclick="toggleFilters()" class="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-neutral-600 bg-white border border-neutral-200 rounded-xl hover:bg-neutral-50 hover:border-neutral-300 transition-all duration-200">
+      <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+      <span id="filterBtnText">Filter</span>
+    </button>
+    <div id="bulkActions" class="hidden items-center gap-2">
+      <span class="text-xs font-semibold text-neutral-500"><span id="selectedCount">0</span> selected</span>
+      <button onclick="confirmBulkDelete()" class="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-red-600 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-all duration-200">
+        <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+        Delete
+      </button>
+    </div>
+  </div>
+  <div id="filterPanel" class="hidden border-t border-neutral-100 px-4 py-4">
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div><label class="block text-xs font-semibold text-neutral-500 mb-1.5">Recovery Status</label><select id="filterRecovery" onchange="applyFilters()" class="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-400"><option value="">All</option><option value="none">No Recovery</option><option value="partial">Partial Recovery</option><option value="full">Full Recovery</option></select></div>
+      <div><label class="block text-xs font-semibold text-neutral-500 mb-1.5">Date From</label><input type="date" id="filterDateFrom" onchange="applyFilters()" class="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-400"/></div>
+      <div><label class="block text-xs font-semibold text-neutral-500 mb-1.5">Date To</label><input type="date" id="filterDateTo" onchange="applyFilters()" class="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-400"/></div>
+    </div>
+    <div class="flex justify-end mt-3"><button onclick="clearFilters()" class="text-xs font-semibold text-neutral-500 hover:text-neutral-700 transition-colors">Clear all filters</button></div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     TABLE
+     ══════════════════════════════════════════════════════════ -->
+<div class="bg-white border border-neutral-100 rounded-2xl overflow-hidden">
+  <div class="overflow-x-auto">
+    <table class="w-full text-left">
+      <thead>
+        <tr class="border-b border-neutral-100">
+          <th class="w-12 px-4 py-3.5"><input type="checkbox" id="selectAll" onchange="toggleSelectAll(this)" class="w-4 h-4 rounded border-neutral-300 text-amber-500 focus:ring-amber-500/30 cursor-pointer"/></th>
+          <th class="px-4 py-3.5 text-[0.7rem] font-bold uppercase tracking-wider text-neutral-400 cursor-pointer hover:text-neutral-600" onclick="sortTable('date')"><div class="flex items-center gap-1">Date <svg class="w-3 h-3 text-neutral-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12l7 7 7-7"/></svg></div></th>
+          <th class="px-4 py-3.5 text-[0.7rem] font-bold uppercase tracking-wider text-neutral-400">Item</th>
+          <th class="px-4 py-3.5 text-[0.7rem] font-bold uppercase tracking-wider text-neutral-400">Reason</th>
+          <th class="px-4 py-3.5 text-[0.7rem] font-bold uppercase tracking-wider text-neutral-400 cursor-pointer hover:text-neutral-600" onclick="sortTable('qty')"><div class="flex items-center gap-1">Qty Lost <svg class="w-3 h-3 text-neutral-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12l7 7 7-7"/></svg></div></th>
+          <th class="px-4 py-3.5 text-[0.7rem] font-bold uppercase tracking-wider text-neutral-400 cursor-pointer hover:text-neutral-600" onclick="sortTable('lossValue')"><div class="flex items-center gap-1">Est. Loss <svg class="w-3 h-3 text-neutral-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12l7 7 7-7"/></svg></div></th>
+          <th class="px-4 py-3.5 text-[0.7rem] font-bold uppercase tracking-wider text-neutral-400">Recovery</th>
+          <th class="px-4 py-3.5 text-[0.7rem] font-bold uppercase tracking-wider text-neutral-400">Reported By</th>
+          <th class="px-4 py-3.5 text-[0.7rem] font-bold uppercase tracking-wider text-neutral-400 text-right">Actions</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+  </div>
+  <div id="emptyState" class="hidden py-20 flex-col items-center justify-center text-center">
+    <div class="w-16 h-16 bg-amber-50 rounded-2xl flex items-center justify-center mb-4"><svg class="w-7 h-7 text-amber-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
+    <h3 class="text-sm font-bold text-neutral-700 mb-1">No spoilage or loss recorded</h3>
+    <p class="text-xs text-neutral-400 mb-5 max-w-xs">That's great! Start logging if any inventory is lost, expired, or given as sample.</p>
+    <button onclick="openRecordForm()" class="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 text-white text-xs font-semibold rounded-lg hover:bg-amber-600 transition-all duration-200"><svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Log first record</button>
+  </div>
+  <div id="paginationBar" class="flex items-center justify-between px-4 py-3 border-t border-neutral-100">
+    <p class="text-xs text-neutral-400 font-medium">Showing <span id="pagStart" class="text-neutral-700 font-semibold">1</span>–<span id="pagEnd" class="text-neutral-700 font-semibold">10</span> of <span id="pagTotal" class="text-neutral-700 font-semibold">0</span></p>
+    <div class="flex items-center gap-1">
+      <button onclick="goToPage('prev')" id="btnPrev" class="w-8 h-8 flex items-center justify-center rounded-lg border border-neutral-200 text-neutral-400 hover:text-neutral-700 hover:border-neutral-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg></button>
+      <div id="pageNumbers" class="flex items-center gap-1"></div>
+      <button onclick="goToPage('next')" id="btnNext" class="w-8 h-8 flex items-center justify-center rounded-lg border border-neutral-200 text-neutral-400 hover:text-neutral-700 hover:border-neutral-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     RECORD FORM SLIDE-OVER
+     ══════════════════════════════════════════════════════════ -->
+<div id="formBackdrop" class="fixed inset-0 bg-black/20 backdrop-blur-sm z-[60] opacity-0 pointer-events-none transition-opacity duration-300" onclick="closeRecordForm()"></div>
+<div id="formPanel" class="fixed top-0 right-0 bottom-0 w-full max-w-lg bg-white z-[65] shadow-[-8px_0_30px_rgba(0,0,0,0.08)] translate-x-full transition-transform duration-300 ease-out flex flex-col">
+  <div class="flex items-center justify-between px-6 py-5 border-b border-neutral-100">
+    <div>
+      <h2 id="formTitle" class="text-lg font-bold text-neutral-900 tracking-tight">Log Spoilage / Loss</h2>
+      <p class="text-xs text-neutral-400 mt-0.5">Stock will be reduced automatically.</p>
+    </div>
+    <button onclick="closeRecordForm()" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-neutral-100 text-neutral-400 hover:text-neutral-600 transition-all duration-200"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+  </div>
+  <div class="flex-1 overflow-y-auto px-6 py-6">
+    <form id="recordForm" onsubmit="handleFormSubmit(event)" class="space-y-6">
+      <input type="hidden" id="editId" value=""/>
+
+      <!-- Item search -->
+      <div>
+        <h3 class="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-3">Item</h3>
+        <div class="relative" id="itemSearchWrap">
+          <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 pointer-events-none z-10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" id="itemSearchInput" placeholder="Search item by name…" autocomplete="off"
+                 oninput="searchItems(this.value)" onfocus="showItemDd()"
+                 class="w-full pl-10 pr-4 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-400 transition-all duration-200"/>
+          <div id="itemDropdown" class="hidden absolute left-0 right-0 top-full mt-1 bg-white border border-neutral-200 rounded-xl shadow-lg z-20 max-h-52 overflow-y-auto"></div>
+        </div>
+        <div id="selectedItemChip" class="hidden mt-2 inline-flex items-center gap-2 px-3 py-1.5 bg-amber-50 border border-amber-200 rounded-lg text-sm font-semibold text-amber-700">
+          <span id="selectedItemName"></span>
+          <span id="selectedItemMeta" class="text-xs font-normal text-amber-600"></span>
+          <button type="button" onclick="clearItem()" class="ml-1 text-amber-500 hover:text-amber-800 transition-colors"><svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+        </div>
+        <p id="itemError" class="hidden text-xs text-red-500 mt-1">Select an item.</p>
+      </div>
+
+      <!-- Reason -->
+      <div>
+        <h3 class="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-3">Reason</h3>
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-2" id="reasonGroup">
+          <button type="button" onclick="setReason('expired')" data-val="expired" class="rsn-btn px-3 py-3 border-2 rounded-xl text-left transition-all duration-200 border-neutral-200 bg-white hover:border-neutral-300">
+            <div class="flex items-center gap-2 mb-0.5"><span class="w-3 h-3 rounded-full bg-red-400"></span><span class="text-xs font-bold text-neutral-700">Expired</span></div>
+            <p class="text-[0.6rem] text-neutral-400 ml-5">Past shelf life</p>
+          </button>
+          <button type="button" onclick="setReason('damaged')" data-val="damaged" class="rsn-btn px-3 py-3 border-2 rounded-xl text-left transition-all duration-200 border-neutral-200 bg-white hover:border-neutral-300">
+            <div class="flex items-center gap-2 mb-0.5"><span class="w-3 h-3 rounded-full bg-orange-400"></span><span class="text-xs font-bold text-neutral-700">Damaged</span></div>
+            <p class="text-[0.6rem] text-neutral-400 ml-5">Broken, spilled</p>
+          </button>
+          <button type="button" onclick="setReason('lost')" data-val="lost" class="rsn-btn px-3 py-3 border-2 rounded-xl text-left transition-all duration-200 border-neutral-200 bg-white hover:border-neutral-300">
+            <div class="flex items-center gap-2 mb-0.5"><span class="w-3 h-3 rounded-full bg-purple-400"></span><span class="text-xs font-bold text-neutral-700">Lost / Theft</span></div>
+            <p class="text-[0.6rem] text-neutral-400 ml-5">Missing inventory</p>
+          </button>
+          <button type="button" onclick="setReason('sample')" data-val="sample" class="rsn-btn px-3 py-3 border-2 rounded-xl text-left transition-all duration-200 border-neutral-200 bg-white hover:border-neutral-300">
+            <div class="flex items-center gap-2 mb-0.5"><span class="w-3 h-3 rounded-full bg-blue-400"></span><span class="text-xs font-bold text-neutral-700">Sample</span></div>
+            <p class="text-[0.6rem] text-neutral-400 ml-5">Customer / promo</p>
+          </button>
+          <button type="button" onclick="setReason('writeoff')" data-val="writeoff" class="rsn-btn px-3 py-3 border-2 rounded-xl text-left transition-all duration-200 border-neutral-200 bg-white hover:border-neutral-300">
+            <div class="flex items-center gap-2 mb-0.5"><span class="w-3 h-3 rounded-full bg-neutral-400"></span><span class="text-xs font-bold text-neutral-700">Write-off</span></div>
+            <p class="text-[0.6rem] text-neutral-400 ml-5">Other / adjustment</p>
+          </button>
+        </div>
+        <p id="reasonError" class="hidden text-xs text-red-500 mt-1">Select a reason.</p>
+      </div>
+
+      <!-- Quantity & Value -->
+      <div>
+        <h3 class="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-3">Quantity &amp; Value</h3>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-semibold text-neutral-600 mb-1.5">Quantity Lost <span class="text-red-400">*</span></label>
+            <input type="number" id="fQty" required min="0.01" step="any" placeholder="0" oninput="calcLoss()"
+                   class="w-full px-4 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-400 transition-all duration-200"/>
+            <p id="qtyError" class="hidden text-xs text-red-500 mt-1">Enter a valid quantity.</p>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-neutral-600 mb-1.5">Cost / Unit</label>
+            <div class="relative"><span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-neutral-400">$</span>
+              <input type="number" id="fCostPrice" min="0" step="0.01" placeholder="0.00" oninput="calcLoss()"
+                     class="w-full pl-8 pr-4 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-400 transition-all duration-200"/>
+            </div>
+          </div>
+        </div>
+        <div class="mt-3 flex items-center justify-between p-3 bg-red-50 rounded-xl border border-red-100">
+          <span class="text-xs font-semibold text-red-600">Estimated Loss</span>
+          <span id="lossValue" class="text-lg font-extrabold text-red-600 tracking-tight">$0.00</span>
+        </div>
+      </div>
+
+      <!-- Recovery -->
+      <div>
+        <h3 class="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-3">Recovery <span class="text-neutral-300 font-normal normal-case">(if any)</span></h3>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-semibold text-neutral-600 mb-1.5">Recovery Amount</label>
+            <div class="relative"><span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-neutral-400">$</span>
+              <input type="number" id="fRecovery" min="0" step="0.01" placeholder="0.00" value=""
+                     class="w-full pl-8 pr-4 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200"/>
+            </div>
+            <p class="text-[0.6rem] text-neutral-400 mt-1">Insurance, return to supplier, etc.</p>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-neutral-600 mb-1.5">Given To <span class="text-neutral-400 font-normal">(for samples)</span></label>
+            <input type="text" id="fGivenTo" placeholder="Customer name or promo"
+                   class="w-full px-4 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-400 transition-all duration-200"/>
+          </div>
+        </div>
+      </div>
+
+      <!-- Details -->
+      <div>
+        <h3 class="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-3">Details</h3>
+        <div class="grid grid-cols-2 gap-4">
+          <div><label class="block text-xs font-semibold text-neutral-600 mb-1.5">Date</label><input type="date" id="fDate" class="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-400 transition-all duration-200"/></div>
+          <div><label class="block text-xs font-semibold text-neutral-600 mb-1.5">Reported By</label><input type="text" id="fReportedBy" placeholder="Your name" class="w-full px-4 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-400 transition-all duration-200"/></div>
+        </div>
+        <div class="mt-4"><label class="block text-xs font-semibold text-neutral-600 mb-1.5">Notes</label><textarea id="fNotes" rows="2" placeholder="Batch numbers, circumstances, disposal method…" class="w-full px-4 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white resize-none placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-400 transition-all duration-200"></textarea></div>
+      </div>
+    </form>
+  </div>
+  <div class="px-6 py-4 border-t border-neutral-100 bg-neutral-50/50 flex items-center gap-3">
+    <button onclick="closeRecordForm()" type="button" class="flex-1 px-4 py-2.5 text-sm font-semibold text-neutral-600 bg-white border border-neutral-200 rounded-xl hover:bg-neutral-50 hover:border-neutral-300 transition-all duration-200">Cancel</button>
+    <button onclick="document.getElementById('recordForm').requestSubmit()" type="button" id="submitBtn" class="flex-1 px-4 py-2.5 text-sm font-semibold text-white bg-amber-500 rounded-xl hover:bg-amber-600 active:scale-[0.97] transition-all duration-200 flex items-center justify-center gap-2">
+      <span id="submitBtnText">Record &amp; Deduct Stock</span>
+      <svg id="submitSpinner" class="hidden w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" stroke-dasharray="32" stroke-linecap="round"/></svg>
+    </button>
+  </div>
+</div>
+
+<!-- ═══ DETAIL PANEL ═══ -->
+<div id="detailBackdrop" class="fixed inset-0 bg-black/20 backdrop-blur-sm z-[60] opacity-0 pointer-events-none transition-opacity duration-300" onclick="closeDetail()"></div>
+<div id="detailPanel" class="fixed top-0 right-0 bottom-0 w-full max-w-md bg-white z-[65] shadow-[-8px_0_30px_rgba(0,0,0,0.08)] translate-x-full transition-transform duration-300 ease-out flex flex-col">
+  <div class="flex items-center justify-between px-6 py-5 border-b border-neutral-100">
+    <h2 id="detailTitle" class="text-lg font-bold text-neutral-900 tracking-tight">Record</h2>
+    <div class="flex items-center gap-2"><button onclick="editFromDetail()" title="Edit" class="w-8 h-8 flex items-center justify-center rounded-lg text-neutral-400 hover:text-amber-600 hover:bg-amber-50 transition-all duration-200"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button><button onclick="closeDetail()" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-neutral-100 text-neutral-400 hover:text-neutral-600 transition-all duration-200"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+  </div>
+  <div class="flex-1 overflow-y-auto px-6 py-6" id="detailBody"></div>
+</div>
+
+<!-- ═══ DELETE DIALOG ═══ -->
+<div id="deleteBackdrop" class="fixed inset-0 bg-black/30 backdrop-blur-sm z-[80] opacity-0 pointer-events-none transition-opacity duration-200 flex items-center justify-center">
+  <div id="deleteDialog" class="bg-white rounded-2xl shadow-xl w-full max-w-sm mx-4 p-6 scale-95 opacity-0 transition-all duration-200">
+    <div class="w-12 h-12 bg-red-50 rounded-xl flex items-center justify-center mx-auto mb-4"><svg class="w-6 h-6 text-red-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
+    <h3 id="deleteTitle" class="text-base font-bold text-neutral-900 text-center mb-1">Delete Record?</h3>
+    <p id="deleteMsg" class="text-sm text-neutral-500 text-center mb-6">Stock will be restored to the item.</p>
+    <div class="flex gap-3"><button onclick="closeDeleteDialog()" class="flex-1 px-4 py-2.5 text-sm font-semibold text-neutral-600 bg-white border border-neutral-200 rounded-xl hover:bg-neutral-50 transition-all duration-200">Cancel</button><button onclick="executeDelete()" class="flex-1 px-4 py-2.5 text-sm font-semibold text-white bg-red-500 rounded-xl hover:bg-red-600 active:scale-[0.97] transition-all duration-200">Delete &amp; Restore</button></div>
+  </div>
+</div>
+
+<!-- ═══ TOAST ═══ -->
+<div id="feedbackToast" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[90] flex items-center gap-3 px-5 py-3 rounded-xl shadow-lg border text-sm font-semibold pointer-events-none opacity-0 translate-y-4 transition-all duration-300"><svg id="toastIcon" class="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></svg><span id="toastText"></span></div>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     JAVASCRIPT
+     ══════════════════════════════════════════════════════════ -->
+<script>
+(function(){
+  const items=[
+    {id:1,name:'Organic Olive Oil',unit:'lt',cost:12.99,stock:340},
+    {id:2,name:'Basmati Rice',unit:'kg',cost:8.50,stock:120},
+    {id:3,name:'Steel Bolts M8x25',unit:'box',cost:24.00,stock:15},
+    {id:4,name:'A4 Copy Paper',unit:'pc',cost:5.25,stock:200},
+    {id:5,name:'Hydraulic Brake Fluid',unit:'lt',cost:18.75,stock:89},
+    {id:6,name:'Wireless Mouse',unit:'pc',cost:29.99,stock:56},
+    {id:7,name:'Cinnamon Sticks',unit:'kg',cost:6.80,stock:200},
+    {id:8,name:'LED Bulb 9W',unit:'dz',cost:42.00,stock:8},
+    {id:9,name:'Hand Sanitizer Gel',unit:'pc',cost:3.99,stock:410},
+    {id:10,name:'Corrugated Shipping Box',unit:'box',cost:1.20,stock:1200},
+  ];
+
+  let records=[
+    {id:1,itemId:7,reason:'expired',qty:30,costPrice:6.80,lossValue:204,recovery:0,givenTo:'',reportedBy:'John Doe',notes:'Past best-before. Disposed.',date:'2026-03-04'},
+    {id:2,itemId:1,reason:'damaged',qty:5,costPrice:12.99,lossValue:64.95,recovery:0,givenTo:'',reportedBy:'Sarah Miller',notes:'Dropped pallet. Glass bottles shattered.',date:'2026-03-04'},
+    {id:3,itemId:6,reason:'sample',qty:3,costPrice:29.99,lossValue:89.97,recovery:0,givenTo:'TechZone Electronics',reportedBy:'John Doe',notes:'Demo units for showroom.',date:'2026-03-03'},
+    {id:4,itemId:9,reason:'sample',qty:20,costPrice:3.99,lossValue:79.80,recovery:0,givenTo:'FreshMart Grocery',reportedBy:'Tom Lee',notes:'Promotional giveaway.',date:'2026-03-03'},
+    {id:5,itemId:4,reason:'damaged',qty:50,costPrice:5.25,lossValue:262.50,recovery:120,givenTo:'',reportedBy:'Sarah Miller',notes:'Water damage. Supplier partial refund.',date:'2026-03-02'},
+    {id:6,itemId:3,reason:'lost',qty:8,costPrice:24.00,lossValue:192,recovery:0,givenTo:'',reportedBy:'John Doe',notes:'Inventory count mismatch. Under investigation.',date:'2026-03-01'},
+    {id:7,itemId:2,reason:'expired',qty:15,costPrice:8.50,lossValue:127.50,recovery:0,givenTo:'',reportedBy:'Tom Lee',notes:'Storage issue — humidity.',date:'2026-02-28'},
+    {id:8,itemId:8,reason:'damaged',qty:2,costPrice:42.00,lossValue:84,recovery:0,givenTo:'',reportedBy:'Sarah Miller',notes:'Shipping damage on delivery.',date:'2026-02-27'},
+    {id:9,itemId:10,reason:'writeoff',qty:40,costPrice:1.20,lossValue:48,recovery:0,givenTo:'',reportedBy:'John Doe',notes:'Old design. No longer usable.',date:'2026-02-25'},
+    {id:10,itemId:5,reason:'lost',qty:3,costPrice:18.75,lossValue:56.25,recovery:0,givenTo:'',reportedBy:'Tom Lee',notes:'Possible theft. Security review.',date:'2026-02-22'},
+    {id:11,itemId:1,reason:'sample',qty:2,costPrice:12.99,lossValue:25.98,recovery:0,givenTo:'GreenBasket Organics',reportedBy:'John Doe',notes:'Tasting sample for new client.',date:'2026-02-20'},
+    {id:12,itemId:7,reason:'expired',qty:10,costPrice:6.80,lossValue:68,recovery:0,givenTo:'',reportedBy:'Sarah Miller',notes:'',date:'2026-02-18'},
+    {id:13,itemId:9,reason:'damaged',qty:15,costPrice:3.99,lossValue:59.85,recovery:0,givenTo:'',reportedBy:'Tom Lee',notes:'Leaked in storage.',date:'2026-02-15'},
+    {id:14,itemId:2,reason:'writeoff',qty:20,costPrice:8.50,lossValue:170,recovery:0,givenTo:'',reportedBy:'John Doe',notes:'Quality check fail.',date:'2026-02-10'},
+  ];
+
+  let currentPage=1,perPage=10,selectedIds=new Set(),deleteTargetId=null,isBulkDelete=false,nextId=15;
+  let searchQ='',fRecovery='',fDateFrom='',fDateTo='',sortField='date',sortOrder='desc',activeReason='all';
+  let selectedItemId=null,formReason='',detailId=null;
+
+  const getItem=id=>items.find(i=>i.id===id);
+  const fmtD=d=>new Date(d).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+  const fmtM=n=>'$'+n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+
+  const reasonMeta={
+    expired:{label:'Expired',dot:'bg-red-400',badge:'bg-red-50 text-red-600 border-red-200'},
+    damaged:{label:'Damaged',dot:'bg-orange-400',badge:'bg-orange-50 text-orange-600 border-orange-200'},
+    lost:{label:'Lost / Theft',dot:'bg-purple-400',badge:'bg-purple-50 text-purple-600 border-purple-200'},
+    sample:{label:'Sample',dot:'bg-blue-400',badge:'bg-blue-50 text-blue-600 border-blue-200'},
+    writeoff:{label:'Write-off',dot:'bg-neutral-400',badge:'bg-neutral-100 text-neutral-600 border-neutral-200'},
+  };
+
+  /* ─── Reason pills ─── */
+  window.switchReason=r=>{activeReason=r;currentPage=1;document.querySelectorAll('.reason-pill').forEach(b=>{b.classList.remove('bg-neutral-900','text-white','shadow-sm');b.classList.add('bg-white','text-neutral-500','border','border-neutral-200');});const el=document.getElementById('reason'+r.charAt(0).toUpperCase()+r.slice(1));el.classList.remove('bg-white','text-neutral-500','border','border-neutral-200');el.classList.add('bg-neutral-900','text-white');renderTable();};
+
+  function getFiltered(){
+    let list=[...records];
+    if(activeReason!=='all')list=list.filter(r=>r.reason===activeReason);
+    if(searchQ){const q=searchQ.toLowerCase();list=list.filter(r=>{const it=getItem(r.itemId);return(it&&it.name.toLowerCase().includes(q))||r.reportedBy.toLowerCase().includes(q)||(r.notes&&r.notes.toLowerCase().includes(q))||(r.givenTo&&r.givenTo.toLowerCase().includes(q));});}
+    if(fRecovery==='none')list=list.filter(r=>!r.recovery);
+    if(fRecovery==='partial')list=list.filter(r=>r.recovery>0&&r.recovery<r.lossValue);
+    if(fRecovery==='full')list=list.filter(r=>r.recovery>=r.lossValue);
+    if(fDateFrom)list=list.filter(r=>r.date>=fDateFrom);if(fDateTo)list=list.filter(r=>r.date<=fDateTo);
+    list.sort((a,b)=>{let va=a[sortField],vb=b[sortField];if(va<vb)return sortOrder==='asc'?-1:1;if(va>vb)return sortOrder==='asc'?1:-1;return 0;});
+    return list;
+  }
+
+  function renderTable(){
+    const filtered=getFiltered(),total=filtered.length,tp=Math.max(1,Math.ceil(total/perPage));
+    if(currentPage>tp)currentPage=tp;const start=(currentPage-1)*perPage,page=filtered.slice(start,start+perPage);
+    const tbody=document.getElementById('tableBody'),empty=document.getElementById('emptyState'),pag=document.getElementById('paginationBar');
+    if(!total){tbody.innerHTML='';empty.classList.remove('hidden');empty.classList.add('flex');pag.classList.add('hidden');return;}
+    empty.classList.add('hidden');empty.classList.remove('flex');pag.classList.remove('hidden');
+
+    tbody.innerHTML=page.map(r=>{
+      const it=getItem(r.itemId),rm=reasonMeta[r.reason]||reasonMeta.writeoff,checked=selectedIds.has(r.id)?'checked':'';
+      const recBadge=r.recovery>0?(r.recovery>=r.lossValue?'<span class="inline-flex items-center px-2 py-0.5 rounded-md text-[0.65rem] font-bold bg-green-50 text-green-600 border border-green-200">Full</span>':'<span class="inline-flex items-center px-2 py-0.5 rounded-md text-[0.65rem] font-bold bg-amber-50 text-amber-600 border border-amber-200">'+fmtM(r.recovery)+'</span>'):'<span class="text-xs text-neutral-400">—</span>';
+      return `<tr class="border-b border-neutral-50 hover:bg-neutral-50/50 transition-colors duration-150 group cursor-pointer" onclick="window._sp.openDetail(${r.id})">
+        <td class="px-4 py-3" onclick="event.stopPropagation()"><input type="checkbox" ${checked} onchange="window._sp.toggleSel(${r.id})" class="w-4 h-4 rounded border-neutral-300 text-amber-500 focus:ring-amber-500/30 cursor-pointer"/></td>
+        <td class="px-4 py-3 text-sm text-neutral-600">${fmtD(r.date)}</td>
+        <td class="px-4 py-3"><div class="text-sm font-semibold text-neutral-900">${it?it.name:'—'}</div>${it?`<span class="text-xs text-neutral-400 uppercase">${it.unit}</span>`:''}</td>
+        <td class="px-4 py-3"><span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[0.65rem] font-bold border ${rm.badge}"><span class="w-1.5 h-1.5 rounded-full ${rm.dot}"></span>${rm.label}</span></td>
+        <td class="px-4 py-3 text-sm font-semibold text-red-600">${r.qty}</td>
+        <td class="px-4 py-3 text-sm font-bold text-red-600">${fmtM(r.lossValue)}</td>
+        <td class="px-4 py-3">${recBadge}</td>
+        <td class="px-4 py-3 text-sm text-neutral-500">${r.reportedBy||'—'}</td>
+        <td class="px-4 py-3 text-right" onclick="event.stopPropagation()">
+          <div class="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+            <button onclick="window._sp.openEdit(${r.id})" title="Edit" class="w-8 h-8 flex items-center justify-center rounded-lg text-neutral-400 hover:text-amber-600 hover:bg-amber-50 transition-all duration-200"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+            <button onclick="window._sp.confirmDel(${r.id})" title="Delete" class="w-8 h-8 flex items-center justify-center rounded-lg text-neutral-400 hover:text-red-600 hover:bg-red-50 transition-all duration-200"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+          </div>
+        </td>
+      </tr>`;
+    }).join('');
+    document.getElementById('pagStart').textContent=start+1;document.getElementById('pagEnd').textContent=Math.min(start+perPage,total);document.getElementById('pagTotal').textContent=total;
+    const pnEl=document.getElementById('pageNumbers');let pn='';for(let p=1;p<=tp;p++){const c=p===currentPage?'bg-amber-500 text-white border-amber-500':'bg-white text-neutral-600 border-neutral-200 hover:border-neutral-300';pn+=`<button onclick="window._sp.goP(${p})" class="w-8 h-8 flex items-center justify-center rounded-lg border text-xs font-semibold ${c} transition-all duration-200">${p}</button>`;}pnEl.innerHTML=pn;
+    document.getElementById('btnPrev').disabled=currentPage===1;document.getElementById('btnNext').disabled=currentPage>=tp;updateBulk();
+  }
+  function updateBulk(){const b=document.getElementById('bulkActions');if(selectedIds.size>0){b.classList.remove('hidden');b.classList.add('flex');document.getElementById('selectedCount').textContent=selectedIds.size;}else{b.classList.add('hidden');b.classList.remove('flex');}document.getElementById('selectAll').checked=getFiltered().length>0&&getFiltered().every(r=>selectedIds.has(r.id));}
+
+  window._sp={};
+  window._sp.toggleSel=id=>{selectedIds.has(id)?selectedIds.delete(id):selectedIds.add(id);updateBulk();};
+  window.toggleSelectAll=cb=>{const f=getFiltered();if(cb.checked)f.forEach(r=>selectedIds.add(r.id));else f.forEach(r=>selectedIds.delete(r.id));renderTable();};
+  let sT;window.handleSearch=v=>{clearTimeout(sT);sT=setTimeout(()=>{searchQ=v.trim();currentPage=1;renderTable();},300);};
+  window.toggleFilters=()=>{const p=document.getElementById('filterPanel'),t=document.getElementById('filterBtnText');p.classList.contains('hidden')?(p.classList.remove('hidden'),t.textContent='Close'):(p.classList.add('hidden'),t.textContent='Filter');};
+  window.applyFilters=()=>{fRecovery=document.getElementById('filterRecovery').value;fDateFrom=document.getElementById('filterDateFrom').value;fDateTo=document.getElementById('filterDateTo').value;currentPage=1;renderTable();};
+  window.clearFilters=()=>{['filterRecovery','filterDateFrom','filterDateTo'].forEach(id=>document.getElementById(id).value='');fRecovery='';fDateFrom='';fDateTo='';currentPage=1;renderTable();showToast('Filters cleared','info');};
+  window.sortTable=f=>{if(sortField===f)sortOrder=sortOrder==='asc'?'desc':'asc';else{sortField=f;sortOrder='desc';}renderTable();};
+  window._sp.goP=p=>{currentPage=p;renderTable();};
+  window.goToPage=d=>{if(d==='prev'&&currentPage>1)currentPage--;else if(d==='next')currentPage++;renderTable();};
+
+  /* ─── Item Search ─── */
+  window.searchItems=val=>{const dd=document.getElementById('itemDropdown');if(!val.trim()){dd.classList.add('hidden');return;}const q=val.toLowerCase(),m=items.filter(i=>i.name.toLowerCase().includes(q)).slice(0,8);if(!m.length){dd.innerHTML='<div class="px-4 py-3 text-xs text-neutral-400">No items found</div>';dd.classList.remove('hidden');return;}dd.innerHTML=m.map(i=>`<button type="button" onclick="window._sp.pickItem(${i.id})" class="w-full text-left px-4 py-2.5 hover:bg-neutral-50 transition-colors duration-150 flex items-center justify-between border-b border-neutral-50 last:border-0"><div><div class="text-sm font-semibold text-neutral-800">${i.name}</div><div class="text-xs text-neutral-400">${i.unit.toUpperCase()} · ${fmtM(i.cost)}/unit</div></div><span class="text-xs font-semibold text-neutral-400">${i.stock} in stock</span></button>`).join('');dd.classList.remove('hidden');};
+  window.showItemDd=()=>{if(document.getElementById('itemSearchInput').value.trim())searchItems(document.getElementById('itemSearchInput').value);};
+  window._sp.pickItem=id=>{const it=items.find(i=>i.id===id);if(!it)return;selectedItemId=id;document.getElementById('itemSearchInput').value='';document.getElementById('itemDropdown').classList.add('hidden');document.getElementById('selectedItemChip').classList.remove('hidden');document.getElementById('selectedItemName').textContent=it.name;document.getElementById('selectedItemMeta').textContent=`· ${it.unit.toUpperCase()} · ${it.stock} in stock`;document.getElementById('fCostPrice').value=it.cost.toFixed(2);document.getElementById('itemError').classList.add('hidden');calcLoss();};
+  window.clearItem=()=>{selectedItemId=null;document.getElementById('selectedItemChip').classList.add('hidden');document.getElementById('itemSearchInput').value='';document.getElementById('fCostPrice').value='';calcLoss();};
+  document.addEventListener('click',e=>{if(!document.getElementById('itemSearchWrap').contains(e.target))document.getElementById('itemDropdown').classList.add('hidden');});
+
+  /* ─── Reason Cards ─── */
+  const rsnActive={expired:'border-red-400 bg-red-50',damaged:'border-orange-400 bg-orange-50',lost:'border-purple-400 bg-purple-50',sample:'border-blue-400 bg-blue-50',writeoff:'border-neutral-400 bg-neutral-100'};
+  window.setReason=val=>{formReason=val;document.querySelectorAll('.rsn-btn').forEach(b=>{b.classList.remove(...Object.values(rsnActive).flatMap(c=>c.split(' ')));b.classList.add('border-neutral-200','bg-white');if(b.dataset.val===val){b.classList.remove('border-neutral-200','bg-white');rsnActive[val].split(' ').forEach(c=>b.classList.add(c));}});document.getElementById('reasonError').classList.add('hidden');};
+
+  /* ─── Calc Loss ─── */
+  window.calcLoss=()=>{const q=parseFloat(document.getElementById('fQty').value)||0,c=parseFloat(document.getElementById('fCostPrice').value)||0;document.getElementById('lossValue').textContent=fmtM(q*c);};
+
+  /* ─── Open / Close Form ─── */
+  window.openRecordForm=()=>{document.getElementById('recordForm').reset();document.getElementById('editId').value='';selectedItemId=null;formReason='';document.getElementById('selectedItemChip').classList.add('hidden');['itemError','qtyError','reasonError'].forEach(id=>document.getElementById(id).classList.add('hidden'));document.getElementById('lossValue').textContent='$0.00';document.getElementById('formTitle').textContent='Log Spoilage / Loss';document.getElementById('submitBtnText').innerHTML='Record &amp; Deduct Stock';document.getElementById('fDate').value=new Date().toISOString().slice(0,10);document.querySelectorAll('.rsn-btn').forEach(b=>{b.classList.remove(...Object.values(rsnActive).flatMap(c=>c.split(' ')));b.classList.add('border-neutral-200','bg-white');});const bd=document.getElementById('formBackdrop'),pn=document.getElementById('formPanel');bd.classList.remove('opacity-0','pointer-events-none');bd.classList.add('opacity-100','pointer-events-auto');pn.classList.remove('translate-x-full');pn.classList.add('translate-x-0');document.body.style.overflow='hidden';};
+  window._sp.openEdit=id=>{const r=records.find(x=>x.id===id);if(!r)return;openRecordForm();document.getElementById('editId').value=r.id;document.getElementById('formTitle').textContent='Edit Record';document.getElementById('submitBtnText').innerHTML='Update &amp; Adjust Stock';const it=getItem(r.itemId);if(it)window._sp.pickItem(it.id);setReason(r.reason);document.getElementById('fQty').value=r.qty;document.getElementById('fCostPrice').value=r.costPrice;document.getElementById('fRecovery').value=r.recovery||'';document.getElementById('fGivenTo').value=r.givenTo||'';document.getElementById('fDate').value=r.date;document.getElementById('fReportedBy').value=r.reportedBy||'';document.getElementById('fNotes').value=r.notes||'';calcLoss();};
+  window.closeRecordForm=()=>{const bd=document.getElementById('formBackdrop'),pn=document.getElementById('formPanel');pn.classList.remove('translate-x-0');pn.classList.add('translate-x-full');bd.classList.remove('opacity-100','pointer-events-auto');bd.classList.add('opacity-0','pointer-events-none');document.body.style.overflow='';};
+
+  /* ─── Submit ─── */
+  window.handleFormSubmit=e=>{e.preventDefault();let err=false;if(!selectedItemId){document.getElementById('itemError').classList.remove('hidden');err=true;}if(!formReason){document.getElementById('reasonError').classList.remove('hidden');err=true;}const qty=parseFloat(document.getElementById('fQty').value);if(!qty||qty<=0){document.getElementById('qtyError').classList.remove('hidden');err=true;}else document.getElementById('qtyError').classList.add('hidden');if(err)return;
+    document.getElementById('submitBtnText').textContent='Saving…';document.getElementById('submitSpinner').classList.remove('hidden');document.getElementById('submitBtn').disabled=true;
+    setTimeout(()=>{const editId=parseInt(document.getElementById('editId').value),cost=parseFloat(document.getElementById('fCostPrice').value)||0;
+      const data={itemId:selectedItemId,reason:formReason,qty,costPrice:cost,lossValue:qty*cost,recovery:parseFloat(document.getElementById('fRecovery').value)||0,givenTo:document.getElementById('fGivenTo').value.trim(),reportedBy:document.getElementById('fReportedBy').value.trim(),notes:document.getElementById('fNotes').value.trim(),date:document.getElementById('fDate').value||new Date().toISOString().slice(0,10)};
+      const it=getItem(selectedItemId);
+      if(editId){const idx=records.findIndex(r=>r.id===editId);if(idx!==-1){const old=records[idx],oldIt=getItem(old.itemId);if(oldIt)oldIt.stock+=old.qty;if(it)it.stock-=qty;records[idx]={...records[idx],...data};}showToast('Record updated — stock adjusted','success');}
+      else{data.id=nextId++;records.unshift(data);if(it)it.stock-=qty;showToast(`${qty} × ${it?it.name:'item'} recorded as ${reasonMeta[formReason].label.toLowerCase()}`,'success');}
+      document.getElementById('submitSpinner').classList.add('hidden');document.getElementById('submitBtn').disabled=false;refreshStats();closeRecordForm();renderTable();
+    },600);
+  };
+
+  /* ─── Detail ─── */
+  window._sp.openDetail=id=>{detailId=id;const r=records.find(x=>x.id===id);if(!r)return;const it=getItem(r.itemId),rm=reasonMeta[r.reason]||reasonMeta.writeoff;
+    document.getElementById('detailTitle').textContent=it?it.name:'Record';
+    document.getElementById('detailBody').innerHTML=`
+      <div class="flex items-center justify-center mb-6 text-center">
+        <div>
+          <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold border ${rm.badge} mb-3"><span class="w-2 h-2 rounded-full ${rm.dot}"></span>${rm.label}</span>
+          <div class="text-3xl font-extrabold text-red-600 tracking-tight">-${fmtM(r.lossValue)}</div>
+          <div class="text-xs text-neutral-400 mt-1">${r.qty} units × ${fmtM(r.costPrice)}/unit</div>
+        </div>
+      </div>
+      ${r.recovery>0?`<div class="bg-green-50 border border-green-200 rounded-xl p-4 mb-6 flex items-center justify-between"><span class="text-xs font-semibold text-green-700">Recovery</span><span class="text-lg font-extrabold text-green-600">${fmtM(r.recovery)}</span></div>`:''}
+      <div class="space-y-1 mb-6">
+        ${dRow('Item',it?it.name:'—')}
+        ${dRow('Date',fmtD(r.date))}
+        ${dRow('Reported By',r.reportedBy||'—')}
+        ${r.givenTo?dRow('Given To',r.givenTo):''}
+      </div>
+      ${r.notes?`<div class="mb-6"><h4 class="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-2">Notes</h4><div class="text-sm text-neutral-600 bg-neutral-50 rounded-xl p-4 border border-neutral-100 leading-relaxed">${r.notes}</div></div>`:''}
+    `;
+    const bd=document.getElementById('detailBackdrop'),pn=document.getElementById('detailPanel');bd.classList.remove('opacity-0','pointer-events-none');bd.classList.add('opacity-100','pointer-events-auto');pn.classList.remove('translate-x-full');pn.classList.add('translate-x-0');};
+  function dRow(l,v){return `<div class="flex items-start py-2.5 border-b border-neutral-50"><span class="w-28 shrink-0 text-xs font-semibold text-neutral-400">${l}</span><span class="text-sm text-neutral-700 flex-1">${v}</span></div>`;}
+  window.closeDetail=()=>{const bd=document.getElementById('detailBackdrop'),pn=document.getElementById('detailPanel');pn.classList.remove('translate-x-0');pn.classList.add('translate-x-full');bd.classList.remove('opacity-100','pointer-events-auto');bd.classList.add('opacity-0','pointer-events-none');};
+  window.editFromDetail=()=>{closeDetail();setTimeout(()=>window._sp.openEdit(detailId),350);};
+
+  /* ─── Delete ─── */
+  window._sp.confirmDel=id=>{deleteTargetId=id;isBulkDelete=false;const r=records.find(x=>x.id===id),it=r?getItem(r.itemId):null;document.getElementById('deleteTitle').textContent='Delete Record?';document.getElementById('deleteMsg').textContent=it?`${r.qty} units of "${it.name}" will be restored to stock.`:'Stock will be restored.';openDelDlg();};
+  window.confirmBulkDelete=()=>{isBulkDelete=true;document.getElementById('deleteTitle').textContent=`Delete ${selectedIds.size} records?`;document.getElementById('deleteMsg').textContent='All stock from these records will be restored.';openDelDlg();};
+  function openDelDlg(){const bd=document.getElementById('deleteBackdrop'),dg=document.getElementById('deleteDialog');bd.classList.remove('opacity-0','pointer-events-none');bd.classList.add('opacity-100','pointer-events-auto');setTimeout(()=>{dg.classList.remove('scale-95','opacity-0');dg.classList.add('scale-100','opacity-100');},50);}
+  window.closeDeleteDialog=()=>{const bd=document.getElementById('deleteBackdrop'),dg=document.getElementById('deleteDialog');dg.classList.remove('scale-100','opacity-100');dg.classList.add('scale-95','opacity-0');setTimeout(()=>{bd.classList.remove('opacity-100','pointer-events-auto');bd.classList.add('opacity-0','pointer-events-none');},200);};
+  window.executeDelete=()=>{if(isBulkDelete){selectedIds.forEach(id=>{const r=records.find(x=>x.id===id);if(r){const it=getItem(r.itemId);if(it)it.stock+=r.qty;}});const c=selectedIds.size;records=records.filter(r=>!selectedIds.has(r.id));selectedIds.clear();showToast(`${c} records deleted — stock restored`,'success');}else if(deleteTargetId){const r=records.find(x=>x.id===deleteTargetId);if(r){const it=getItem(r.itemId);if(it)it.stock+=r.qty;}records=records.filter(x=>x.id!==deleteTargetId);selectedIds.delete(deleteTargetId);showToast('Record deleted — stock restored','success');}deleteTargetId=null;refreshStats();closeDeleteDialog();renderTable();};
+
+  /* ─── Stats ─── */
+  function refreshStats(){document.getElementById('statTotal').textContent=records.length;document.getElementById('statUnits').textContent=records.reduce((s,r)=>s+r.qty,0);document.getElementById('statLoss').textContent=fmtM(records.reduce((s,r)=>s+r.lossValue,0));document.getElementById('statMonth').textContent=records.filter(r=>r.date>='2026-03-01').length;document.getElementById('statRecover').textContent=fmtM(records.reduce((s,r)=>s+r.recovery,0));}
+
+  document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeRecordForm();closeDetail();closeDeleteDialog();}});
+
+  window.showToast=(msg,type)=>{const t=document.getElementById('feedbackToast'),ic=document.getElementById('toastIcon'),tx=document.getElementById('toastText');t.className='fixed bottom-6 left-1/2 -translate-x-1/2 z-[90] flex items-center gap-3 px-5 py-3 rounded-xl shadow-lg border text-sm font-semibold pointer-events-none transition-all duration-300';if(type==='success'){t.classList.add('bg-green-50','border-green-200','text-green-700');ic.innerHTML='<polyline points="20 6 9 17 4 12"/>';}else if(type==='error'){t.classList.add('bg-red-50','border-red-200','text-red-700');ic.innerHTML='<circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>';}else{t.classList.add('bg-neutral-50','border-neutral-200','text-neutral-700');ic.innerHTML='<circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>';}tx.textContent=msg;requestAnimationFrame(()=>{t.classList.remove('opacity-0','translate-y-4');t.classList.add('opacity-100','translate-y-0');});setTimeout(()=>{t.classList.remove('opacity-100','translate-y-0');t.classList.add('opacity-0','translate-y-4');},2800);};
+
+  renderTable();refreshStats();
+})();
+</script>
+
+{% endblock %}

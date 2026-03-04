@@ -6,5 +6,900 @@
 
 {% block content %}
 
+<!-- ══════════════════════════════════════════════════════════
+     ITEMS & GOODS PAGE
+     ══════════════════════════════════════════════════════════ -->
+
+<!-- ── Page Header ── -->
+<div class="mb-8">
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-extrabold text-neutral-900 tracking-tight">Items &amp; Goods</h1>
+      <p class="text-sm text-neutral-400 mt-1">Manage your product catalogue, pricing, and stock units.</p>
+    </div>
+    <button onclick="openSlideOver('add')"
+            class="inline-flex items-center gap-2 px-5 py-2.5 bg-green-500 text-white text-sm font-semibold rounded-xl
+                   shadow-[0_1px_2px_rgba(0,0,0,0.05)] hover:bg-green-600 active:scale-[0.97]
+                   transition-all duration-200 self-start">
+      <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Add Item
+    </button>
+  </div>
+</div>
+
+
+<!-- ── Summary Strip ── -->
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+  <div class="bg-white border border-neutral-100 rounded-2xl px-5 py-4 transition-all duration-300 hover:shadow-[0_2px_12px_rgba(0,0,0,0.04)]">
+    <div class="text-[0.65rem] font-semibold text-neutral-400 uppercase tracking-wide mb-1">Total Items</div>
+    <div class="text-xl font-extrabold text-neutral-900 tracking-tight" id="statTotalItems">248</div>
+  </div>
+  <div class="bg-white border border-neutral-100 rounded-2xl px-5 py-4 transition-all duration-300 hover:shadow-[0_2px_12px_rgba(0,0,0,0.04)]">
+    <div class="text-[0.65rem] font-semibold text-neutral-400 uppercase tracking-wide mb-1">Categories</div>
+    <div class="text-xl font-extrabold text-neutral-900 tracking-tight">12</div>
+  </div>
+  <div class="bg-white border border-neutral-100 rounded-2xl px-5 py-4 transition-all duration-300 hover:shadow-[0_2px_12px_rgba(0,0,0,0.04)]">
+    <div class="text-[0.65rem] font-semibold text-neutral-400 uppercase tracking-wide mb-1">Low Stock</div>
+    <div class="text-xl font-extrabold text-amber-600 tracking-tight">18</div>
+  </div>
+  <div class="bg-white border border-neutral-100 rounded-2xl px-5 py-4 transition-all duration-300 hover:shadow-[0_2px_12px_rgba(0,0,0,0.04)]">
+    <div class="text-[0.65rem] font-semibold text-neutral-400 uppercase tracking-wide mb-1">Total Value</div>
+    <div class="text-xl font-extrabold text-neutral-900 tracking-tight">$84,320</div>
+  </div>
+</div>
+
+
+<!-- ── Toolbar: Search + Filter ── -->
+<div class="bg-white border border-neutral-100 rounded-2xl mb-4">
+
+  <!-- Search bar row -->
+  <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 p-4">
+    <!-- Search input -->
+    <div class="relative flex-1">
+      <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input id="searchInput" type="text" placeholder="Search items by name…"
+             oninput="handleSearch(this.value)"
+             class="w-full pl-10 pr-4 py-2.5 text-sm border border-neutral-200 rounded-xl bg-neutral-50/50
+                    placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400
+                    transition-all duration-200" />
+    </div>
+
+    <!-- Filter toggle -->
+    <button onclick="toggleFilters()"
+            id="filterToggleBtn"
+            class="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-neutral-600 bg-white border border-neutral-200
+                   rounded-xl hover:bg-neutral-50 hover:border-neutral-300 transition-all duration-200">
+      <svg id="filterIcon" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+      <span id="filterBtnText">Filter</span>
+    </button>
+
+    <!-- Bulk actions (hidden until items selected) -->
+    <div id="bulkActions" class="hidden items-center gap-2">
+      <span class="text-xs font-semibold text-neutral-500"><span id="selectedCount">0</span> selected</span>
+      <button onclick="confirmBulkDelete()"
+              class="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-red-600 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-all duration-200">
+        <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+        Delete
+      </button>
+    </div>
+  </div>
+
+  <!-- Expandable filter panel -->
+  <div id="filterPanel" class="hidden border-t border-neutral-100 px-4 py-4">
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+
+      <!-- Unit filter -->
+      <div>
+        <label class="block text-xs font-semibold text-neutral-500 mb-1.5">Unit</label>
+        <select id="filterUnit" onchange="applyFilters()"
+                class="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white
+                       focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200">
+          <option value="">All Units</option>
+          <option value="kg">Kilogram (kg)</option>
+          <option value="pc">Piece (pc)</option>
+          <option value="lt">Litre (lt)</option>
+          <option value="box">Box</option>
+          <option value="dz">Dozen (dz)</option>
+        </select>
+      </div>
+
+      <!-- Price range -->
+      <div>
+        <label class="block text-xs font-semibold text-neutral-500 mb-1.5">Price Range</label>
+        <select id="filterPrice" onchange="applyFilters()"
+                class="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white
+                       focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200">
+          <option value="">Any Price</option>
+          <option value="0-50">$0 – $50</option>
+          <option value="50-200">$50 – $200</option>
+          <option value="200-1000">$200 – $1,000</option>
+          <option value="1000+">$1,000+</option>
+        </select>
+      </div>
+
+      <!-- Stock status -->
+      <div>
+        <label class="block text-xs font-semibold text-neutral-500 mb-1.5">Stock Status</label>
+        <select id="filterStock" onchange="applyFilters()"
+                class="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white
+                       focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200">
+          <option value="">All</option>
+          <option value="in-stock">In Stock</option>
+          <option value="low-stock">Low Stock</option>
+          <option value="out-of-stock">Out of Stock</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Clear filters -->
+    <div class="flex justify-end mt-3">
+      <button onclick="clearFilters()"
+              class="text-xs font-semibold text-neutral-500 hover:text-neutral-700 transition-colors duration-200">
+        Clear all filters
+      </button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     DATA TABLE
+     ══════════════════════════════════════════════════════════ -->
+<div class="bg-white border border-neutral-100 rounded-2xl overflow-hidden">
+  <div class="overflow-x-auto">
+    <table class="w-full text-left">
+      <thead>
+        <tr class="border-b border-neutral-100">
+          <th class="w-12 px-4 py-3.5">
+            <input type="checkbox" id="selectAll" onchange="toggleSelectAll(this)"
+                   class="w-4 h-4 rounded border-neutral-300 text-green-500 focus:ring-green-500/30 cursor-pointer" />
+          </th>
+          <th class="px-4 py-3.5 text-[0.7rem] font-bold uppercase tracking-wider text-neutral-400 cursor-pointer hover:text-neutral-600 transition-colors"
+              onclick="sortTable('name')">
+            <div class="flex items-center gap-1">
+              Name
+              <svg class="w-3 h-3 text-neutral-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+            </div>
+          </th>
+          <th class="px-4 py-3.5 text-[0.7rem] font-bold uppercase tracking-wider text-neutral-400">
+            Description
+          </th>
+          <th class="px-4 py-3.5 text-[0.7rem] font-bold uppercase tracking-wider text-neutral-400 cursor-pointer hover:text-neutral-600 transition-colors"
+              onclick="sortTable('unit')">
+            <div class="flex items-center gap-1">
+              Unit
+              <svg class="w-3 h-3 text-neutral-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+            </div>
+          </th>
+          <th class="px-4 py-3.5 text-[0.7rem] font-bold uppercase tracking-wider text-neutral-400 cursor-pointer hover:text-neutral-600 transition-colors"
+              onclick="sortTable('price')">
+            <div class="flex items-center gap-1">
+              Price
+              <svg class="w-3 h-3 text-neutral-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+            </div>
+          </th>
+          <th class="px-4 py-3.5 text-[0.7rem] font-bold uppercase tracking-wider text-neutral-400">
+            Stock
+          </th>
+          <th class="px-4 py-3.5 text-[0.7rem] font-bold uppercase tracking-wider text-neutral-400 cursor-pointer hover:text-neutral-600 transition-colors"
+              onclick="sortTable('created_at')">
+            <div class="flex items-center gap-1">
+              Added
+              <svg class="w-3 h-3 text-neutral-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+            </div>
+          </th>
+          <th class="px-4 py-3.5 text-[0.7rem] font-bold uppercase tracking-wider text-neutral-400 text-right">
+            Actions
+          </th>
+        </tr>
+      </thead>
+      <tbody id="itemsTableBody">
+        <!-- Rows injected by JS -->
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Empty state (shown when no items) -->
+  <div id="emptyState" class="hidden py-20 flex flex-col items-center justify-center text-center">
+    <div class="w-16 h-16 bg-neutral-100 rounded-2xl flex items-center justify-center mb-4">
+      <svg class="w-7 h-7 text-neutral-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+    </div>
+    <h3 class="text-sm font-bold text-neutral-700 mb-1">No items found</h3>
+    <p class="text-xs text-neutral-400 mb-5 max-w-xs">Get started by adding your first product or inventory item to the catalogue.</p>
+    <button onclick="openSlideOver('add')"
+            class="inline-flex items-center gap-2 px-4 py-2 bg-green-500 text-white text-xs font-semibold rounded-lg hover:bg-green-600 transition-all duration-200">
+      <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Add your first item
+    </button>
+  </div>
+
+  <!-- Pagination -->
+  <div id="paginationBar" class="flex items-center justify-between px-4 py-3 border-t border-neutral-100">
+    <p class="text-xs text-neutral-400 font-medium">
+      Showing <span id="pagStart" class="text-neutral-700 font-semibold">1</span>–<span id="pagEnd" class="text-neutral-700 font-semibold">10</span>
+      of <span id="pagTotal" class="text-neutral-700 font-semibold">248</span> items
+    </p>
+    <div class="flex items-center gap-1">
+      <button onclick="goToPage('prev')" id="btnPrev"
+              class="w-8 h-8 flex items-center justify-center rounded-lg border border-neutral-200 text-neutral-400 hover:text-neutral-700 hover:border-neutral-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+      <div id="pageNumbers" class="flex items-center gap-1">
+        <!-- Page buttons injected by JS -->
+      </div>
+      <button onclick="goToPage('next')" id="btnNext"
+              class="w-8 h-8 flex items-center justify-center rounded-lg border border-neutral-200 text-neutral-400 hover:text-neutral-700 hover:border-neutral-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     SLIDE-OVER MODAL (Add / Edit Item)
+     ══════════════════════════════════════════════════════════ -->
+<div id="slideOverBackdrop"
+     class="fixed inset-0 bg-black/20 backdrop-blur-sm z-[60] opacity-0 pointer-events-none transition-opacity duration-300"
+     onclick="closeSlideOver()">
+</div>
+
+<div id="slideOverPanel"
+     class="fixed top-0 right-0 bottom-0 w-full max-w-md bg-white z-[65] shadow-[-8px_0_30px_rgba(0,0,0,0.08)]
+            translate-x-full transition-transform duration-300 ease-out-expo flex flex-col">
+
+  <!-- Header -->
+  <div class="flex items-center justify-between px-6 py-5 border-b border-neutral-100">
+    <h2 id="slideOverTitle" class="text-lg font-bold text-neutral-900 tracking-tight">Add New Item</h2>
+    <button onclick="closeSlideOver()"
+            class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-neutral-100 text-neutral-400 hover:text-neutral-600 transition-all duration-200">
+      <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+
+  <!-- Form body -->
+  <div class="flex-1 overflow-y-auto px-6 py-6">
+    <form id="itemForm" onsubmit="handleFormSubmit(event)" class="space-y-5">
+      <input type="hidden" id="editItemId" value="" />
+
+      <!-- Name -->
+      <div>
+        <label for="itemName" class="block text-xs font-semibold text-neutral-600 mb-1.5">Item Name <span class="text-red-400">*</span></label>
+        <input type="text" id="itemName" required placeholder="e.g. Organic Olive Oil"
+               class="w-full px-4 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white
+                      placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200" />
+        <p id="nameError" class="hidden text-xs text-red-500 mt-1">Item name is required.</p>
+      </div>
+
+      <!-- Description -->
+      <div>
+        <label for="itemDesc" class="block text-xs font-semibold text-neutral-600 mb-1.5">Description</label>
+        <textarea id="itemDesc" rows="3" placeholder="Optional description of this item…"
+                  class="w-full px-4 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white resize-none
+                         placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200"></textarea>
+      </div>
+
+      <!-- Price + Unit (2-col) -->
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label for="itemPrice" class="block text-xs font-semibold text-neutral-600 mb-1.5">Price <span class="text-red-400">*</span></label>
+          <div class="relative">
+            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-neutral-400 font-medium">$</span>
+            <input type="number" id="itemPrice" required min="0" step="0.01" placeholder="0.00"
+                   class="w-full pl-8 pr-4 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white
+                          placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200" />
+          </div>
+          <p id="priceError" class="hidden text-xs text-red-500 mt-1">Price is required.</p>
+        </div>
+        <div>
+          <label for="itemUnit" class="block text-xs font-semibold text-neutral-600 mb-1.5">Unit</label>
+          <select id="itemUnit"
+                  class="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white
+                         focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200">
+            <option value="">Select unit</option>
+            <option value="kg">Kilogram (kg)</option>
+            <option value="pc">Piece (pc)</option>
+            <option value="lt">Litre (lt)</option>
+            <option value="box">Box</option>
+            <option value="dz">Dozen (dz)</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Stock quantity -->
+      <div>
+        <label for="itemStock" class="block text-xs font-semibold text-neutral-600 mb-1.5">Current Stock</label>
+        <input type="number" id="itemStock" min="0" placeholder="0"
+               class="w-full px-4 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white
+                      placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200" />
+      </div>
+
+      <!-- Tax toggle -->
+      <div class="flex items-center justify-between p-4 bg-neutral-50 rounded-xl border border-neutral-100">
+        <div>
+          <div class="text-sm font-semibold text-neutral-700">Tax per item</div>
+          <div class="text-xs text-neutral-400 mt-0.5">Apply individual tax to this item</div>
+        </div>
+        <button type="button" id="taxToggle" onclick="toggleTax()" role="switch" aria-checked="false"
+                class="relative w-10 h-6 bg-neutral-300 rounded-full transition-colors duration-200 cursor-pointer">
+          <span id="taxDot" class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200"></span>
+        </button>
+      </div>
+
+    </form>
+  </div>
+
+  <!-- Footer -->
+  <div class="px-6 py-4 border-t border-neutral-100 bg-neutral-50/50 flex items-center gap-3">
+    <button onclick="closeSlideOver()" type="button"
+            class="flex-1 px-4 py-2.5 text-sm font-semibold text-neutral-600 bg-white border border-neutral-200 rounded-xl
+                   hover:bg-neutral-50 hover:border-neutral-300 transition-all duration-200">
+      Cancel
+    </button>
+    <button onclick="document.getElementById('itemForm').requestSubmit()" type="button"
+            id="submitBtn"
+            class="flex-1 px-4 py-2.5 text-sm font-semibold text-white bg-green-500 rounded-xl
+                   hover:bg-green-600 active:scale-[0.97] transition-all duration-200 flex items-center justify-center gap-2">
+      <span id="submitBtnText">Save Item</span>
+      <svg id="submitSpinner" class="hidden w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" stroke-dasharray="32" stroke-linecap="round"/></svg>
+    </button>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     DELETE CONFIRMATION DIALOG
+     ══════════════════════════════════════════════════════════ -->
+<div id="deleteDialogBackdrop"
+     class="fixed inset-0 bg-black/30 backdrop-blur-sm z-[70] opacity-0 pointer-events-none transition-opacity duration-200 flex items-center justify-center">
+  <div id="deleteDialog"
+       class="bg-white rounded-2xl shadow-xl w-full max-w-sm mx-4 p-6 scale-95 opacity-0 transition-all duration-200">
+    <div class="w-12 h-12 bg-red-50 rounded-xl flex items-center justify-center mx-auto mb-4">
+      <svg class="w-6 h-6 text-red-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+    </div>
+    <h3 class="text-base font-bold text-neutral-900 text-center mb-1" id="deleteTitle">Delete Item?</h3>
+    <p class="text-sm text-neutral-500 text-center mb-6" id="deleteMsg">This action cannot be undone. The item will be permanently removed.</p>
+    <div class="flex gap-3">
+      <button onclick="closeDeleteDialog()"
+              class="flex-1 px-4 py-2.5 text-sm font-semibold text-neutral-600 bg-white border border-neutral-200 rounded-xl hover:bg-neutral-50 transition-all duration-200">
+        Cancel
+      </button>
+      <button onclick="executeDelete()" id="confirmDeleteBtn"
+              class="flex-1 px-4 py-2.5 text-sm font-semibold text-white bg-red-500 rounded-xl hover:bg-red-600 active:scale-[0.97] transition-all duration-200">
+        Delete
+      </button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     FEEDBACK TOAST
+     ══════════════════════════════════════════════════════════ -->
+<div id="feedbackToast"
+     class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[80]
+            flex items-center gap-3 px-5 py-3 rounded-xl shadow-lg border
+            text-sm font-semibold pointer-events-none
+            opacity-0 translate-y-4 transition-all duration-300">
+  <svg id="toastIcon" class="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></svg>
+  <span id="toastText"></span>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     JAVASCRIPT
+     ══════════════════════════════════════════════════════════ -->
+<script>
+    (function() {
+
+    /* ─── Sample Data (replace with real API calls) ─── */
+    let items = [
+        { id: 1,  name: 'Organic Olive Oil',        desc: 'Extra virgin, cold-pressed, 500ml',    unit: 'lt',  price: 12.99, stock: 340,  created: '2026-02-28' },
+        { id: 2,  name: 'Basmati Rice',              desc: 'Premium aged basmati, 5kg pack',       unit: 'kg',  price: 8.50,  stock: 120,  created: '2026-02-27' },
+        { id: 3,  name: 'Steel Bolts M8x25',         desc: 'Stainless steel hex bolts',            unit: 'box', price: 24.00, stock: 15,   created: '2026-02-25' },
+        { id: 4,  name: 'A4 Copy Paper',             desc: '80gsm, 500 sheet ream',                unit: 'pc',  price: 5.25,  stock: 0,    created: '2026-02-24' },
+        { id: 5,  name: 'Hydraulic Brake Fluid',     desc: 'DOT 4, 1 litre bottles',               unit: 'lt',  price: 18.75, stock: 89,   created: '2026-02-22' },
+        { id: 6,  name: 'Wireless Mouse',            desc: 'Ergonomic, 2.4GHz, USB receiver',      unit: 'pc',  price: 29.99, stock: 56,   created: '2026-02-20' },
+        { id: 7,  name: 'Cinnamon Sticks',           desc: 'Ceylon cinnamon, 200g pouch',           unit: 'kg',  price: 6.80,  stock: 200,  created: '2026-02-18' },
+        { id: 8,  name: 'LED Bulb 9W',               desc: 'Warm white, E27 screw base',            unit: 'dz',  price: 42.00, stock: 8,    created: '2026-02-15' },
+        { id: 9,  name: 'Hand Sanitizer Gel',         desc: '70% alcohol, 500ml pump bottle',       unit: 'pc',  price: 3.99,  stock: 410,  created: '2026-02-14' },
+        { id: 10, name: 'Corrugated Shipping Box',    desc: '30×20×15cm, double-wall kraft',        unit: 'box', price: 1.20,  stock: 1200, created: '2026-02-12' },
+        { id: 11, name: 'Notebook A5 Ruled',           desc: '200 pages, hardcover',                 unit: 'pc',  price: 4.50,  stock: 75,   created: '2026-02-10' },
+        { id: 12, name: 'Black Tea Bags',              desc: 'English Breakfast, 100 bag box',       unit: 'box', price: 7.25,  stock: 38,   created: '2026-02-08' },
+    ];
+
+    let currentPage = 1;
+    const perPage = 10;
+    let selectedIds = new Set();
+    let deleteTargetId = null;
+    let isBulkDelete = false;
+    let sortField = 'created_at';
+    let sortOrder = 'desc';
+    let searchQuery = '';
+    let filterUnit = '';
+    let filterPrice = '';
+    let filterStock = '';
+    let nextId = 13;
+    let taxEnabled = false;
+
+
+    /* ─── Render Table ─── */
+    function getFilteredItems() {
+        let filtered = [...items];
+
+        if (searchQuery) {
+        const q = searchQuery.toLowerCase();
+        filtered = filtered.filter(i => i.name.toLowerCase().includes(q) || (i.desc && i.desc.toLowerCase().includes(q)));
+        }
+        if (filterUnit) filtered = filtered.filter(i => i.unit === filterUnit);
+        if (filterPrice) {
+        if (filterPrice === '1000+') filtered = filtered.filter(i => i.price >= 1000);
+        else {
+            const [min, max] = filterPrice.split('-').map(Number);
+            filtered = filtered.filter(i => i.price >= min && i.price <= max);
+        }
+        }
+        if (filterStock) {
+        if (filterStock === 'in-stock') filtered = filtered.filter(i => i.stock > 20);
+        else if (filterStock === 'low-stock') filtered = filtered.filter(i => i.stock > 0 && i.stock <= 20);
+        else if (filterStock === 'out-of-stock') filtered = filtered.filter(i => i.stock === 0);
+        }
+
+        // Sort
+        filtered.sort((a, b) => {
+        let va = a[sortField === 'created_at' ? 'created' : sortField];
+        let vb = b[sortField === 'created_at' ? 'created' : sortField];
+        if (typeof va === 'string') va = va.toLowerCase();
+        if (typeof vb === 'string') vb = vb.toLowerCase();
+        if (va < vb) return sortOrder === 'asc' ? -1 : 1;
+        if (va > vb) return sortOrder === 'asc' ? 1 : -1;
+        return 0;
+        });
+
+        return filtered;
+    }
+
+    function renderTable() {
+        const filtered = getFilteredItems();
+        const total = filtered.length;
+        const totalPages = Math.max(1, Math.ceil(total / perPage));
+        if (currentPage > totalPages) currentPage = totalPages;
+
+        const start = (currentPage - 1) * perPage;
+        const pageItems = filtered.slice(start, start + perPage);
+
+        const tbody = document.getElementById('itemsTableBody');
+        const emptyState = document.getElementById('emptyState');
+        const paginationBar = document.getElementById('paginationBar');
+
+        if (total === 0) {
+        tbody.innerHTML = '';
+        emptyState.classList.remove('hidden');
+        emptyState.classList.add('flex');
+        paginationBar.classList.add('hidden');
+        return;
+        }
+
+        emptyState.classList.add('hidden');
+        emptyState.classList.remove('flex');
+        paginationBar.classList.remove('hidden');
+
+        tbody.innerHTML = pageItems.map(item => {
+        const checked = selectedIds.has(item.id) ? 'checked' : '';
+        const stockBadge = item.stock === 0
+            ? '<span class="inline-flex items-center px-2 py-0.5 rounded-md text-[0.65rem] font-bold bg-red-50 text-red-600 border border-red-200">Out of stock</span>'
+            : item.stock <= 20
+            ? `<span class="inline-flex items-center px-2 py-0.5 rounded-md text-[0.65rem] font-bold bg-amber-50 text-amber-600 border border-amber-200">${item.stock} left</span>`
+            : `<span class="text-sm text-neutral-700 font-medium">${item.stock}</span>`;
+
+        return `
+            <tr class="border-b border-neutral-50 hover:bg-neutral-50/50 transition-colors duration-150 group" data-id="${item.id}">
+            <td class="px-4 py-3">
+                <input type="checkbox" ${checked} onchange="window._stockflow.toggleSelect(${item.id})"
+                    class="w-4 h-4 rounded border-neutral-300 text-green-500 focus:ring-green-500/30 cursor-pointer" />
+            </td>
+            <td class="px-4 py-3">
+                <button onclick="window._stockflow.openSlideOver('edit', ${item.id})" class="text-sm font-semibold text-neutral-900 hover:text-green-600 transition-colors duration-200 text-left">
+                ${item.name}
+                </button>
+            </td>
+            <td class="px-4 py-3 text-sm text-neutral-500 max-w-[200px] truncate">${item.desc || '—'}</td>
+            <td class="px-4 py-3">
+                <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[0.65rem] font-bold bg-neutral-100 text-neutral-600 border border-neutral-200 uppercase">${item.unit || '—'}</span>
+            </td>
+            <td class="px-4 py-3 text-sm font-semibold text-neutral-800">$${item.price.toFixed(2)}</td>
+            <td class="px-4 py-3">${stockBadge}</td>
+            <td class="px-4 py-3 text-sm text-neutral-400">${formatDate(item.created)}</td>
+            <td class="px-4 py-3 text-right">
+                <div class="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                <button onclick="window._stockflow.openSlideOver('edit', ${item.id})" title="Edit"
+                        class="w-8 h-8 flex items-center justify-center rounded-lg text-neutral-400 hover:text-green-600 hover:bg-green-50 transition-all duration-200">
+                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                </button>
+                <button onclick="window._stockflow.confirmDelete(${item.id})" title="Delete"
+                        class="w-8 h-8 flex items-center justify-center rounded-lg text-neutral-400 hover:text-red-600 hover:bg-red-50 transition-all duration-200">
+                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                </button>
+                </div>
+            </td>
+            </tr>`;
+        }).join('');
+
+        // Pagination info
+        document.getElementById('pagStart').textContent = start + 1;
+        document.getElementById('pagEnd').textContent = Math.min(start + perPage, total);
+        document.getElementById('pagTotal').textContent = total;
+
+        // Page numbers
+        const pageNumsEl = document.getElementById('pageNumbers');
+        let pageNums = '';
+        for (let p = 1; p <= totalPages; p++) {
+        const active = p === currentPage
+            ? 'bg-green-500 text-white border-green-500'
+            : 'bg-white text-neutral-600 border-neutral-200 hover:border-neutral-300';
+        pageNums += `<button onclick="window._stockflow.goToPage(${p})" class="w-8 h-8 flex items-center justify-center rounded-lg border text-xs font-semibold ${active} transition-all duration-200">${p}</button>`;
+        }
+        pageNumsEl.innerHTML = pageNums;
+
+        document.getElementById('btnPrev').disabled = currentPage === 1;
+        document.getElementById('btnNext').disabled = currentPage === totalPages;
+
+        updateBulkBar();
+    }
+
+    function formatDate(dateStr) {
+        const d = new Date(dateStr);
+        return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+
+    function updateBulkBar() {
+        const bulk = document.getElementById('bulkActions');
+        if (selectedIds.size > 0) {
+        bulk.classList.remove('hidden');
+        bulk.classList.add('flex');
+        document.getElementById('selectedCount').textContent = selectedIds.size;
+        } else {
+        bulk.classList.add('hidden');
+        bulk.classList.remove('flex');
+        }
+        // Update select-all checkbox
+        const filtered = getFilteredItems();
+        const allSel = filtered.length > 0 && filtered.every(i => selectedIds.has(i.id));
+        document.getElementById('selectAll').checked = allSel;
+    }
+
+
+    /* ─── Selection ─── */
+    window._stockflow = {};
+
+    window._stockflow.toggleSelect = function(id) {
+        if (selectedIds.has(id)) selectedIds.delete(id);
+        else selectedIds.add(id);
+        updateBulkBar();
+    };
+
+    window.toggleSelectAll = function(checkbox) {
+        const filtered = getFilteredItems();
+        if (checkbox.checked) {
+        filtered.forEach(i => selectedIds.add(i.id));
+        } else {
+        filtered.forEach(i => selectedIds.delete(i.id));
+        }
+        renderTable();
+    };
+
+
+    /* ─── Search & Filters ─── */
+    let searchTimeout;
+    window.handleSearch = function(val) {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+        searchQuery = val.trim();
+        currentPage = 1;
+        renderTable();
+        }, 300);
+    };
+
+    window.toggleFilters = function() {
+        const panel = document.getElementById('filterPanel');
+        const btn = document.getElementById('filterBtnText');
+        const isOpen = !panel.classList.contains('hidden');
+        if (isOpen) {
+        panel.classList.add('hidden');
+        btn.textContent = 'Filter';
+        } else {
+        panel.classList.remove('hidden');
+        btn.textContent = 'Close';
+        }
+    };
+
+    window.applyFilters = function() {
+        filterUnit = document.getElementById('filterUnit').value;
+        filterPrice = document.getElementById('filterPrice').value;
+        filterStock = document.getElementById('filterStock').value;
+        currentPage = 1;
+        renderTable();
+    };
+
+    window.clearFilters = function() {
+        document.getElementById('filterUnit').value = '';
+        document.getElementById('filterPrice').value = '';
+        document.getElementById('filterStock').value = '';
+        filterUnit = ''; filterPrice = ''; filterStock = '';
+        currentPage = 1;
+        renderTable();
+        showToast('Filters cleared', 'info');
+    };
+
+
+    /* ─── Sorting ─── */
+    window.sortTable = function(field) {
+        if (sortField === field) sortOrder = sortOrder === 'asc' ? 'desc' : 'asc';
+        else { sortField = field; sortOrder = 'asc'; }
+        renderTable();
+    };
+
+
+    /* ─── Pagination ─── */
+    window._stockflow.goToPage = function(p) {
+        currentPage = p;
+        renderTable();
+    };
+
+    window.goToPage = function(dir) {
+        if (dir === 'prev' && currentPage > 1) currentPage--;
+        else if (dir === 'next') currentPage++;
+        renderTable();
+    };
+
+
+    /* ─── Slide-Over (Add / Edit) ─── */
+    window._stockflow.openSlideOver = window.openSlideOver = function(mode, id) {
+        const backdrop = document.getElementById('slideOverBackdrop');
+        const panel = document.getElementById('slideOverPanel');
+
+        // Reset form
+        document.getElementById('itemForm').reset();
+        document.getElementById('nameError').classList.add('hidden');
+        document.getElementById('priceError').classList.add('hidden');
+        document.getElementById('editItemId').value = '';
+        taxEnabled = false;
+        updateTaxUI();
+
+        if (mode === 'edit' && id) {
+        const item = items.find(i => i.id === id);
+        if (!item) return;
+        document.getElementById('slideOverTitle').textContent = 'Edit Item';
+        document.getElementById('submitBtnText').textContent = 'Update Item';
+        document.getElementById('editItemId').value = item.id;
+        document.getElementById('itemName').value = item.name;
+        document.getElementById('itemDesc').value = item.desc || '';
+        document.getElementById('itemPrice').value = item.price;
+        document.getElementById('itemUnit').value = item.unit || '';
+        document.getElementById('itemStock').value = item.stock;
+        } else {
+        document.getElementById('slideOverTitle').textContent = 'Add New Item';
+        document.getElementById('submitBtnText').textContent = 'Save Item';
+        }
+
+        backdrop.classList.remove('opacity-0', 'pointer-events-none');
+        backdrop.classList.add('opacity-100', 'pointer-events-auto');
+        panel.classList.remove('translate-x-full');
+        panel.classList.add('translate-x-0');
+        document.body.style.overflow = 'hidden';
+
+        // Focus first field after animation
+        setTimeout(() => document.getElementById('itemName').focus(), 350);
+    };
+
+    window.closeSlideOver = function() {
+        const backdrop = document.getElementById('slideOverBackdrop');
+        const panel = document.getElementById('slideOverPanel');
+        panel.classList.remove('translate-x-0');
+        panel.classList.add('translate-x-full');
+        backdrop.classList.remove('opacity-100', 'pointer-events-auto');
+        backdrop.classList.add('opacity-0', 'pointer-events-none');
+        document.body.style.overflow = '';
+    };
+
+    // Close on Escape
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') {
+        closeSlideOver();
+        closeDeleteDialog();
+        }
+    });
+
+
+    /* ─── Tax Toggle ─── */
+    window.toggleTax = function() {
+        taxEnabled = !taxEnabled;
+        updateTaxUI();
+    };
+    function updateTaxUI() {
+        const toggle = document.getElementById('taxToggle');
+        const dot = document.getElementById('taxDot');
+        if (taxEnabled) {
+        toggle.classList.remove('bg-neutral-300');
+        toggle.classList.add('bg-green-500');
+        dot.style.transform = 'translateX(16px)';
+        toggle.setAttribute('aria-checked', 'true');
+        } else {
+        toggle.classList.remove('bg-green-500');
+        toggle.classList.add('bg-neutral-300');
+        dot.style.transform = 'translateX(0)';
+        toggle.setAttribute('aria-checked', 'false');
+        }
+    }
+
+
+    /* ─── Form Submit ─── */
+    window.handleFormSubmit = function(e) {
+        e.preventDefault();
+
+        const name = document.getElementById('itemName').value.trim();
+        const price = parseFloat(document.getElementById('itemPrice').value);
+        let hasError = false;
+
+        if (!name) {
+        document.getElementById('nameError').classList.remove('hidden');
+        document.getElementById('itemName').classList.add('border-red-400');
+        hasError = true;
+        } else {
+        document.getElementById('nameError').classList.add('hidden');
+        document.getElementById('itemName').classList.remove('border-red-400');
+        }
+        if (isNaN(price) || price < 0) {
+        document.getElementById('priceError').classList.remove('hidden');
+        document.getElementById('itemPrice').classList.add('border-red-400');
+        hasError = true;
+        } else {
+        document.getElementById('priceError').classList.add('hidden');
+        document.getElementById('itemPrice').classList.remove('border-red-400');
+        }
+        if (hasError) return;
+
+        // Show loading
+        document.getElementById('submitBtnText').textContent = 'Saving…';
+        document.getElementById('submitSpinner').classList.remove('hidden');
+        document.getElementById('submitBtn').disabled = true;
+
+        // Simulate API delay
+        setTimeout(() => {
+        const editId = parseInt(document.getElementById('editItemId').value);
+        const itemData = {
+            name: name,
+            desc: document.getElementById('itemDesc').value.trim(),
+            price: price,
+            unit: document.getElementById('itemUnit').value,
+            stock: parseInt(document.getElementById('itemStock').value) || 0,
+            created: new Date().toISOString().slice(0, 10),
+        };
+
+        if (editId) {
+            // Update
+            const idx = items.findIndex(i => i.id === editId);
+            if (idx !== -1) {
+            items[idx] = { ...items[idx], ...itemData };
+            }
+            showToast(`"${name}" updated successfully`, 'success');
+        } else {
+            // Create
+            itemData.id = nextId++;
+            items.unshift(itemData);
+            showToast(`"${name}" added to catalogue`, 'success');
+        }
+
+        document.getElementById('submitSpinner').classList.add('hidden');
+        document.getElementById('submitBtn').disabled = false;
+        document.getElementById('statTotalItems').textContent = items.length;
+
+        closeSlideOver();
+        renderTable();
+        }, 600);
+    };
+
+
+    /* ─── Delete ─── */
+    window._stockflow.confirmDelete = window.confirmDelete = function(id) {
+        deleteTargetId = id;
+        isBulkDelete = false;
+        const item = items.find(i => i.id === id);
+        document.getElementById('deleteTitle').textContent = 'Delete Item?';
+        document.getElementById('deleteMsg').textContent = item
+        ? `"${item.name}" will be permanently removed from your catalogue.`
+        : 'This item will be permanently deleted.';
+        openDeleteDialog();
+    };
+
+    window.confirmBulkDelete = function() {
+        isBulkDelete = true;
+        document.getElementById('deleteTitle').textContent = `Delete ${selectedIds.size} items?`;
+        document.getElementById('deleteMsg').textContent = 'These items will be permanently removed. This action cannot be undone.';
+        openDeleteDialog();
+    };
+
+    function openDeleteDialog() {
+        const backdrop = document.getElementById('deleteDialogBackdrop');
+        const dialog = document.getElementById('deleteDialog');
+        backdrop.classList.remove('opacity-0', 'pointer-events-none');
+        backdrop.classList.add('opacity-100', 'pointer-events-auto');
+        setTimeout(() => {
+        dialog.classList.remove('scale-95', 'opacity-0');
+        dialog.classList.add('scale-100', 'opacity-100');
+        }, 50);
+    }
+
+    window.closeDeleteDialog = function() {
+        const backdrop = document.getElementById('deleteDialogBackdrop');
+        const dialog = document.getElementById('deleteDialog');
+        dialog.classList.remove('scale-100', 'opacity-100');
+        dialog.classList.add('scale-95', 'opacity-0');
+        setTimeout(() => {
+        backdrop.classList.remove('opacity-100', 'pointer-events-auto');
+        backdrop.classList.add('opacity-0', 'pointer-events-none');
+        }, 200);
+    };
+
+    window.executeDelete = function() {
+        if (isBulkDelete) {
+        const count = selectedIds.size;
+        items = items.filter(i => !selectedIds.has(i.id));
+        selectedIds.clear();
+        showToast(`${count} items deleted`, 'success');
+        } else if (deleteTargetId) {
+        const item = items.find(i => i.id === deleteTargetId);
+        items = items.filter(i => i.id !== deleteTargetId);
+        selectedIds.delete(deleteTargetId);
+        showToast(`"${item ? item.name : 'Item'}" deleted`, 'success');
+        }
+        deleteTargetId = null;
+        document.getElementById('statTotalItems').textContent = items.length;
+        closeDeleteDialog();
+        renderTable();
+    };
+
+
+    /* ─── Feedback Toast (Peek & End Rule) ─── */
+    window.showToast = function(message, type) {
+        const toast = document.getElementById('feedbackToast');
+        const icon = document.getElementById('toastIcon');
+        const text = document.getElementById('toastText');
+
+        // Reset classes
+        toast.className = 'fixed bottom-6 left-1/2 -translate-x-1/2 z-[80] flex items-center gap-3 px-5 py-3 rounded-xl shadow-lg border text-sm font-semibold pointer-events-none transition-all duration-300';
+
+        if (type === 'success') {
+        toast.classList.add('bg-green-50', 'border-green-200', 'text-green-700');
+        icon.innerHTML = '<polyline points="20 6 9 17 4 12"/>';
+        } else if (type === 'error') {
+        toast.classList.add('bg-red-50', 'border-red-200', 'text-red-700');
+        icon.innerHTML = '<circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>';
+        } else {
+        toast.classList.add('bg-neutral-50', 'border-neutral-200', 'text-neutral-700');
+        icon.innerHTML = '<circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>';
+        }
+
+        text.textContent = message;
+
+        // Animate in
+        requestAnimationFrame(() => {
+        toast.classList.remove('opacity-0', 'translate-y-4');
+        toast.classList.add('opacity-100', 'translate-y-0');
+        });
+
+        // Auto-dismiss
+        setTimeout(() => {
+        toast.classList.remove('opacity-100', 'translate-y-0');
+        toast.classList.add('opacity-0', 'translate-y-4');
+        }, 2500);
+    };
+
+
+    /* ─── Init ─── */
+    renderTable();
+
+    })();
+</script>
 
 {% endblock %}

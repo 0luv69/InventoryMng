@@ -97,7 +97,8 @@
             </a>
 
             <a class="nav-item group relative flex items-center gap-3 px-3 py-2.5 rounded-[10px] text-[0.8125rem] font-medium text-neutral-500 cursor-pointer transition-all duration-200 mb-0.5 border border-transparent hover:bg-stone-50 hover:text-neutral-700"
-                data-page="spoilage" onclick="navigateTo(this, 'spoilage')" title="Spoilage & Loss">
+                data-url="{% url 'spoilage' %}"
+                data-page="spoilage-&-loss" onclick="navigateTo(this, 'spoilage-&-loss')" title="Spoilage & Loss">
                 <div class="active-dot absolute -left-1.5 top-1/2 -translate-y-1/2 w-1 h-5 bg-green-500 rounded-r opacity-0 transition-opacity duration-300"></div>
                 <svg class="w-5 h-5 shrink-0 text-neutral-400 group-hover:text-neutral-600 transition-colors duration-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
                 <span class="sidebar-label whitespace-nowrap overflow-hidden transition-all duration-300">Spoilage &amp; Loss</span>
@@ -109,6 +110,7 @@
         <div class="text-[0.65rem] font-bold uppercase tracking-widest text-neutral-400 px-3 pt-5 pb-2 whitespace-nowrap overflow-hidden transition-all duration-300">Finance</div>
 
             <a class="nav-item group relative flex items-center gap-3 px-3 py-2.5 rounded-[10px] text-[0.8125rem] font-medium text-neutral-500 cursor-pointer transition-all duration-200 mb-0.5 border border-transparent hover:bg-stone-50 hover:text-neutral-700"
+                data-url="{% url 'payments' %}"
                 data-page="payments" onclick="navigateTo(this, 'payments')" title="Payments">
                 <div class="active-dot absolute -left-1.5 top-1/2 -translate-y-1/2 w-1 h-5 bg-green-500 rounded-r opacity-0 transition-opacity duration-300"></div>
                 <svg class="w-5 h-5 shrink-0 text-neutral-400 group-hover:text-neutral-600 transition-colors duration-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
@@ -116,46 +118,41 @@
             </a>
 
             <a class="nav-item group relative flex items-center gap-3 px-3 py-2.5 rounded-[10px] text-[0.8125rem] font-medium text-neutral-500 cursor-pointer transition-all duration-200 mb-0.5 border border-transparent hover:bg-stone-50 hover:text-neutral-700"
+                data-url="{% url 'reports' %}"
                 data-page="reports" onclick="navigateTo(this, 'reports')" title="Reports">
                 <div class="active-dot absolute -left-1.5 top-1/2 -translate-y-1/2 w-1 h-5 bg-green-500 rounded-r opacity-0 transition-opacity duration-300"></div>
                 <svg class="w-5 h-5 shrink-0 text-neutral-400 group-hover:text-neutral-600 transition-colors duration-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
                 <span class="sidebar-label whitespace-nowrap overflow-hidden transition-all duration-300">Reports</span>
             </a>
-
-        <!-- Group: System -->
-        <div class="text-[0.65rem] font-bold uppercase tracking-widest text-neutral-400 px-3 pt-5 pb-2 whitespace-nowrap overflow-hidden transition-all duration-300">System</div>
-
-            <a class="nav-item group relative flex items-center gap-3 px-3 py-2.5 rounded-[10px] text-[0.8125rem] font-medium text-neutral-500 cursor-pointer transition-all duration-200 mb-0.5 border border-transparent hover:bg-stone-50 hover:text-neutral-700"
-                data-page="settings" onclick="navigateTo(this, 'settings')" title="Settings">
-                <div class="active-dot absolute -left-1.5 top-1/2 -translate-y-1/2 w-1 h-5 bg-green-500 rounded-r opacity-0 transition-opacity duration-300"></div>
-                <svg class="w-5 h-5 shrink-0 text-neutral-400 group-hover:text-neutral-600 transition-colors duration-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-                <span class="sidebar-label whitespace-nowrap overflow-hidden transition-all duration-300">Settings</span>
-            </a>
-
         </nav>
 
         <!-- Collapse toggle button (desktop only) -->
         <div class="px-3 py-2 border-t border-neutral-50 max-md:hidden">
-        <button onclick="toggleSidebarCollapse()" id="collapseBtn" title="Collapse sidebar"
-                class="w-full flex items-center gap-3 px-3 py-2.5 rounded-[10px] text-[0.8125rem] font-medium text-neutral-500 cursor-pointer transition-all duration-200 hover:bg-stone-50 hover:text-neutral-700">
-            <svg id="collapseIcon" class="w-5 h-5 shrink-0 text-neutral-400 transition-transform duration-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="11 17 6 12 11 7"/>
-            <polyline points="18 17 13 12 18 7"/>
-            </svg>
-            <span class="sidebar-label whitespace-nowrap overflow-hidden transition-all duration-300">Collapse</span>
-        </button>
+            <button onclick="toggleSidebarCollapse()" id="collapseBtn" title="Collapse sidebar"
+                    class="w-full flex items-center gap-3 px-3 py-2.5 rounded-[10px] text-[0.8125rem] font-medium text-neutral-500 cursor-pointer transition-all duration-200 hover:bg-stone-50 hover:text-neutral-700">
+                <svg id="collapseIcon" class="w-5 h-5 shrink-0 text-neutral-400 transition-transform duration-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="11 17 6 12 11 7"/>
+                <polyline points="18 17 13 12 18 7"/>
+                </svg>
+                <span class="sidebar-label whitespace-nowrap overflow-hidden transition-all duration-300">Collapse</span>
+            </button>
         </div>
 
         <!-- User -->
         <div class="p-4 border-t border-neutral-50 sidebar-footer">
-        <div class="group flex items-center gap-2.5 px-3 py-2.5 rounded-xl cursor-pointer transition-all duration-200 hover:bg-stone-50">
-            <div class="w-[34px] h-[34px] rounded-[10px] bg-neutral-100 flex items-center justify-center text-neutral-500 text-xs font-bold shrink-0">JD</div>
-            <div class="flex-1 min-w-0 sidebar-label overflow-hidden transition-all duration-300">
-            <div class="text-[0.8125rem] font-semibold text-neutral-800 truncate">John Doe</div>
-            <div class="text-[0.7rem] text-neutral-400 font-medium">Admin</div>
+            <div 
+                data-url="{% url 'profile' %}"
+                id="profileNavItem"
+                data-page="profile" onclick="navigateTo(this, 'profile')"
+                class="group flex items-center gap-2.5 px-3 py-2.5 text-neutral-800 rounded-xl cursor-pointer transition-all duration-200 hover:bg-stone-50 relative">
+                <div class="active-dot absolute -left-1.5 top-1/2 -translate-y-1/2 w-1 h-5 bg-green-500 rounded-r opacity-100 transition-opacity duration-300"></div>
+                <div class="w-[34px] h-[34px] rounded-[10px] bg-neutral-100 flex items-center justify-center text-neutral-500 text-xs font-bold shrink-0">JD</div>
+                    <div class="flex-1 min-w-0 sidebar-label overflow-hidden transition-all duration-300">
+                        <div class="text-[0.8125rem] font-semibold  truncate">John Doe</div>
+                    <div class="text-[0.7rem] text-neutral-400 font-medium">Admin</div>
+                </div>
+                <svg class="text-neutral-300 group-hover:text-neutral-500 transition-colors duration-200 sidebar-label" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
             </div>
-            <svg class="text-neutral-300 group-hover:text-neutral-500 transition-colors duration-200 sidebar-label" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-        </div>
         </div>
     </aside>
 
@@ -435,19 +432,13 @@
                 toast.info(`You are on the correct page (${currentPage})`);
                 return;
             }else{
-                console.info(`Navigating to ${currentPage} (URL: ${element_url})`);
                 window.location.href = element_url;
             }
             // Close mobile sidebar
             closeSidebar();
         }
 
-
-        window.addEventListener('DOMContentLoaded', () => {
-            // On page load, activate the nav item that matches the current page
-            const currentPage = document.getElementById('breadcrumbCurrent').textContent.trim().toLowerCase().replace(/\s+/g, '-');
-            console.info(`Current page: ${currentPage}`);
-            const activeNavItem = document.querySelector(`.nav-item[data-page="${currentPage}"]`);
+        function setActiveNavItem(page, activeNavItem = null) {
             if (activeNavItem) {
                 activeNavItem.classList.remove(...inactiveClasses);
                 activeNavItem.classList.add(...activeClasses);
@@ -458,6 +449,21 @@
                 }
                 const activeDot = activeNavItem.querySelector('.active-dot');
                 if (activeDot) activeDot.classList.replace('opacity-0', 'opacity-100');
+            }
+        }
+
+
+        window.addEventListener('DOMContentLoaded', () => {
+            // On page load, activate the nav item that matches the current page
+            const currentPage = document.getElementById('breadcrumbCurrent').textContent.trim().toLowerCase().replace(/\s+/g, '-');
+            console.log('Current page:', currentPage);
+            if (currentPage == "profile") {
+                const activeNavItem = document.querySelector(`#profileNavItem`);
+                setActiveNavItem(currentPage, activeNavItem);
+            }
+            else {
+                const activeNavItem = document.querySelector(`.nav-item[data-page="${currentPage}"]`);
+                setActiveNavItem(currentPage, activeNavItem);
             }
         });
     </script>

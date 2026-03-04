@@ -153,3 +153,39 @@ def goods_out_view(request):
         "title": "Goods Out",
     }
     return render(request, "core/goods-out.html", context)
+
+
+def payments_view(request):
+    if not request.user.is_authenticated:
+        return redirect("login")
+    context = {
+        "title": "Payments",
+    }
+    return render(request, "core/payment.html", context)
+
+
+def spoil_damage_view(request):
+    if not request.user.is_authenticated:
+        return redirect("login")
+    context = {
+        "title": "Spoilage & Loss",
+    }
+    return render(request, "core/spoil_damage.html", context)
+
+
+def reports_view(request):
+    if not request.user.is_authenticated:
+        return redirect("login")
+    context = {
+        "title": "Reports",
+    }
+    return render(request, "core/reports.html", context)
+
+
+def profile_view(request):
+    if not request.user.is_authenticated:
+        return redirect("login")
+    context = {
+        "title": "Profile",
+    }
+    return render(request, "core/profile.html", context)

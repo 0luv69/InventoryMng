@@ -1,0 +1,452 @@
+{% extends 'base.html' %}
+
+{% block title %}Reports — InventoryChamps{% endblock %}
+{% block page_title %}Reports{% endblock %}
+{% block page_subtitle %}Analytics and insights across your entire inventory operation.{% endblock %}
+
+
+{% block content %}
+
+<!-- ══════════════════════════════════════════════════════════
+     REPORTS PAGE — Full analytics & insights
+     ══════════════════════════════════════════════════════════ -->
+
+<!-- ── Page Header ── -->
+<div class="mb-6">
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-extrabold text-neutral-900 tracking-tight">Reports</h1>
+      <p class="text-sm text-neutral-400 mt-1">Analytics and insights across your entire inventory operation.</p>
+    </div>
+    <div class="flex items-center gap-2 self-start">
+      <button onclick="exportCSV()" class="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-neutral-600 bg-white border border-neutral-200 rounded-xl hover:bg-neutral-50 hover:border-neutral-300 transition-all duration-200">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Export CSV
+      </button>
+      <button onclick="window.print()" class="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-green-500 rounded-xl hover:bg-green-600 active:scale-[0.97] transition-all duration-200">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+        Print / PDF
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Date Range Selector ── -->
+<div class="bg-white border border-neutral-100 rounded-2xl p-4 mb-6">
+  <div class="flex flex-col sm:flex-row items-stretch sm:items-end gap-4">
+    <div>
+      <label class="block text-xs font-semibold text-neutral-500 mb-1.5">Date Range</label>
+      <select id="datePreset" onchange="onPresetChange()"
+              class="px-3 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200 min-w-[170px]">
+        <option value="today">Today</option>
+        <option value="this_week">This Week</option>
+        <option value="this_month" selected>This Month</option>
+        <option value="this_quarter">This Quarter</option>
+        <option value="this_year">This Year</option>
+        <option value="prev_month">Previous Month</option>
+        <option value="prev_quarter">Previous Quarter</option>
+        <option value="prev_year">Previous Year</option>
+        <option value="custom">Custom</option>
+      </select>
+    </div>
+    <div class="flex items-end gap-3">
+      <div><label class="block text-xs font-semibold text-neutral-500 mb-1.5">From</label><input type="date" id="dateFrom" onchange="onCustomDate()" class="px-3 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200"/></div>
+      <span class="pb-3 text-neutral-300">→</span>
+      <div><label class="block text-xs font-semibold text-neutral-500 mb-1.5">To</label><input type="date" id="dateTo" onchange="onCustomDate()" class="px-3 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200"/></div>
+    </div>
+    <button onclick="refreshAll()" class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-green-600 bg-green-50 border border-green-200 rounded-xl hover:bg-green-100 transition-all duration-200">
+      <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+      Update
+    </button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     TAB NAVIGATION
+     ══════════════════════════════════════════════════════════ -->
+<div class="flex items-center gap-1 mb-6 border-b border-neutral-100 overflow-x-auto scrollbar-thin">
+  <button onclick="switchTab('overview')" id="tabOverview" class="report-tab px-5 py-3 text-sm font-semibold text-green-600 border-b-2 border-green-500 whitespace-nowrap transition-all duration-200">Overview</button>
+  <button onclick="switchTab('sales')" id="tabSales" class="report-tab px-5 py-3 text-sm font-medium text-neutral-400 border-b-2 border-transparent hover:text-neutral-600 whitespace-nowrap transition-all duration-200">Sales</button>
+  <button onclick="switchTab('purchases')" id="tabPurchases" class="report-tab px-5 py-3 text-sm font-medium text-neutral-400 border-b-2 border-transparent hover:text-neutral-600 whitespace-nowrap transition-all duration-200">Purchases</button>
+  <button onclick="switchTab('inventory')" id="tabInventory" class="report-tab px-5 py-3 text-sm font-medium text-neutral-400 border-b-2 border-transparent hover:text-neutral-600 whitespace-nowrap transition-all duration-200">Inventory</button>
+  <button onclick="switchTab('spoilage')" id="tabSpoilage" class="report-tab px-5 py-3 text-sm font-medium text-neutral-400 border-b-2 border-transparent hover:text-neutral-600 whitespace-nowrap transition-all duration-200">Spoilage &amp; Loss</button>
+  <button onclick="switchTab('payments')" id="tabPayments" class="report-tab px-5 py-3 text-sm font-medium text-neutral-400 border-b-2 border-transparent hover:text-neutral-600 whitespace-nowrap transition-all duration-200">Payments</button>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     TAB PANELS
+     ══════════════════════════════════════════════════════════ -->
+
+<!-- ▸▸▸ OVERVIEW ▸▸▸ -->
+<div id="panelOverview" class="tab-panel space-y-6">
+
+  <!-- KPI Row -->
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+    <div class="bg-white border border-neutral-100 rounded-2xl px-5 py-5 hover:shadow-[0_2px_12px_rgba(0,0,0,0.04)] transition-all duration-300"><div class="text-[0.65rem] font-semibold text-neutral-400 uppercase tracking-wide mb-2">Revenue</div><div class="text-2xl font-extrabold text-neutral-900 tracking-tight" id="kpiRevenue">$0</div><div id="kpiRevenueChange" class="inline-flex items-center gap-1 text-[0.65rem] font-semibold mt-1.5 px-2 py-0.5 rounded-md bg-green-50 text-green-600">—</div></div>
+    <div class="bg-white border border-neutral-100 rounded-2xl px-5 py-5 hover:shadow-[0_2px_12px_rgba(0,0,0,0.04)] transition-all duration-300"><div class="text-[0.65rem] font-semibold text-neutral-400 uppercase tracking-wide mb-2">Cost of Goods</div><div class="text-2xl font-extrabold text-neutral-900 tracking-tight" id="kpiCOGS">$0</div><div id="kpiCOGSChange" class="inline-flex items-center gap-1 text-[0.65rem] font-semibold mt-1.5 px-2 py-0.5 rounded-md bg-neutral-100 text-neutral-500">—</div></div>
+    <div class="bg-white border border-neutral-100 rounded-2xl px-5 py-5 hover:shadow-[0_2px_12px_rgba(0,0,0,0.04)] transition-all duration-300"><div class="text-[0.65rem] font-semibold text-neutral-400 uppercase tracking-wide mb-2">Gross Profit</div><div class="text-2xl font-extrabold tracking-tight" id="kpiProfit">$0</div><div id="kpiMargin" class="inline-flex items-center gap-1 text-[0.65rem] font-semibold mt-1.5 px-2 py-0.5 rounded-md bg-green-50 text-green-600">—</div></div>
+    <div class="bg-white border border-neutral-100 rounded-2xl px-5 py-5 hover:shadow-[0_2px_12px_rgba(0,0,0,0.04)] transition-all duration-300"><div class="text-[0.65rem] font-semibold text-neutral-400 uppercase tracking-wide mb-2">Loss (Spoilage)</div><div class="text-2xl font-extrabold text-red-500 tracking-tight" id="kpiLoss">$0</div><div id="kpiLossItems" class="inline-flex items-center gap-1 text-[0.65rem] font-semibold mt-1.5 px-2 py-0.5 rounded-md bg-red-50 text-red-500">—</div></div>
+  </div>
+
+  <!-- Profit & Loss Statement -->
+  <div class="bg-white border border-neutral-100 rounded-2xl overflow-hidden">
+    <div class="px-6 py-4 border-b border-neutral-100 flex items-center justify-between">
+      <h3 class="text-sm font-bold text-neutral-900">Profit &amp; Loss Statement</h3>
+      <span id="plDateRange" class="text-xs text-neutral-400 font-medium"></span>
+    </div>
+    <div class="divide-y divide-neutral-50" id="plStatement"></div>
+  </div>
+
+  <!-- Revenue chart placeholder + mini charts -->
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+    <div class="lg:col-span-2 bg-white border border-neutral-100 rounded-2xl p-6">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-sm font-bold text-neutral-900">Revenue vs Expenses</h3>
+        <div class="flex items-center gap-4 text-[0.65rem] font-semibold"><span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-green-500"></span>Revenue</span><span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-red-400"></span>Expenses</span></div>
+      </div>
+      <div id="barChart" class="flex items-end gap-2 h-52"></div>
+      <div id="barLabels" class="flex gap-2 mt-2"></div>
+    </div>
+    <div class="bg-white border border-neutral-100 rounded-2xl p-6">
+      <h3 class="text-sm font-bold text-neutral-900 mb-4">Cash Flow</h3>
+      <div class="space-y-5">
+        <div><div class="flex items-center justify-between mb-1"><span class="text-xs font-semibold text-neutral-500">Received</span><span class="text-sm font-bold text-green-600" id="cfReceived">$0</span></div><div class="w-full h-2 bg-neutral-100 rounded-full overflow-hidden"><div id="cfReceivedBar" class="h-full bg-green-500 rounded-full transition-all duration-700" style="width:0%"></div></div></div>
+        <div><div class="flex items-center justify-between mb-1"><span class="text-xs font-semibold text-neutral-500">Sent</span><span class="text-sm font-bold text-red-500" id="cfSent">$0</span></div><div class="w-full h-2 bg-neutral-100 rounded-full overflow-hidden"><div id="cfSentBar" class="h-full bg-red-400 rounded-full transition-all duration-700" style="width:0%"></div></div></div>
+        <div class="pt-3 border-t border-neutral-100"><div class="flex items-center justify-between"><span class="text-xs font-bold text-neutral-700">Net Flow</span><span class="text-lg font-extrabold tracking-tight" id="cfNet">$0</span></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ▸▸▸ SALES ▸▸▸ -->
+<div id="panelSales" class="tab-panel hidden space-y-6">
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+    <div class="bg-white border border-neutral-100 rounded-2xl px-5 py-4"><div class="text-[0.65rem] font-semibold text-neutral-400 uppercase tracking-wide mb-1">Total Sales</div><div class="text-xl font-extrabold text-neutral-900 tracking-tight" id="sSalesCount">0</div></div>
+    <div class="bg-white border border-neutral-100 rounded-2xl px-5 py-4"><div class="text-[0.65rem] font-semibold text-neutral-400 uppercase tracking-wide mb-1">Revenue</div><div class="text-xl font-extrabold text-green-600 tracking-tight" id="sRevenue">$0</div></div>
+    <div class="bg-white border border-neutral-100 rounded-2xl px-5 py-4"><div class="text-[0.65rem] font-semibold text-neutral-400 uppercase tracking-wide mb-1">Units Sold</div><div class="text-xl font-extrabold text-neutral-900 tracking-tight" id="sUnits">0</div></div>
+    <div class="bg-white border border-neutral-100 rounded-2xl px-5 py-4"><div class="text-[0.65rem] font-semibold text-neutral-400 uppercase tracking-wide mb-1">Avg Sale</div><div class="text-xl font-extrabold text-neutral-900 tracking-tight" id="sAvg">$0</div></div>
+  </div>
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+    <div class="bg-white border border-neutral-100 rounded-2xl overflow-hidden"><div class="px-5 py-4 border-b border-neutral-100"><h3 class="text-sm font-bold text-neutral-900">Top Selling Items</h3></div><div id="topItemsTable" class="divide-y divide-neutral-50"></div></div>
+    <div class="bg-white border border-neutral-100 rounded-2xl overflow-hidden"><div class="px-5 py-4 border-b border-neutral-100"><h3 class="text-sm font-bold text-neutral-900">Top Customers (by Revenue)</h3></div><div id="topCustTable" class="divide-y divide-neutral-50"></div></div>
+  </div>
+  <div class="bg-white border border-neutral-100 rounded-2xl overflow-hidden"><div class="px-5 py-4 border-b border-neutral-100"><h3 class="text-sm font-bold text-neutral-900">Sales by Payment Status</h3></div><div id="salesByPay" class="p-5"></div></div>
+</div>
+
+<!-- ▸▸▸ PURCHASES ▸▸▸ -->
+<div id="panelPurchases" class="tab-panel hidden space-y-6">
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+    <div class="bg-white border border-neutral-100 rounded-2xl px-5 py-4"><div class="text-[0.65rem] font-semibold text-neutral-400 uppercase tracking-wide mb-1">Total Purchases</div><div class="text-xl font-extrabold text-neutral-900 tracking-tight" id="pCount">0</div></div>
+    <div class="bg-white border border-neutral-100 rounded-2xl px-5 py-4"><div class="text-[0.65rem] font-semibold text-neutral-400 uppercase tracking-wide mb-1">Total Spent</div><div class="text-xl font-extrabold text-red-500 tracking-tight" id="pSpent">$0</div></div>
+    <div class="bg-white border border-neutral-100 rounded-2xl px-5 py-4"><div class="text-[0.65rem] font-semibold text-neutral-400 uppercase tracking-wide mb-1">Units Purchased</div><div class="text-xl font-extrabold text-neutral-900 tracking-tight" id="pUnits">0</div></div>
+    <div class="bg-white border border-neutral-100 rounded-2xl px-5 py-4"><div class="text-[0.65rem] font-semibold text-neutral-400 uppercase tracking-wide mb-1">Avg Purchase</div><div class="text-xl font-extrabold text-neutral-900 tracking-tight" id="pAvg">$0</div></div>
+  </div>
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+    <div class="bg-white border border-neutral-100 rounded-2xl overflow-hidden"><div class="px-5 py-4 border-b border-neutral-100"><h3 class="text-sm font-bold text-neutral-900">Top Purchased Items</h3></div><div id="topPurchItems" class="divide-y divide-neutral-50"></div></div>
+    <div class="bg-white border border-neutral-100 rounded-2xl overflow-hidden"><div class="px-5 py-4 border-b border-neutral-100"><h3 class="text-sm font-bold text-neutral-900">Top Suppliers (by Spend)</h3></div><div id="topSuppliers" class="divide-y divide-neutral-50"></div></div>
+  </div>
+</div>
+
+<!-- ▸▸▸ INVENTORY ▸▸▸ -->
+<div id="panelInventory" class="tab-panel hidden space-y-6">
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+    <div class="bg-white border border-neutral-100 rounded-2xl px-5 py-4"><div class="text-[0.65rem] font-semibold text-neutral-400 uppercase tracking-wide mb-1">Total SKUs</div><div class="text-xl font-extrabold text-neutral-900 tracking-tight" id="iSkus">0</div></div>
+    <div class="bg-white border border-neutral-100 rounded-2xl px-5 py-4"><div class="text-[0.65rem] font-semibold text-neutral-400 uppercase tracking-wide mb-1">Total Stock Units</div><div class="text-xl font-extrabold text-neutral-900 tracking-tight" id="iStockUnits">0</div></div>
+    <div class="bg-white border border-neutral-100 rounded-2xl px-5 py-4"><div class="text-[0.65rem] font-semibold text-neutral-400 uppercase tracking-wide mb-1">Inventory Value</div><div class="text-xl font-extrabold text-green-600 tracking-tight" id="iValue">$0</div></div>
+    <div class="bg-white border border-neutral-100 rounded-2xl px-5 py-4"><div class="text-[0.65rem] font-semibold text-neutral-400 uppercase tracking-wide mb-1">Low Stock Alerts</div><div class="text-xl font-extrabold text-amber-600 tracking-tight" id="iLowStock">0</div></div>
+  </div>
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+    <div class="bg-white border border-neutral-100 rounded-2xl overflow-hidden"><div class="px-5 py-4 border-b border-neutral-100"><h3 class="text-sm font-bold text-neutral-900">Stock Level by Item</h3></div><div id="stockBars" class="p-5 space-y-3 max-h-96 overflow-y-auto"></div></div>
+    <div class="bg-white border border-neutral-100 rounded-2xl overflow-hidden"><div class="px-5 py-4 border-b border-neutral-100 flex items-center justify-between"><h3 class="text-sm font-bold text-neutral-900">Low Stock Items</h3><span class="text-[0.65rem] font-bold text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md" id="lowStockBadge">0 items</span></div><div id="lowStockList" class="divide-y divide-neutral-50"></div></div>
+  </div>
+</div>
+
+<!-- ▸▸▸ SPOILAGE ▸▸▸ -->
+<div id="panelSpoilage" class="tab-panel hidden space-y-6">
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+    <div class="bg-white border border-neutral-100 rounded-2xl px-5 py-4"><div class="text-[0.65rem] font-semibold text-neutral-400 uppercase tracking-wide mb-1">Records</div><div class="text-xl font-extrabold text-neutral-900 tracking-tight" id="spRecords">0</div></div>
+    <div class="bg-white border border-neutral-100 rounded-2xl px-5 py-4"><div class="text-[0.65rem] font-semibold text-neutral-400 uppercase tracking-wide mb-1">Units Lost</div><div class="text-xl font-extrabold text-red-500 tracking-tight" id="spUnits">0</div></div>
+    <div class="bg-white border border-neutral-100 rounded-2xl px-5 py-4"><div class="text-[0.65rem] font-semibold text-neutral-400 uppercase tracking-wide mb-1">Total Loss</div><div class="text-xl font-extrabold text-red-500 tracking-tight" id="spLoss">$0</div></div>
+    <div class="bg-white border border-neutral-100 rounded-2xl px-5 py-4"><div class="text-[0.65rem] font-semibold text-neutral-400 uppercase tracking-wide mb-1">Recovered</div><div class="text-xl font-extrabold text-green-600 tracking-tight" id="spRecovery">$0</div></div>
+  </div>
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+    <div class="bg-white border border-neutral-100 rounded-2xl overflow-hidden"><div class="px-5 py-4 border-b border-neutral-100"><h3 class="text-sm font-bold text-neutral-900">Loss by Reason</h3></div><div id="lossByReason" class="p-5 space-y-3"></div></div>
+    <div class="bg-white border border-neutral-100 rounded-2xl overflow-hidden"><div class="px-5 py-4 border-b border-neutral-100"><h3 class="text-sm font-bold text-neutral-900">Most Affected Items</h3></div><div id="lossItems" class="divide-y divide-neutral-50"></div></div>
+  </div>
+</div>
+
+<!-- ▸▸▸ PAYMENTS ▸▸▸ -->
+<div id="panelPayments" class="tab-panel hidden space-y-6">
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+    <div class="bg-white border border-neutral-100 rounded-2xl px-5 py-4"><div class="text-[0.65rem] font-semibold text-neutral-400 uppercase tracking-wide mb-1">Total Received</div><div class="text-xl font-extrabold text-green-600 tracking-tight" id="pyReceived">$0</div></div>
+    <div class="bg-white border border-neutral-100 rounded-2xl px-5 py-4"><div class="text-[0.65rem] font-semibold text-neutral-400 uppercase tracking-wide mb-1">Total Sent</div><div class="text-xl font-extrabold text-red-500 tracking-tight" id="pySent">$0</div></div>
+    <div class="bg-white border border-neutral-100 rounded-2xl px-5 py-4"><div class="text-[0.65rem] font-semibold text-neutral-400 uppercase tracking-wide mb-1">Net Flow</div><div class="text-xl font-extrabold text-neutral-900 tracking-tight" id="pyNet">$0</div></div>
+    <div class="bg-white border border-neutral-100 rounded-2xl px-5 py-4"><div class="text-[0.65rem] font-semibold text-neutral-400 uppercase tracking-wide mb-1">Pending</div><div class="text-xl font-extrabold text-amber-600 tracking-tight" id="pyPending">$0</div></div>
+  </div>
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+    <div class="bg-white border border-neutral-100 rounded-2xl overflow-hidden"><div class="px-5 py-4 border-b border-neutral-100"><h3 class="text-sm font-bold text-neutral-900">Payment by Method</h3></div><div id="payByMethod" class="p-5 space-y-3"></div></div>
+    <div class="bg-white border border-neutral-100 rounded-2xl overflow-hidden"><div class="px-5 py-4 border-b border-neutral-100"><h3 class="text-sm font-bold text-neutral-900">Payment Status Breakdown</h3></div><div id="payByStatus" class="p-5 space-y-3"></div></div>
+  </div>
+</div>
+
+
+<!-- ═══ TOAST ═══ -->
+<div id="feedbackToast" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[90] flex items-center gap-3 px-5 py-3 rounded-xl shadow-lg border text-sm font-semibold pointer-events-none opacity-0 translate-y-4 transition-all duration-300"><svg id="toastIcon" class="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></svg><span id="toastText"></span></div>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     JAVASCRIPT
+     ══════════════════════════════════════════════════════════ -->
+<script>
+(function(){
+
+  /* ═══════════════════════════════════════
+     MOCK DATA — mirrors all other pages
+     ═══════════════════════════════════════ */
+
+  const items=[
+    {id:1,name:'Organic Olive Oil',unit:'lt',cost:12.99,price:15.99,stock:340},
+    {id:2,name:'Basmati Rice',unit:'kg',cost:8.50,price:10.50,stock:120},
+    {id:3,name:'Steel Bolts M8x25',unit:'box',cost:24.00,price:32.00,stock:15},
+    {id:4,name:'A4 Copy Paper',unit:'pc',cost:5.25,price:6.25,stock:200},
+    {id:5,name:'Hydraulic Brake Fluid',unit:'lt',cost:18.75,price:22.75,stock:89},
+    {id:6,name:'Wireless Mouse',unit:'pc',cost:29.99,price:34.99,stock:56},
+    {id:7,name:'Cinnamon Sticks',unit:'kg',cost:6.80,price:9.80,stock:200},
+    {id:8,name:'LED Bulb 9W',unit:'dz',cost:42.00,price:48.00,stock:8},
+    {id:9,name:'Hand Sanitizer Gel',unit:'pc',cost:3.99,price:5.49,stock:410},
+    {id:10,name:'Corrugated Shipping Box',unit:'box',cost:1.20,price:1.80,stock:1200},
+  ];
+  const customers=[
+    {id:1,name:'Riverside Hardware'},{id:2,name:'Metro Office Supplies'},{id:3,name:'FreshMart Grocery'},
+    {id:4,name:'BuildRight Construction'},{id:5,name:'TechZone Electronics'},{id:6,name:'GreenBasket Organics'},
+  ];
+  const suppliers=[
+    {id:101,name:'Acme Industrial Supply'},{id:102,name:'GreenLeaf Organics'},{id:103,name:'TechParts Global'},
+    {id:104,name:'Atlas Freight Co.'},{id:105,name:'Pristine Packaging Ltd'},{id:106,name:'SafeGuard Chemicals'},
+  ];
+
+  const sales=[
+    {id:1,custId:3,items:[{itemId:1,qty:20,price:15.99},{itemId:7,qty:10,price:9.80}],payStatus:'paid',date:'2026-03-04'},
+    {id:2,custId:1,items:[{itemId:3,qty:5,price:32.00}],payStatus:'unpaid',date:'2026-03-04'},
+    {id:3,custId:5,items:[{itemId:6,qty:10,price:34.99},{itemId:9,qty:50,price:5.49}],payStatus:'paid',date:'2026-03-04'},
+    {id:4,custId:2,items:[{itemId:4,qty:100,price:6.25},{itemId:10,qty:200,price:1.80}],payStatus:'partial',date:'2026-03-03'},
+    {id:5,custId:6,items:[{itemId:1,qty:15,price:15.99},{itemId:2,qty:30,price:10.50},{itemId:7,qty:20,price:9.80}],payStatus:'paid',date:'2026-03-03'},
+    {id:6,custId:4,items:[{itemId:5,qty:8,price:22.75},{itemId:3,qty:10,price:32.00}],payStatus:'paid',date:'2026-03-02'},
+    {id:7,custId:3,items:[{itemId:9,qty:100,price:5.49}],payStatus:'unpaid',date:'2026-03-01'},
+    {id:8,custId:1,items:[{itemId:8,qty:3,price:48.00}],payStatus:'paid',date:'2026-02-28'},
+  ];
+  const purchases=[
+    {id:1,suppId:102,items:[{itemId:1,qty:50,cost:12.99},{itemId:7,qty:40,cost:6.80}],date:'2026-03-03'},
+    {id:2,suppId:101,items:[{itemId:3,qty:30,cost:24.00},{itemId:5,qty:20,cost:18.75}],date:'2026-03-02'},
+    {id:3,suppId:105,items:[{itemId:10,qty:500,cost:1.20}],date:'2026-03-01'},
+    {id:4,suppId:103,items:[{itemId:6,qty:25,cost:29.99}],date:'2026-02-28'},
+    {id:5,suppId:102,items:[{itemId:2,qty:60,cost:8.50}],date:'2026-02-25'},
+    {id:6,suppId:106,items:[{itemId:5,qty:15,cost:18.75}],date:'2026-02-20'},
+  ];
+  const spoilage=[
+    {id:1,itemId:7,reason:'expired',qty:30,lossValue:204,recovery:0,date:'2026-03-04'},
+    {id:2,itemId:1,reason:'damaged',qty:5,lossValue:64.95,recovery:0,date:'2026-03-04'},
+    {id:3,itemId:6,reason:'sample',qty:3,lossValue:89.97,recovery:0,date:'2026-03-03'},
+    {id:4,itemId:9,reason:'sample',qty:20,lossValue:79.80,recovery:0,date:'2026-03-03'},
+    {id:5,itemId:4,reason:'damaged',qty:50,lossValue:262.50,recovery:120,date:'2026-03-02'},
+    {id:6,itemId:3,reason:'lost',qty:8,lossValue:192,recovery:0,date:'2026-03-01'},
+    {id:7,itemId:2,reason:'expired',qty:15,lossValue:127.50,recovery:0,date:'2026-02-28'},
+    {id:8,itemId:8,reason:'damaged',qty:2,lossValue:84,recovery:0,date:'2026-02-27'},
+    {id:9,itemId:10,reason:'writeoff',qty:40,lossValue:48,recovery:0,date:'2026-02-25'},
+    {id:10,itemId:5,reason:'lost',qty:3,lossValue:56.25,recovery:0,date:'2026-02-22'},
+  ];
+  const payments=[
+    {id:1,dir:'in',partyType:'customer',partyId:3,amount:575,method:'cash',status:'completed',date:'2026-03-04'},
+    {id:2,dir:'in',partyType:'customer',partyId:5,amount:589.40,method:'online',status:'completed',date:'2026-03-04'},
+    {id:3,dir:'out',partyType:'supplier',partyId:102,amount:2135,method:'online',status:'completed',date:'2026-03-04'},
+    {id:4,dir:'in',partyType:'customer',partyId:2,amount:485,method:'cheque',status:'pending',date:'2026-03-04'},
+    {id:5,dir:'out',partyType:'supplier',partyId:101,amount:600,method:'online',status:'completed',date:'2026-03-03'},
+    {id:6,dir:'in',partyType:'customer',partyId:6,amount:811.85,method:'online',status:'completed',date:'2026-03-03'},
+    {id:7,dir:'out',partyType:'supplier',partyId:105,amount:500,method:'cash',status:'completed',date:'2026-03-02'},
+    {id:8,dir:'in',partyType:'customer',partyId:4,amount:502,method:'cash',status:'completed',date:'2026-03-02'},
+    {id:9,dir:'out',partyType:'supplier',partyId:103,amount:650,method:'online',status:'completed',date:'2026-03-01'},
+    {id:10,dir:'in',partyType:'customer',partyId:3,amount:538.02,method:'online',status:'failed',date:'2026-03-01'},
+    {id:11,dir:'out',partyType:'supplier',partyId:106,amount:350,method:'cash',status:'completed',date:'2026-02-28'},
+    {id:12,dir:'in',partyType:'customer',partyId:1,amount:144,method:'online',status:'completed',date:'2026-02-28'},
+    {id:13,dir:'in',partyType:'customer',partyId:1,amount:3200,method:'online',status:'completed',date:'2026-02-25'},
+    {id:14,dir:'out',partyType:'supplier',partyId:101,amount:975,method:'online',status:'completed',date:'2026-02-25'},
+  ];
+
+  /* ═══════════════════════════════════════ */
+  const fmtM=n=>'$'+Math.abs(n).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const fmtD=d=>new Date(d).toLocaleDateString('en-US',{month:'short',day:'numeric'});
+  const getItem=id=>items.find(i=>i.id===id);
+  const getCust=id=>customers.find(c=>c.id===id);
+  const getSupp=id=>suppliers.find(s=>s.id===id);
+
+  /* ═══ DATE RANGE ═══ */
+  let dFrom,dTo;
+
+  function today(){return new Date().toISOString().slice(0,10);}
+  function d(y,m,dd){return new Date(y,m,dd).toISOString().slice(0,10);}
+  function startOf(unit){const n=new Date();if(unit==='week'){const dy=n.getDay();n.setDate(n.getDate()-dy);}else if(unit==='month')n.setDate(1);else if(unit==='quarter'){const q=Math.floor(n.getMonth()/3)*3;n.setMonth(q,1);}else if(unit==='year'){n.setMonth(0,1);}return n.toISOString().slice(0,10);}
+  function endOf(unit){const n=new Date();if(unit==='week'){const dy=n.getDay();n.setDate(n.getDate()+(6-dy));}else if(unit==='month'){n.setMonth(n.getMonth()+1,0);}else if(unit==='quarter'){const q=Math.floor(n.getMonth()/3)*3;n.setMonth(q+3,0);}else if(unit==='year'){n.setMonth(11,31);}return n.toISOString().slice(0,10);}
+  function prevStartOf(unit){const n=new Date();if(unit==='month'){n.setMonth(n.getMonth()-1,1);}else if(unit==='quarter'){const q=Math.floor(n.getMonth()/3)*3;n.setMonth(q-3,1);}else if(unit==='year'){n.setFullYear(n.getFullYear()-1,0,1);}return n.toISOString().slice(0,10);}
+  function prevEndOf(unit){const n=new Date();if(unit==='month'){n.setMonth(n.getMonth(),0);}else if(unit==='quarter'){const q=Math.floor(n.getMonth()/3)*3;n.setMonth(q,0);}else if(unit==='year'){n.setFullYear(n.getFullYear()-1,11,31);}return n.toISOString().slice(0,10);}
+
+  window.onPresetChange=()=>{
+    const v=document.getElementById('datePreset').value;
+    const map={today:[today(),today()],this_week:[startOf('week'),endOf('week')],this_month:[startOf('month'),endOf('month')],this_quarter:[startOf('quarter'),endOf('quarter')],this_year:[startOf('year'),endOf('year')],prev_month:[prevStartOf('month'),prevEndOf('month')],prev_quarter:[prevStartOf('quarter'),prevEndOf('quarter')],prev_year:[prevStartOf('year'),prevEndOf('year')]};
+    if(map[v]){dFrom=map[v][0];dTo=map[v][1];document.getElementById('dateFrom').value=dFrom;document.getElementById('dateTo').value=dTo;}
+  };
+  window.onCustomDate=()=>{document.getElementById('datePreset').value='custom';dFrom=document.getElementById('dateFrom').value;dTo=document.getElementById('dateTo').value;};
+  window.refreshAll=()=>{refreshReport();showToast('Report updated','success');};
+
+  // Init dates
+  dFrom=startOf('month');dTo=endOf('month');document.getElementById('dateFrom').value=dFrom;document.getElementById('dateTo').value=dTo;
+
+  /* ═══ TAB SWITCH ═══ */
+  window.switchTab=tab=>{document.querySelectorAll('.report-tab').forEach(b=>{b.classList.remove('text-green-600','font-semibold','border-green-500');b.classList.add('text-neutral-400','font-medium','border-transparent');});const el=document.getElementById('tab'+tab.charAt(0).toUpperCase()+tab.slice(1));el.classList.remove('text-neutral-400','font-medium','border-transparent');el.classList.add('text-green-600','font-semibold','border-green-500');document.querySelectorAll('.tab-panel').forEach(p=>p.classList.add('hidden'));document.getElementById('panel'+tab.charAt(0).toUpperCase()+tab.slice(1)).classList.remove('hidden');};
+
+  /* ═══ FILTER HELPER ═══ */
+  function inRange(date){return date>=dFrom&&date<=dTo;}
+
+  /* ═══ REFRESH ALL ═══ */
+  function refreshReport(){buildOverview();buildSales();buildPurchases();buildInventory();buildSpoilage();buildPayments();}
+
+  /* ── OVERVIEW ── */
+  function buildOverview(){
+    const fSales=sales.filter(s=>inRange(s.date)),fPurch=purchases.filter(p=>inRange(p.date)),fSp=spoilage.filter(s=>inRange(s.date)),fPay=payments.filter(p=>inRange(p.date));
+    const revenue=fSales.reduce((s,sl)=>s+sl.items.reduce((a,li)=>a+li.qty*li.price,0),0);
+    const cogs=fSales.reduce((s,sl)=>s+sl.items.reduce((a,li)=>{const it=getItem(li.itemId);return a+(it?li.qty*it.cost:0);},0),0);
+    const profit=revenue-cogs;const margin=revenue?((profit/revenue)*100).toFixed(1):0;
+    const loss=fSp.reduce((s,r)=>s+r.lossValue,0);const lossRec=fSp.length;
+
+    document.getElementById('kpiRevenue').textContent=fmtM(revenue);
+    document.getElementById('kpiRevenueChange').textContent=fSales.length+' sales';
+    document.getElementById('kpiCOGS').textContent=fmtM(cogs);
+    document.getElementById('kpiCOGSChange').textContent=fPurch.length+' purchases';
+    document.getElementById('kpiProfit').textContent=fmtM(profit);
+    document.getElementById('kpiProfit').className='text-2xl font-extrabold tracking-tight '+(profit>=0?'text-green-600':'text-red-500');
+    document.getElementById('kpiMargin').textContent=margin+'% margin';
+    document.getElementById('kpiMargin').className='inline-flex items-center gap-1 text-[0.65rem] font-semibold mt-1.5 px-2 py-0.5 rounded-md '+(profit>=0?'bg-green-50 text-green-600':'bg-red-50 text-red-500');
+    document.getElementById('kpiLoss').textContent=fmtM(loss);
+    document.getElementById('kpiLossItems').textContent=lossRec+' records';
+
+    // P&L Statement
+    const purchTotal=fPurch.reduce((s,p)=>s+p.items.reduce((a,li)=>a+li.qty*li.cost,0),0);
+    const netProfit=revenue-purchTotal-loss;
+    const fmtR=(l,v,bold,color)=>`<div class="flex items-center justify-between px-6 py-3 ${bold?'bg-neutral-50':''}"><span class="text-sm ${bold?'font-bold text-neutral-900':'text-neutral-600'}">${l}</span><span class="text-sm font-bold ${color||'text-neutral-900'}">${v<0?'-':''}${fmtM(v)}</span></div>`;
+    document.getElementById('plStatement').innerHTML=fmtR('Sales Revenue',revenue,false,'text-green-600')+fmtR('Cost of Goods Sold',cogs,false,'text-neutral-600')+fmtR('Gross Profit',profit,true,profit>=0?'text-green-600':'text-red-500')+fmtR('Purchase Costs',purchTotal,false,'text-red-500')+fmtR('Spoilage & Loss',loss,false,'text-red-500')+fmtR('Net Profit / Loss',netProfit,true,netProfit>=0?'text-green-700':'text-red-600');
+    document.getElementById('plDateRange').textContent=new Date(dFrom).toLocaleDateString('en-US',{month:'short',day:'numeric'})+' – '+new Date(dTo).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+
+    // Bar chart
+    const days={};fSales.forEach(s=>{const k=s.date;if(!days[k])days[k]={rev:0,exp:0};s.items.forEach(li=>{days[k].rev+=li.qty*li.price;});});fPurch.forEach(p=>{const k=p.date;if(!days[k])days[k]={rev:0,exp:0};p.items.forEach(li=>{days[k].exp+=li.qty*li.cost;});});fSp.forEach(r=>{const k=r.date;if(!days[k])days[k]={rev:0,exp:0};days[k].exp+=r.lossValue;});
+    const sorted=Object.entries(days).sort((a,b)=>a[0].localeCompare(b[0]));const maxV=Math.max(...sorted.map(([,d])=>Math.max(d.rev,d.exp)),1);
+    document.getElementById('barChart').innerHTML=sorted.map(([,d])=>{const rH=(d.rev/maxV*100).toFixed(1),eH=(d.exp/maxV*100).toFixed(1);return `<div class="flex-1 flex items-end gap-0.5"><div class="flex-1 bg-green-500 rounded-t-md transition-all duration-700" style="height:${rH}%" title="${fmtM(d.rev)}"></div><div class="flex-1 bg-red-400 rounded-t-md transition-all duration-700" style="height:${eH}%" title="${fmtM(d.exp)}"></div></div>`;}).join('');
+    document.getElementById('barLabels').innerHTML=sorted.map(([k])=>`<div class="flex-1 text-center text-[0.55rem] font-semibold text-neutral-400">${fmtD(k)}</div>`).join('');
+
+    // Cash flow
+    const recvd=fPay.filter(p=>p.dir==='in'&&p.status==='completed').reduce((s,p)=>s+p.amount,0);
+    const sent=fPay.filter(p=>p.dir==='out'&&p.status==='completed').reduce((s,p)=>s+p.amount,0);
+    const cfMax=Math.max(recvd,sent,1);
+    document.getElementById('cfReceived').textContent=fmtM(recvd);document.getElementById('cfReceivedBar').style.width=(recvd/cfMax*100)+'%';
+    document.getElementById('cfSent').textContent=fmtM(sent);document.getElementById('cfSentBar').style.width=(sent/cfMax*100)+'%';
+    const net=recvd-sent;document.getElementById('cfNet').textContent=(net>=0?'+':'-')+fmtM(net);document.getElementById('cfNet').className='text-lg font-extrabold tracking-tight '+(net>=0?'text-green-600':'text-red-500');
+  }
+
+  /* ── SALES ── */
+  function buildSales(){
+    const f=sales.filter(s=>inRange(s.date));
+    const rev=f.reduce((s,sl)=>s+sl.items.reduce((a,li)=>a+li.qty*li.price,0),0);
+    const units=f.reduce((s,sl)=>s+sl.items.reduce((a,li)=>a+li.qty,0),0);
+    document.getElementById('sSalesCount').textContent=f.length;document.getElementById('sRevenue').textContent=fmtM(rev);document.getElementById('sUnits').textContent=units;document.getElementById('sAvg').textContent=f.length?fmtM(rev/f.length):'$0';
+    // Top items
+    const im={};f.forEach(sl=>sl.items.forEach(li=>{if(!im[li.itemId])im[li.itemId]={qty:0,rev:0};im[li.itemId].qty+=li.qty;im[li.itemId].rev+=li.qty*li.price;}));
+    const topI=Object.entries(im).sort((a,b)=>b[1].rev-a[1].rev).slice(0,5);const topMax=topI.length?topI[0][1].rev:1;
+    document.getElementById('topItemsTable').innerHTML=topI.map(([id,d])=>{const it=getItem(parseInt(id));return `<div class="flex items-center gap-4 px-5 py-3"><div class="flex-1 min-w-0"><div class="text-sm font-semibold text-neutral-800 truncate">${it?it.name:'—'}</div><div class="w-full h-1.5 bg-neutral-100 rounded-full mt-1.5 overflow-hidden"><div class="h-full bg-green-500 rounded-full" style="width:${(d.rev/topMax*100).toFixed(0)}%"></div></div></div><div class="text-right shrink-0"><div class="text-sm font-bold text-neutral-900">${fmtM(d.rev)}</div><div class="text-xs text-neutral-400">${d.qty} units</div></div></div>`;}).join('')||'<div class="px-5 py-8 text-center text-xs text-neutral-400">No sales in range</div>';
+    // Top customers
+    const cm={};f.forEach(sl=>{if(!cm[sl.custId])cm[sl.custId]=0;sl.items.forEach(li=>{cm[sl.custId]+=li.qty*li.price;});});
+    const topC=Object.entries(cm).sort((a,b)=>b[1]-a[1]).slice(0,5);const cMax=topC.length?topC[0][1]:1;
+    document.getElementById('topCustTable').innerHTML=topC.map(([id,rev])=>{const c=getCust(parseInt(id));return `<div class="flex items-center gap-4 px-5 py-3"><div class="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-xs font-bold text-blue-600 shrink-0">${c?c.name.charAt(0):'-'}</div><div class="flex-1 min-w-0"><div class="text-sm font-semibold text-neutral-800 truncate">${c?c.name:'—'}</div><div class="w-full h-1.5 bg-neutral-100 rounded-full mt-1.5 overflow-hidden"><div class="h-full bg-blue-500 rounded-full" style="width:${(rev/cMax*100).toFixed(0)}%"></div></div></div><div class="text-sm font-bold text-neutral-900 shrink-0">${fmtM(rev)}</div></div>`;}).join('')||'<div class="px-5 py-8 text-center text-xs text-neutral-400">No data</div>';
+    // Sales by payment status
+    const ps={paid:0,partial:0,unpaid:0};f.forEach(s=>ps[s.payStatus]=(ps[s.payStatus]||0)+1);const psT=f.length||1;
+    const psC={paid:{bg:'bg-green-500',text:'text-green-600'},partial:{bg:'bg-amber-400',text:'text-amber-600'},unpaid:{bg:'bg-red-400',text:'text-red-600'}};
+    document.getElementById('salesByPay').innerHTML=Object.entries(ps).map(([k,v])=>{const pct=(v/psT*100).toFixed(0);return `<div class="flex items-center gap-4 mb-3"><span class="w-16 text-xs font-bold capitalize ${psC[k].text}">${k}</span><div class="flex-1 h-3 bg-neutral-100 rounded-full overflow-hidden"><div class="h-full ${psC[k].bg} rounded-full transition-all duration-700" style="width:${pct}%"></div></div><span class="text-xs font-bold text-neutral-700 w-16 text-right">${v} (${pct}%)</span></div>`;}).join('');
+  }
+
+  /* ── PURCHASES ── */
+  function buildPurchases(){
+    const f=purchases.filter(p=>inRange(p.date));
+    const spent=f.reduce((s,p)=>s+p.items.reduce((a,li)=>a+li.qty*li.cost,0),0);
+    const units=f.reduce((s,p)=>s+p.items.reduce((a,li)=>a+li.qty,0),0);
+    document.getElementById('pCount').textContent=f.length;document.getElementById('pSpent').textContent=fmtM(spent);document.getElementById('pUnits').textContent=units;document.getElementById('pAvg').textContent=f.length?fmtM(spent/f.length):'$0';
+    const im={};f.forEach(p=>p.items.forEach(li=>{if(!im[li.itemId])im[li.itemId]={qty:0,cost:0};im[li.itemId].qty+=li.qty;im[li.itemId].cost+=li.qty*li.cost;}));
+    const topI=Object.entries(im).sort((a,b)=>b[1].cost-a[1].cost).slice(0,5);const tMax=topI.length?topI[0][1].cost:1;
+    document.getElementById('topPurchItems').innerHTML=topI.map(([id,d])=>{const it=getItem(parseInt(id));return `<div class="flex items-center gap-4 px-5 py-3"><div class="flex-1 min-w-0"><div class="text-sm font-semibold text-neutral-800 truncate">${it?it.name:'—'}</div><div class="w-full h-1.5 bg-neutral-100 rounded-full mt-1.5 overflow-hidden"><div class="h-full bg-red-400 rounded-full" style="width:${(d.cost/tMax*100).toFixed(0)}%"></div></div></div><div class="text-right shrink-0"><div class="text-sm font-bold text-neutral-900">${fmtM(d.cost)}</div><div class="text-xs text-neutral-400">${d.qty} units</div></div></div>`;}).join('')||'<div class="px-5 py-8 text-center text-xs text-neutral-400">No purchases in range</div>';
+    const sm={};f.forEach(p=>{if(!sm[p.suppId])sm[p.suppId]=0;p.items.forEach(li=>{sm[p.suppId]+=li.qty*li.cost;});});
+    const topS=Object.entries(sm).sort((a,b)=>b[1]-a[1]).slice(0,5);const sMax=topS.length?topS[0][1]:1;
+    document.getElementById('topSuppliers').innerHTML=topS.map(([id,sp])=>{const s=getSupp(parseInt(id));return `<div class="flex items-center gap-4 px-5 py-3"><div class="w-8 h-8 rounded-lg bg-orange-50 flex items-center justify-center text-xs font-bold text-orange-600 shrink-0">${s?s.name.charAt(0):'-'}</div><div class="flex-1 min-w-0"><div class="text-sm font-semibold text-neutral-800 truncate">${s?s.name:'—'}</div><div class="w-full h-1.5 bg-neutral-100 rounded-full mt-1.5 overflow-hidden"><div class="h-full bg-orange-400 rounded-full" style="width:${(sp/sMax*100).toFixed(0)}%"></div></div></div><div class="text-sm font-bold text-neutral-900 shrink-0">${fmtM(sp)}</div></div>`;}).join('')||'<div class="px-5 py-8 text-center text-xs text-neutral-400">No data</div>';
+  }
+
+  /* ── INVENTORY ── */
+  function buildInventory(){
+    document.getElementById('iSkus').textContent=items.length;
+    const totalU=items.reduce((s,i)=>s+i.stock,0);document.getElementById('iStockUnits').textContent=totalU.toLocaleString();
+    const totalV=items.reduce((s,i)=>s+i.stock*i.cost,0);document.getElementById('iValue').textContent=fmtM(totalV);
+    const lowThresh=20,low=items.filter(i=>i.stock<=lowThresh);document.getElementById('iLowStock').textContent=low.length;document.getElementById('lowStockBadge').textContent=low.length+' items';
+    const maxStock=Math.max(...items.map(i=>i.stock),1);
+    document.getElementById('stockBars').innerHTML=items.sort((a,b)=>b.stock-a.stock).map(i=>{const pct=(i.stock/maxStock*100).toFixed(0);const bc=i.stock<=lowThresh?'bg-red-400':i.stock<=50?'bg-amber-400':'bg-green-500';return `<div><div class="flex items-center justify-between mb-1"><span class="text-xs font-semibold text-neutral-700 truncate">${i.name}</span><span class="text-xs font-bold text-neutral-500 shrink-0">${i.stock} ${i.unit}</span></div><div class="w-full h-2 bg-neutral-100 rounded-full overflow-hidden"><div class="h-full ${bc} rounded-full transition-all duration-700" style="width:${pct}%"></div></div></div>`;}).join('');
+    document.getElementById('lowStockList').innerHTML=low.sort((a,b)=>a.stock-b.stock).map(i=>`<div class="flex items-center gap-4 px-5 py-3"><div class="w-8 h-8 rounded-lg ${i.stock===0?'bg-red-50':'bg-amber-50'} flex items-center justify-center"><svg class="w-4 h-4 ${i.stock===0?'text-red-500':'text-amber-500'}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div><div class="flex-1 min-w-0"><div class="text-sm font-semibold text-neutral-800">${i.name}</div><div class="text-xs text-neutral-400">${i.unit.toUpperCase()}</div></div><span class="text-sm font-bold ${i.stock===0?'text-red-600':'text-amber-600'}">${i.stock===0?'Out of stock':i.stock+' left'}</span></div>`).join('')||'<div class="px-5 py-8 text-center text-xs text-neutral-400">All items above threshold 👍</div>';
+  }
+
+  /* ── SPOILAGE ── */
+  function buildSpoilage(){
+    const f=spoilage.filter(s=>inRange(s.date));
+    document.getElementById('spRecords').textContent=f.length;document.getElementById('spUnits').textContent=f.reduce((s,r)=>s+r.qty,0);document.getElementById('spLoss').textContent=fmtM(f.reduce((s,r)=>s+r.lossValue,0));document.getElementById('spRecovery').textContent=fmtM(f.reduce((s,r)=>s+r.recovery,0));
+    const reasons={expired:{label:'Expired',dot:'bg-red-400',bar:'bg-red-400'},damaged:{label:'Damaged',dot:'bg-orange-400',bar:'bg-orange-400'},lost:{label:'Lost / Theft',dot:'bg-purple-400',bar:'bg-purple-400'},sample:{label:'Sample',dot:'bg-blue-400',bar:'bg-blue-400'},writeoff:{label:'Write-off',dot:'bg-neutral-400',bar:'bg-neutral-400'}};
+    const rm={};f.forEach(r=>{if(!rm[r.reason])rm[r.reason]={count:0,loss:0};rm[r.reason].count++;rm[r.reason].loss+=r.lossValue;});
+    const rMax=Math.max(...Object.values(rm).map(d=>d.loss),1);
+    document.getElementById('lossByReason').innerHTML=Object.entries(rm).sort((a,b)=>b[1].loss-a[1].loss).map(([k,d])=>{const r=reasons[k]||reasons.writeoff;return `<div><div class="flex items-center justify-between mb-1"><span class="flex items-center gap-2 text-xs font-semibold text-neutral-700"><span class="w-2.5 h-2.5 rounded-full ${r.dot}"></span>${r.label}</span><span class="text-xs font-bold text-neutral-500">${fmtM(d.loss)} (${d.count})</span></div><div class="w-full h-2.5 bg-neutral-100 rounded-full overflow-hidden"><div class="h-full ${r.bar} rounded-full transition-all duration-700" style="width:${(d.loss/rMax*100).toFixed(0)}%"></div></div></div>`;}).join('')||'<div class="text-center text-xs text-neutral-400 py-8">No spoilage in range 🎉</div>';
+    const im={};f.forEach(r=>{if(!im[r.itemId])im[r.itemId]={qty:0,loss:0};im[r.itemId].qty+=r.qty;im[r.itemId].loss+=r.lossValue;});
+    document.getElementById('lossItems').innerHTML=Object.entries(im).sort((a,b)=>b[1].loss-a[1].loss).slice(0,5).map(([id,d])=>{const it=getItem(parseInt(id));return `<div class="flex items-center gap-4 px-5 py-3"><div class="flex-1 min-w-0"><div class="text-sm font-semibold text-neutral-800">${it?it.name:'—'}</div><div class="text-xs text-neutral-400">${d.qty} units lost</div></div><div class="text-sm font-bold text-red-500">${fmtM(d.loss)}</div></div>`;}).join('')||'<div class="px-5 py-8 text-center text-xs text-neutral-400">No data</div>';
+  }
+
+  /* ── PAYMENTS ── */
+  function buildPayments(){
+    const f=payments.filter(p=>inRange(p.date));
+    const recv=f.filter(p=>p.dir==='in'&&p.status==='completed').reduce((s,p)=>s+p.amount,0);
+    const sent=f.filter(p=>p.dir==='out'&&p.status==='completed').reduce((s,p)=>s+p.amount,0);
+    const pending=f.filter(p=>p.status==='pending').reduce((s,p)=>s+p.amount,0);
+    document.getElementById('pyReceived').textContent=fmtM(recv);document.getElementById('pySent').textContent=fmtM(sent);
+    const net=recv-sent;document.getElementById('pyNet').textContent=(net>=0?'+':'-')+fmtM(net);document.getElementById('pyNet').className='text-xl font-extrabold tracking-tight '+(net>=0?'text-green-600':'text-red-500');
+    document.getElementById('pyPending').textContent=fmtM(pending);
+    // by method
+    const mm={};f.filter(p=>p.status==='completed').forEach(p=>{if(!mm[p.method])mm[p.method]=0;mm[p.method]+=p.amount;});
+    const mMax=Math.max(...Object.values(mm),1);const mL={cash:'Cash',online:'Online / Bank',cheque:'Cheque'};const mC={cash:'bg-green-500',online:'bg-blue-500',cheque:'bg-purple-500'};
+    document.getElementById('payByMethod').innerHTML=Object.entries(mm).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<div><div class="flex items-center justify-between mb-1"><span class="text-xs font-semibold text-neutral-700">${mL[k]||k}</span><span class="text-xs font-bold text-neutral-500">${fmtM(v)}</span></div><div class="w-full h-2.5 bg-neutral-100 rounded-full overflow-hidden"><div class="h-full ${mC[k]||'bg-neutral-400'} rounded-full transition-all duration-700" style="width:${(v/mMax*100).toFixed(0)}%"></div></div></div>`).join('')||'<div class="text-center text-xs text-neutral-400 py-8">No payments</div>';
+    // by status
+    const st={completed:0,pending:0,failed:0};f.forEach(p=>st[p.status]=(st[p.status]||0)+p.amount);
+    const stMax=Math.max(...Object.values(st),1);const stC={completed:'bg-green-500',pending:'bg-amber-400',failed:'bg-red-400'};const stT={completed:'text-green-600',pending:'text-amber-600',failed:'text-red-600'};
+    document.getElementById('payByStatus').innerHTML=Object.entries(st).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<div><div class="flex items-center justify-between mb-1"><span class="text-xs font-bold capitalize ${stT[k]}">${k}</span><span class="text-xs font-bold text-neutral-500">${fmtM(v)}</span></div><div class="w-full h-2.5 bg-neutral-100 rounded-full overflow-hidden"><div class="h-full ${stC[k]} rounded-full transition-all duration-700" style="width:${(v/stMax*100).toFixed(0)}%"></div></div></div>`).join('');
+  }
+
+  /* ═══ EXPORT CSV ═══ */
+  window.exportCSV=()=>{showToast('CSV export started — download will begin shortly','success');setTimeout(()=>{
+    let csv='Category,Label,Value\n';
+    const fS=sales.filter(s=>inRange(s.date)),fP=purchases.filter(p=>inRange(p.date)),fSp=spoilage.filter(s=>inRange(s.date)),fPa=payments.filter(p=>inRange(p.date));
+    const rev=fS.reduce((s,sl)=>s+sl.items.reduce((a,li)=>a+li.qty*li.price,0),0);
+    csv+=`Overview,Revenue,${rev.toFixed(2)}\n`;
+    csv+=`Overview,Purchases,${fP.reduce((s,p)=>s+p.items.reduce((a,li)=>a+li.qty*li.cost,0),0).toFixed(2)}\n`;
+    csv+=`Overview,Spoilage Loss,${fSp.reduce((s,r)=>s+r.lossValue,0).toFixed(2)}\n`;
+    csv+=`Overview,Payments Received,${fPa.filter(p=>p.dir==='in'&&p.status==='completed').reduce((s,p)=>s+p.amount,0).toFixed(2)}\n`;
+    csv+=`Overview,Payments Sent,${fPa.filter(p=>p.dir==='out'&&p.status==='completed').reduce((s,p)=>s+p.amount,0).toFixed(2)}\n`;
+    fS.forEach(sl=>{const c=getCust(sl.custId);sl.items.forEach(li=>{const it=getItem(li.itemId);csv+=`Sales,${it?it.name:'—'} to ${c?c.name:'—'},${(li.qty*li.price).toFixed(2)}\n`;});});
+    const blob=new Blob([csv],{type:'text/csv'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`stockflow-report-${dFrom}-to-${dTo}.csv`;a.click();URL.revokeObjectURL(url);
+  },500);};
+
+  /* ═══ TOAST ═══ */
+  window.showToast=(msg,type)=>{const t=document.getElementById('feedbackToast'),ic=document.getElementById('toastIcon'),tx=document.getElementById('toastText');t.className='fixed bottom-6 left-1/2 -translate-x-1/2 z-[90] flex items-center gap-3 px-5 py-3 rounded-xl shadow-lg border text-sm font-semibold pointer-events-none transition-all duration-300';if(type==='success'){t.classList.add('bg-green-50','border-green-200','text-green-700');ic.innerHTML='<polyline points="20 6 9 17 4 12"/>';}else{t.classList.add('bg-neutral-50','border-neutral-200','text-neutral-700');ic.innerHTML='<circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>';}tx.textContent=msg;requestAnimationFrame(()=>{t.classList.remove('opacity-0','translate-y-4');t.classList.add('opacity-100','translate-y-0');});setTimeout(()=>{t.classList.remove('opacity-100','translate-y-0');t.classList.add('opacity-0','translate-y-4');},2800);};
+
+  /* ═══ INIT ═══ */
+  refreshReport();
+})();
+</script>
+
+{% endblock %}

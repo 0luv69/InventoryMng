@@ -6,5 +6,403 @@
 
 {% block content %}
 
+<!-- ══════════════════════════════════════════════════════════
+     CUSTOMERS PAGE
+     ══════════════════════════════════════════════════════════ -->
+
+<!-- ── Page Header ── -->
+<div class="mb-8">
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-extrabold text-neutral-900 tracking-tight">Customers</h1>
+      <p class="text-sm text-neutral-400 mt-1">Your client directory, transaction history, and outstanding balances.</p>
+    </div>
+    <button onclick="openForm()"
+            class="inline-flex items-center gap-2 px-5 py-2.5 bg-green-500 text-white text-sm font-semibold rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.05)] hover:bg-green-600 active:scale-[0.97] transition-all duration-200 self-start">
+      <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Add Customer
+    </button>
+  </div>
+</div>
+
+<!-- ── Summary Strip ── -->
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+  <div class="bg-white border border-neutral-100 rounded-2xl px-5 py-4 hover:shadow-[0_2px_12px_rgba(0,0,0,0.04)] transition-all duration-300">
+    <div class="text-[0.65rem] font-semibold text-neutral-400 uppercase tracking-wide mb-1">Total Customers</div>
+    <div class="text-xl font-extrabold text-neutral-900 tracking-tight" id="statTotal">6</div>
+  </div>
+  <div class="bg-white border border-neutral-100 rounded-2xl px-5 py-4 hover:shadow-[0_2px_12px_rgba(0,0,0,0.04)] transition-all duration-300">
+    <div class="text-[0.65rem] font-semibold text-neutral-400 uppercase tracking-wide mb-1">Total Revenue</div>
+    <div class="text-xl font-extrabold text-green-600 tracking-tight" id="statRevenue">$0</div>
+  </div>
+  <div class="bg-white border border-neutral-100 rounded-2xl px-5 py-4 hover:shadow-[0_2px_12px_rgba(0,0,0,0.04)] transition-all duration-300">
+    <div class="text-[0.65rem] font-semibold text-neutral-400 uppercase tracking-wide mb-1">Outstanding</div>
+    <div class="text-xl font-extrabold text-amber-600 tracking-tight" id="statOutstanding">$0</div>
+  </div>
+  <div class="bg-white border border-neutral-100 rounded-2xl px-5 py-4 hover:shadow-[0_2px_12px_rgba(0,0,0,0.04)] transition-all duration-300">
+    <div class="text-[0.65rem] font-semibold text-neutral-400 uppercase tracking-wide mb-1">Active This Month</div>
+    <div class="text-xl font-extrabold text-neutral-900 tracking-tight" id="statActive">0</div>
+  </div>
+</div>
+
+<!-- ── Toolbar ── -->
+<div class="bg-white border border-neutral-100 rounded-2xl mb-4">
+  <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 p-4">
+    <div class="relative flex-1">
+      <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input id="searchInput" type="text" placeholder="Search by name, contact, email, phone…"
+             oninput="handleSearch(this.value)"
+             class="w-full pl-10 pr-4 py-2.5 text-sm border border-neutral-200 rounded-xl bg-neutral-50/50 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200"/>
+    </div>
+    <button onclick="toggleFilters()" class="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-neutral-600 bg-white border border-neutral-200 rounded-xl hover:bg-neutral-50 hover:border-neutral-300 transition-all duration-200">
+      <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+      <span id="filterBtnText">Filter</span>
+    </button>
+    <div id="bulkActions" class="hidden items-center gap-2">
+      <span class="text-xs font-semibold text-neutral-500"><span id="selectedCount">0</span> selected</span>
+      <button onclick="confirmBulkDelete()" class="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-red-600 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-all duration-200">
+        <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+        Delete
+      </button>
+    </div>
+  </div>
+  <div id="filterPanel" class="hidden border-t border-neutral-100 px-4 py-4">
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div><label class="block text-xs font-semibold text-neutral-500 mb-1.5">Status</label><select id="filterStatus" onchange="applyFilters()" class="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400"><option value="">All</option><option value="active">Active</option><option value="inactive">Inactive</option></select></div>
+      <div><label class="block text-xs font-semibold text-neutral-500 mb-1.5">Outstanding</label><select id="filterOutstanding" onchange="applyFilters()" class="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400"><option value="">All</option><option value="has">Has Balance Due</option><option value="clear">Fully Paid</option></select></div>
+      <div><label class="block text-xs font-semibold text-neutral-500 mb-1.5">Sort By</label><select id="filterSort" onchange="applyFilters()" class="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400"><option value="name">Name A–Z</option><option value="name_desc">Name Z–A</option><option value="revenue">Revenue (High → Low)</option><option value="outstanding">Outstanding (High → Low)</option><option value="recent">Most Recent</option></select></div>
+    </div>
+    <div class="flex justify-end mt-3"><button onclick="clearFilters()" class="text-xs font-semibold text-neutral-500 hover:text-neutral-700 transition-colors">Clear all filters</button></div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     CUSTOMER CARDS GRID
+     ══════════════════════════════════════════════════════════ -->
+<div id="customerGrid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"></div>
+<div id="emptyState" class="hidden py-20 flex-col items-center justify-center text-center bg-white border border-neutral-100 rounded-2xl">
+  <div class="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center mb-4"><svg class="w-7 h-7 text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+  <h3 class="text-sm font-bold text-neutral-700 mb-1">No customers yet</h3>
+  <p class="text-xs text-neutral-400 mb-5 max-w-xs">Add your first customer to start tracking sales and payments.</p>
+  <button onclick="openForm()" class="inline-flex items-center gap-2 px-4 py-2 bg-green-500 text-white text-xs font-semibold rounded-lg hover:bg-green-600 transition-all duration-200"><svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Add first customer</button>
+</div>
+
+<!-- Pagination -->
+<div id="paginationBar" class="flex items-center justify-between mt-4">
+  <p class="text-xs text-neutral-400 font-medium">Showing <span id="pagStart" class="text-neutral-700 font-semibold">1</span>–<span id="pagEnd" class="text-neutral-700 font-semibold">9</span> of <span id="pagTotal" class="text-neutral-700 font-semibold">0</span></p>
+  <div class="flex items-center gap-1">
+    <button onclick="goToPage('prev')" id="btnPrev" class="w-8 h-8 flex items-center justify-center rounded-lg border border-neutral-200 text-neutral-400 hover:text-neutral-700 hover:border-neutral-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg></button>
+    <div id="pageNumbers" class="flex items-center gap-1"></div>
+    <button onclick="goToPage('next')" id="btnNext" class="w-8 h-8 flex items-center justify-center rounded-lg border border-neutral-200 text-neutral-400 hover:text-neutral-700 hover:border-neutral-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></button>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     ADD / EDIT CUSTOMER SLIDE-OVER
+     ══════════════════════════════════════════════════════════ -->
+<div id="formBackdrop" class="fixed inset-0 bg-black/20 backdrop-blur-sm z-[60] opacity-0 pointer-events-none transition-opacity duration-300" onclick="closeForm()"></div>
+<div id="formPanel" class="fixed top-0 right-0 bottom-0 w-full max-w-xl bg-white z-[65] shadow-[-8px_0_30px_rgba(0,0,0,0.08)] translate-x-full transition-transform duration-300 ease-out flex flex-col">
+  <div class="flex items-center justify-between px-6 py-5 border-b border-neutral-100">
+    <div><h2 id="formTitle" class="text-lg font-bold text-neutral-900 tracking-tight">Add Customer</h2><p class="text-xs text-neutral-400 mt-0.5">Fill in the details below.</p></div>
+    <button onclick="closeForm()" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-neutral-100 text-neutral-400 hover:text-neutral-600 transition-all duration-200"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+  </div>
+  <div class="flex-1 overflow-y-auto px-6 py-6">
+    <form id="custForm" onsubmit="handleSubmit(event)" class="space-y-6">
+      <input type="hidden" id="editId" value=""/>
+
+      <!-- Basic Info -->
+      <div>
+        <h3 class="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-3">Basic Information</h3>
+        <div class="space-y-4">
+          <div class="grid grid-cols-2 gap-4">
+            <div class="col-span-2"><label class="block text-xs font-semibold text-neutral-600 mb-1.5">Company / Business Name <span class="text-red-400">*</span></label><input type="text" id="fName" required placeholder="e.g. Riverside Hardware" class="w-full px-4 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200"/><p id="nameError" class="hidden text-xs text-red-500 mt-1">Customer name is required.</p></div>
+            <div><label class="block text-xs font-semibold text-neutral-600 mb-1.5">Contact Person</label><input type="text" id="fContact" placeholder="Full name" class="w-full px-4 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200"/></div>
+            <div><label class="block text-xs font-semibold text-neutral-600 mb-1.5">Phone</label><input type="tel" id="fPhone" placeholder="+977 ..." class="w-full px-4 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200"/></div>
+          </div>
+          <div class="grid grid-cols-2 gap-4">
+            <div><label class="block text-xs font-semibold text-neutral-600 mb-1.5">Email</label><input type="email" id="fEmail" placeholder="name@company.com" class="w-full px-4 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200"/></div>
+            <div><label class="block text-xs font-semibold text-neutral-600 mb-1.5">Website</label><input type="url" id="fWebsite" placeholder="https://..." class="w-full px-4 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200"/></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Billing Address -->
+      <div>
+        <h3 class="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-3">Billing Address</h3>
+        <div class="space-y-4">
+          <div><label class="block text-xs font-semibold text-neutral-600 mb-1.5">Street Address</label><input type="text" id="fBillStreet" placeholder="Street, building, floor…" class="w-full px-4 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200"/></div>
+          <div class="grid grid-cols-3 gap-4">
+            <div><label class="block text-xs font-semibold text-neutral-600 mb-1.5">City</label><input type="text" id="fBillCity" placeholder="City" class="w-full px-4 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200"/></div>
+            <div><label class="block text-xs font-semibold text-neutral-600 mb-1.5">State</label><input type="text" id="fBillState" placeholder="State" class="w-full px-4 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200"/></div>
+            <div><label class="block text-xs font-semibold text-neutral-600 mb-1.5">Country</label><input type="text" id="fBillCountry" placeholder="Country" class="w-full px-4 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200"/></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Shipping Address -->
+      <div>
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="text-xs font-bold text-neutral-400 uppercase tracking-widest">Shipping Address</h3>
+          <button type="button" onclick="copyBillingToShipping()" class="text-[0.65rem] font-semibold text-green-600 hover:text-green-700 transition-colors">Copy from billing</button>
+        </div>
+        <div class="space-y-4">
+          <div><label class="block text-xs font-semibold text-neutral-600 mb-1.5">Street Address</label><input type="text" id="fShipStreet" placeholder="Street, building, floor…" class="w-full px-4 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200"/></div>
+          <div class="grid grid-cols-3 gap-4">
+            <div><label class="block text-xs font-semibold text-neutral-600 mb-1.5">City</label><input type="text" id="fShipCity" placeholder="City" class="w-full px-4 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200"/></div>
+            <div><label class="block text-xs font-semibold text-neutral-600 mb-1.5">State</label><input type="text" id="fShipState" placeholder="State" class="w-full px-4 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200"/></div>
+            <div><label class="block text-xs font-semibold text-neutral-600 mb-1.5">Country</label><input type="text" id="fShipCountry" placeholder="Country" class="w-full px-4 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200"/></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Notes & Status -->
+      <div>
+        <h3 class="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-3">Additional</h3>
+        <div class="grid grid-cols-2 gap-4 mb-4">
+          <div>
+            <label class="block text-xs font-semibold text-neutral-600 mb-1.5">Currency</label>
+            <select id="fCurrency" class="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200"><option value="NPR" selected>NPR</option><option value="INR">INR</option><option value="USD">USD</option></select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-neutral-600 mb-1.5">Status</label>
+            <div class="flex gap-2" id="statusGroup">
+              <button type="button" onclick="setStatus('active')" data-val="active" class="sts-btn flex-1 px-3 py-2.5 text-xs font-semibold border rounded-xl transition-all duration-200 text-green-700 border-green-300 bg-green-50">Active</button>
+              <button type="button" onclick="setStatus('inactive')" data-val="inactive" class="sts-btn flex-1 px-3 py-2.5 text-xs font-semibold border rounded-xl transition-all duration-200 text-neutral-500 border-neutral-200 bg-white hover:bg-neutral-50">Inactive</button>
+            </div>
+          </div>
+        </div>
+        <div><label class="block text-xs font-semibold text-neutral-600 mb-1.5">Notes</label><textarea id="fNotes" rows="2" placeholder="Internal notes about this customer…" class="w-full px-4 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white resize-none placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200"></textarea></div>
+      </div>
+    </form>
+  </div>
+  <div class="px-6 py-4 border-t border-neutral-100 bg-neutral-50/50 flex items-center gap-3">
+    <button onclick="closeForm()" type="button" class="flex-1 px-4 py-2.5 text-sm font-semibold text-neutral-600 bg-white border border-neutral-200 rounded-xl hover:bg-neutral-50 hover:border-neutral-300 transition-all duration-200">Cancel</button>
+    <button onclick="document.getElementById('custForm').requestSubmit()" type="button" id="submitBtn" class="flex-1 px-4 py-2.5 text-sm font-semibold text-white bg-green-500 rounded-xl hover:bg-green-600 active:scale-[0.97] transition-all duration-200 flex items-center justify-center gap-2">
+      <span id="submitBtnText">Add Customer</span>
+      <svg id="submitSpinner" class="hidden w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" stroke-dasharray="32" stroke-linecap="round"/></svg>
+    </button>
+  </div>
+</div>
+
+
+<!-- ═══ DETAIL PANEL ═══ -->
+<div id="detailBackdrop" class="fixed inset-0 bg-black/20 backdrop-blur-sm z-[60] opacity-0 pointer-events-none transition-opacity duration-300" onclick="closeDetail()"></div>
+<div id="detailPanel" class="fixed top-0 right-0 bottom-0 w-full max-w-md bg-white z-[65] shadow-[-8px_0_30px_rgba(0,0,0,0.08)] translate-x-full transition-transform duration-300 ease-out flex flex-col">
+  <div class="flex items-center justify-between px-6 py-5 border-b border-neutral-100">
+    <h2 id="detailTitle" class="text-lg font-bold text-neutral-900 tracking-tight">Customer</h2>
+    <div class="flex items-center gap-2">
+      <button onclick="editFromDetail()" title="Edit" class="w-8 h-8 flex items-center justify-center rounded-lg text-neutral-400 hover:text-green-600 hover:bg-green-50 transition-all duration-200"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+      <button onclick="closeDetail()" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-neutral-100 text-neutral-400 hover:text-neutral-600 transition-all duration-200"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+  </div>
+  <div class="flex-1 overflow-y-auto" id="detailBody"></div>
+</div>
+
+
+<!-- ═══ DELETE DIALOG ═══ -->
+<div id="deleteBackdrop" class="fixed inset-0 bg-black/30 backdrop-blur-sm z-[80] opacity-0 pointer-events-none transition-opacity duration-200 flex items-center justify-center">
+  <div id="deleteDialog" class="bg-white rounded-2xl shadow-xl w-full max-w-sm mx-4 p-6 scale-95 opacity-0 transition-all duration-200">
+    <div class="w-12 h-12 bg-red-50 rounded-xl flex items-center justify-center mx-auto mb-4"><svg class="w-6 h-6 text-red-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
+    <h3 id="deleteTitle" class="text-base font-bold text-neutral-900 text-center mb-1">Delete Customer?</h3>
+    <p id="deleteMsg" class="text-sm text-neutral-500 text-center mb-6">This action cannot be undone.</p>
+    <div class="flex gap-3"><button onclick="closeDeleteDialog()" class="flex-1 px-4 py-2.5 text-sm font-semibold text-neutral-600 bg-white border border-neutral-200 rounded-xl hover:bg-neutral-50 transition-all duration-200">Cancel</button><button onclick="executeDelete()" class="flex-1 px-4 py-2.5 text-sm font-semibold text-white bg-red-500 rounded-xl hover:bg-red-600 active:scale-[0.97] transition-all duration-200">Delete</button></div>
+  </div>
+</div>
+
+<!-- ═══ TOAST ═══ -->
+<div id="feedbackToast" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[90] flex items-center gap-3 px-5 py-3 rounded-xl shadow-lg border text-sm font-semibold pointer-events-none opacity-0 translate-y-4 transition-all duration-300"><svg id="toastIcon" class="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></svg><span id="toastText"></span></div>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     JAVASCRIPT
+     ══════════════════════════════════════════════════════════ -->
+<script>
+(function(){
+
+  /* ─── Data ─── */
+  let customers=[
+    {id:1,name:'Riverside Hardware',contact:'Mike Turner',email:'mike@riverside.com',phone:'+1 (555) 111-2233',website:'https://riverside.com',currency:'USD',status:'active',billing:{street:'42 River Rd',city:'Portland',state:'Oregon',country:'USA'},shipping:{street:'42 River Rd',city:'Portland',state:'Oregon',country:'USA'},notes:'Long-term B2B client — quarterly bulk orders.',revenue:5840,outstanding:320,lastOrder:'2026-03-03',created:'2025-06-15'},
+    {id:2,name:'Metro Office Supplies',contact:'Linda Park',email:'linda@metrooffice.com',phone:'+1 (555) 222-3344',website:'',currency:'USD',status:'active',billing:{street:'100 Business Blvd',city:'Seattle',state:'Washington',country:'USA'},shipping:{street:'100 Business Blvd',city:'Seattle',state:'Washington',country:'USA'},notes:'Prefers invoicing net-30.',revenue:1985,outstanding:485,lastOrder:'2026-03-03',created:'2025-08-20'},
+    {id:3,name:'FreshMart Grocery',contact:'Ali Hassan',email:'ali@freshmart.com',phone:'+1 (555) 333-4455',website:'https://freshmart.com',currency:'USD',status:'active',billing:{street:'7 Green Ave',city:'Austin',state:'Texas',country:'USA'},shipping:{street:'Warehouse 3, South Park',city:'Austin',state:'Texas',country:'USA'},notes:'Perishable goods — priority delivery.',revenue:3250,outstanding:0,lastOrder:'2026-03-04',created:'2025-04-10'},
+    {id:4,name:'BuildRight Construction',contact:'Carlos Rivera',email:'carlos@buildright.com',phone:'+1 (555) 444-5566',website:'https://buildright.com',currency:'USD',status:'active',billing:{street:'900 Industrial Way',city:'Denver',state:'Colorado',country:'USA'},shipping:{street:'Site Office, Block C',city:'Denver',state:'Colorado',country:'USA'},notes:'Heavy equipment & hardware.',revenue:2680,outstanding:502,lastOrder:'2026-03-02',created:'2025-09-01'},
+    {id:5,name:'TechZone Electronics',contact:'Priya Sharma',email:'priya@techzone.com',phone:'+1 (555) 555-6677',website:'https://techzone.com',currency:'USD',status:'active',billing:{street:'55 Silicon St',city:'San Jose',state:'California',country:'USA'},shipping:{street:'55 Silicon St',city:'San Jose',state:'California',country:'USA'},notes:'High-volume electronics buyer.',revenue:12384,outstanding:0,lastOrder:'2026-03-04',created:'2025-03-22'},
+    {id:6,name:'GreenBasket Organics',contact:'Emma Wilson',email:'emma@greenbasket.com',phone:'+1 (555) 666-7788',website:'https://greenbasket.com',currency:'USD',status:'active',billing:{street:'12 Harvest Lane',city:'Boulder',state:'Colorado',country:'USA'},shipping:{street:'12 Harvest Lane',city:'Boulder',state:'Colorado',country:'USA'},notes:'Organic produce focus.',revenue:1623,outstanding:0,lastOrder:'2026-03-03',created:'2025-07-08'},
+  ];
+
+  let currentPage=1,perPage=9,selectedIds=new Set(),deleteTargetId=null,isBulkDelete=false,nextId=7;
+  let searchQ='',fStatus='',fOutstanding='',fSort='name';
+  let formStatus='active',detailCustId=null;
+
+  const fmtM=n=>'$'+Math.abs(n).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const fmtD=d=>d?new Date(d).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):'—';
+  const initials=name=>name.split(' ').map(w=>w.charAt(0)).join('').substring(0,2).toUpperCase();
+  const avatarColors=['bg-blue-500','bg-emerald-500','bg-purple-500','bg-amber-500','bg-rose-500','bg-cyan-500','bg-indigo-500','bg-teal-500'];
+  const getColor=id=>avatarColors[id%avatarColors.length];
+
+  /* ─── Filtering ─── */
+  function getFiltered(){
+    let list=[...customers];
+    if(searchQ){const q=searchQ.toLowerCase();list=list.filter(c=>c.name.toLowerCase().includes(q)||c.contact.toLowerCase().includes(q)||(c.email&&c.email.toLowerCase().includes(q))||(c.phone&&c.phone.includes(q)));}
+    if(fStatus)list=list.filter(c=>c.status===fStatus);
+    if(fOutstanding==='has')list=list.filter(c=>c.outstanding>0);
+    if(fOutstanding==='clear')list=list.filter(c=>c.outstanding===0);
+    list.sort((a,b)=>{if(fSort==='name')return a.name.localeCompare(b.name);if(fSort==='name_desc')return b.name.localeCompare(a.name);if(fSort==='revenue')return b.revenue-a.revenue;if(fSort==='outstanding')return b.outstanding-a.outstanding;if(fSort==='recent')return(b.lastOrder||'').localeCompare(a.lastOrder||'');return 0;});
+    return list;
+  }
+
+  /* ─── Render ─── */
+  function render(){
+    const filtered=getFiltered(),total=filtered.length,tp=Math.max(1,Math.ceil(total/perPage));
+    if(currentPage>tp)currentPage=tp;const start=(currentPage-1)*perPage,page=filtered.slice(start,start+perPage);
+    const grid=document.getElementById('customerGrid'),empty=document.getElementById('emptyState'),pag=document.getElementById('paginationBar');
+    if(!total){grid.innerHTML='';empty.classList.remove('hidden');empty.classList.add('flex');pag.classList.add('hidden');return;}
+    empty.classList.add('hidden');empty.classList.remove('flex');pag.classList.remove('hidden');
+
+    grid.innerHTML=page.map(c=>{
+      const checked=selectedIds.has(c.id)?'checked':'';
+      const statusBadge=c.status==='active'?'bg-green-50 text-green-600 border-green-200':'bg-neutral-100 text-neutral-500 border-neutral-200';
+      const outBadge=c.outstanding>0?`<span class="inline-flex items-center px-2 py-0.5 rounded-md text-[0.6rem] font-bold bg-amber-50 text-amber-600 border border-amber-200">${fmtM(c.outstanding)} due</span>`:'<span class="inline-flex items-center px-2 py-0.5 rounded-md text-[0.6rem] font-bold bg-green-50 text-green-600 border border-green-200">Paid up</span>';
+      return `<div class="bg-white border border-neutral-100 rounded-2xl p-5 hover:shadow-[0_4px_20px_rgba(0,0,0,0.04)] hover:border-neutral-200 transition-all duration-300 group cursor-pointer relative" onclick="window._cu.openDetail(${c.id})">
+        <div class="absolute top-4 right-4 flex items-center gap-2 z-10" onclick="event.stopPropagation()">
+          <input type="checkbox" ${checked} onchange="window._cu.toggleSel(${c.id})" class="w-4 h-4 rounded border-neutral-300 text-green-500 focus:ring-green-500/30 cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity checked:opacity-100"/>
+          <div class="relative"><button onclick="window._cu.toggleMenu(${c.id})" class="w-7 h-7 flex items-center justify-center rounded-lg text-neutral-300 hover:text-neutral-600 hover:bg-neutral-100 opacity-0 group-hover:opacity-100 transition-all duration-200"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg></button>
+          <div id="menu-${c.id}" class="hidden absolute right-0 top-full mt-1 bg-white border border-neutral-200 rounded-xl shadow-lg z-20 min-w-[140px] py-1">
+            <button onclick="window._cu.edit(${c.id})" class="w-full text-left px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50 transition-colors flex items-center gap-2"><svg class="w-3.5 h-3.5 text-neutral-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Edit</button>
+            <button onclick="window._cu.confirmDel(${c.id})" class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors flex items-center gap-2"><svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>Delete</button>
+          </div></div>
+        </div>
+        <div class="flex items-start gap-4 mb-4">
+          <div class="w-12 h-12 ${getColor(c.id)} rounded-xl flex items-center justify-center text-white text-sm font-bold shrink-0">${initials(c.name)}</div>
+          <div class="flex-1 min-w-0">
+            <h3 class="text-sm font-bold text-neutral-900 truncate">${c.name}</h3>
+            <p class="text-xs text-neutral-400 truncate">${c.contact}${c.email?' · '+c.email:''}</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-3 mb-3">
+          <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[0.6rem] font-bold border ${statusBadge} capitalize">${c.status}</span>
+          ${outBadge}
+        </div>
+        <div class="grid grid-cols-2 gap-3 pt-3 border-t border-neutral-100">
+          <div><div class="text-[0.6rem] font-semibold text-neutral-400 uppercase tracking-wide">Revenue</div><div class="text-sm font-bold text-green-600">${fmtM(c.revenue)}</div></div>
+          <div><div class="text-[0.6rem] font-semibold text-neutral-400 uppercase tracking-wide">Last Order</div><div class="text-sm font-semibold text-neutral-700">${fmtD(c.lastOrder)}</div></div>
+        </div>
+      </div>`;
+    }).join('');
+
+    document.getElementById('pagStart').textContent=start+1;document.getElementById('pagEnd').textContent=Math.min(start+perPage,total);document.getElementById('pagTotal').textContent=total;
+    const pnEl=document.getElementById('pageNumbers');let pn='';for(let p=1;p<=tp;p++){const cls=p===currentPage?'bg-green-500 text-white border-green-500':'bg-white text-neutral-600 border-neutral-200 hover:border-neutral-300';pn+=`<button onclick="window._cu.goP(${p})" class="w-8 h-8 flex items-center justify-center rounded-lg border text-xs font-semibold ${cls} transition-all duration-200">${p}</button>`;}pnEl.innerHTML=pn;
+    document.getElementById('btnPrev').disabled=currentPage===1;document.getElementById('btnNext').disabled=currentPage>=tp;updateBulk();
+  }
+  function updateBulk(){const b=document.getElementById('bulkActions');if(selectedIds.size>0){b.classList.remove('hidden');b.classList.add('flex');document.getElementById('selectedCount').textContent=selectedIds.size;}else{b.classList.add('hidden');b.classList.remove('flex');}}
+
+  window._cu={};
+  window._cu.toggleSel=id=>{selectedIds.has(id)?selectedIds.delete(id):selectedIds.add(id);updateBulk();};
+  window._cu.goP=p=>{currentPage=p;render();};
+  window.goToPage=d=>{if(d==='prev'&&currentPage>1)currentPage--;else if(d==='next')currentPage++;render();};
+  let sT;window.handleSearch=v=>{clearTimeout(sT);sT=setTimeout(()=>{searchQ=v.trim();currentPage=1;render();},300);};
+  window.toggleFilters=()=>{const p=document.getElementById('filterPanel'),t=document.getElementById('filterBtnText');p.classList.contains('hidden')?(p.classList.remove('hidden'),t.textContent='Close'):(p.classList.add('hidden'),t.textContent='Filter');};
+  window.applyFilters=()=>{fStatus=document.getElementById('filterStatus').value;fOutstanding=document.getElementById('filterOutstanding').value;fSort=document.getElementById('filterSort').value;currentPage=1;render();};
+  window.clearFilters=()=>{['filterStatus','filterOutstanding'].forEach(id=>document.getElementById(id).value='');document.getElementById('filterSort').value='name';fStatus='';fOutstanding='';fSort='name';currentPage=1;render();showToast('Filters cleared','info');};
+
+  /* ─── Menu ─── */
+  window._cu.toggleMenu=id=>{document.querySelectorAll('[id^="menu-"]').forEach(m=>{if(m.id!=='menu-'+id)m.classList.add('hidden');});document.getElementById('menu-'+id).classList.toggle('hidden');};
+  document.addEventListener('click',e=>{if(!e.target.closest('[id^="menu-"]')&&!e.target.closest('button'))document.querySelectorAll('[id^="menu-"]').forEach(m=>m.classList.add('hidden'));});
+
+  /* ─── Status buttons ─── */
+  const stsOn={active:['text-green-700','border-green-300','bg-green-50'],inactive:['text-neutral-600','border-neutral-300','bg-neutral-100']};
+  const stsOff=['text-neutral-500','border-neutral-200','bg-white','hover:bg-neutral-50'];
+  window.setStatus=val=>{formStatus=val;document.querySelectorAll('.sts-btn').forEach(b=>{b.classList.remove(...stsOn.active,...stsOn.inactive,...stsOff);b.dataset.val===val?b.classList.add(...stsOn[val]):b.classList.add(...stsOff);});};
+
+  /* ─── Copy billing → shipping ─── */
+  window.copyBillingToShipping=()=>{document.getElementById('fShipStreet').value=document.getElementById('fBillStreet').value;document.getElementById('fShipCity').value=document.getElementById('fBillCity').value;document.getElementById('fShipState').value=document.getElementById('fBillState').value;document.getElementById('fShipCountry').value=document.getElementById('fBillCountry').value;showToast('Billing address copied to shipping','info');};
+
+  /* ─── Open / Close Form ─── */
+  window.openForm=()=>{document.getElementById('custForm').reset();document.getElementById('editId').value='';formStatus='active';setStatus('active');document.getElementById('nameError').classList.add('hidden');document.getElementById('formTitle').textContent='Add Customer';document.getElementById('submitBtnText').textContent='Add Customer';const bd=document.getElementById('formBackdrop'),pn=document.getElementById('formPanel');bd.classList.remove('opacity-0','pointer-events-none');bd.classList.add('opacity-100','pointer-events-auto');pn.classList.remove('translate-x-full');pn.classList.add('translate-x-0');document.body.style.overflow='hidden';setTimeout(()=>document.getElementById('fName').focus(),350);};
+  window._cu.edit=id=>{
+    document.querySelectorAll('[id^="menu-"]').forEach(m=>m.classList.add('hidden'));
+    const c=customers.find(x=>x.id===id);if(!c)return;openForm();
+    document.getElementById('editId').value=c.id;document.getElementById('formTitle').textContent='Edit Customer';document.getElementById('submitBtnText').textContent='Save Changes';
+    document.getElementById('fName').value=c.name;document.getElementById('fContact').value=c.contact||'';document.getElementById('fPhone').value=c.phone||'';document.getElementById('fEmail').value=c.email||'';document.getElementById('fWebsite').value=c.website||'';
+    document.getElementById('fBillStreet').value=c.billing.street||'';document.getElementById('fBillCity').value=c.billing.city||'';document.getElementById('fBillState').value=c.billing.state||'';document.getElementById('fBillCountry').value=c.billing.country||'';
+    document.getElementById('fShipStreet').value=c.shipping.street||'';document.getElementById('fShipCity').value=c.shipping.city||'';document.getElementById('fShipState').value=c.shipping.state||'';document.getElementById('fShipCountry').value=c.shipping.country||'';
+    document.getElementById('fCurrency').value=c.currency||'NPR';document.getElementById('fNotes').value=c.notes||'';setStatus(c.status);
+  };
+  window.closeForm=()=>{const bd=document.getElementById('formBackdrop'),pn=document.getElementById('formPanel');pn.classList.remove('translate-x-0');pn.classList.add('translate-x-full');bd.classList.remove('opacity-100','pointer-events-auto');bd.classList.add('opacity-0','pointer-events-none');document.body.style.overflow='';};
+
+  /* ─── Submit ─── */
+  window.handleSubmit=e=>{e.preventDefault();
+    const name=document.getElementById('fName').value.trim();if(!name){document.getElementById('nameError').classList.remove('hidden');return;}document.getElementById('nameError').classList.add('hidden');
+    document.getElementById('submitBtnText').textContent='Saving…';document.getElementById('submitSpinner').classList.remove('hidden');document.getElementById('submitBtn').disabled=true;
+    setTimeout(()=>{
+      const editId=parseInt(document.getElementById('editId').value);
+      const data={name,contact:document.getElementById('fContact').value.trim(),phone:document.getElementById('fPhone').value.trim(),email:document.getElementById('fEmail').value.trim(),website:document.getElementById('fWebsite').value.trim(),currency:document.getElementById('fCurrency').value,status:formStatus,billing:{street:document.getElementById('fBillStreet').value.trim(),city:document.getElementById('fBillCity').value.trim(),state:document.getElementById('fBillState').value.trim(),country:document.getElementById('fBillCountry').value.trim()},shipping:{street:document.getElementById('fShipStreet').value.trim(),city:document.getElementById('fShipCity').value.trim(),state:document.getElementById('fShipState').value.trim(),country:document.getElementById('fShipCountry').value.trim()},notes:document.getElementById('fNotes').value.trim()};
+      if(editId){const idx=customers.findIndex(c=>c.id===editId);if(idx!==-1)customers[idx]={...customers[idx],...data};showToast(`${name} updated`,'success');}
+      else{data.id=nextId++;data.revenue=0;data.outstanding=0;data.lastOrder='';data.created=new Date().toISOString().slice(0,10);customers.unshift(data);showToast(`${name} added to your customers`,'success');}
+      document.getElementById('submitSpinner').classList.add('hidden');document.getElementById('submitBtn').disabled=false;refreshStats();closeForm();render();
+    },600);
+  };
+
+  /* ─── Detail ─── */
+  window._cu.openDetail=id=>{
+    document.querySelectorAll('[id^="menu-"]').forEach(m=>m.classList.add('hidden'));
+    detailCustId=id;const c=customers.find(x=>x.id===id);if(!c)return;
+    document.getElementById('detailTitle').textContent=c.name;
+    const statusBadge=c.status==='active'?'bg-green-50 text-green-600 border-green-200':'bg-neutral-100 text-neutral-500 border-neutral-200';
+    const fmtAddr=a=>[a.street,a.city,a.state,a.country].filter(Boolean).join(', ')||'—';
+    document.getElementById('detailBody').innerHTML=`
+      <div class="px-6 pt-6 pb-4">
+        <div class="flex items-center gap-4 mb-6">
+          <div class="w-16 h-16 ${getColor(c.id)} rounded-2xl flex items-center justify-center text-white text-xl font-bold shrink-0">${initials(c.name)}</div>
+          <div class="flex-1 min-w-0"><h3 class="text-lg font-bold text-neutral-900">${c.name}</h3><p class="text-sm text-neutral-400">${c.contact||'No contact person'}</p><div class="flex items-center gap-2 mt-2"><span class="inline-flex items-center px-2 py-0.5 rounded-md text-[0.6rem] font-bold border ${statusBadge} capitalize">${c.status}</span><span class="text-xs text-neutral-400">Since ${fmtD(c.created)}</span></div></div>
+        </div>
+        <div class="grid grid-cols-2 gap-4 mb-6">
+          <div class="bg-green-50 rounded-xl p-4 text-center border border-green-100"><div class="text-[0.6rem] font-bold text-green-600 uppercase tracking-wide mb-1">Total Revenue</div><div class="text-xl font-extrabold text-green-600">${fmtM(c.revenue)}</div></div>
+          <div class="bg-amber-50 rounded-xl p-4 text-center border border-amber-100"><div class="text-[0.6rem] font-bold text-amber-600 uppercase tracking-wide mb-1">Outstanding</div><div class="text-xl font-extrabold text-amber-600">${fmtM(c.outstanding)}</div></div>
+        </div>
+      </div>
+      <div class="px-6 pb-6">
+        <h4 class="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-3">Contact</h4>
+        <div class="space-y-1 mb-6">
+          ${dRow('Email',c.email?`<a href="mailto:${c.email}" class="text-green-600 hover:underline">${c.email}</a>`:'—')}
+          ${dRow('Phone',c.phone||'—')}
+          ${dRow('Website',c.website?`<a href="${c.website}" target="_blank" class="text-green-600 hover:underline">${c.website}</a>`:'—')}
+          ${dRow('Currency',c.currency)}
+        </div>
+        <h4 class="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-3">Billing Address</h4>
+        <div class="bg-neutral-50 rounded-xl p-4 border border-neutral-100 text-sm text-neutral-600 mb-6 leading-relaxed">${fmtAddr(c.billing)}</div>
+        <h4 class="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-3">Shipping Address</h4>
+        <div class="bg-neutral-50 rounded-xl p-4 border border-neutral-100 text-sm text-neutral-600 mb-6 leading-relaxed">${fmtAddr(c.shipping)}</div>
+        ${c.notes?`<h4 class="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-3">Notes</h4><div class="bg-neutral-50 rounded-xl p-4 border border-neutral-100 text-sm text-neutral-600 leading-relaxed">${c.notes}</div>`:''}
+      </div>`;
+    const bd=document.getElementById('detailBackdrop'),pn=document.getElementById('detailPanel');bd.classList.remove('opacity-0','pointer-events-none');bd.classList.add('opacity-100','pointer-events-auto');pn.classList.remove('translate-x-full');pn.classList.add('translate-x-0');
+  };
+  function dRow(l,v){return `<div class="flex items-start py-2.5 border-b border-neutral-50"><span class="w-20 shrink-0 text-xs font-semibold text-neutral-400">${l}</span><span class="text-sm text-neutral-700 flex-1">${v}</span></div>`;}
+  window.closeDetail=()=>{const bd=document.getElementById('detailBackdrop'),pn=document.getElementById('detailPanel');pn.classList.remove('translate-x-0');pn.classList.add('translate-x-full');bd.classList.remove('opacity-100','pointer-events-auto');bd.classList.add('opacity-0','pointer-events-none');};
+  window.editFromDetail=()=>{closeDetail();setTimeout(()=>window._cu.edit(detailCustId),350);};
+
+  /* ─── Delete ─── */
+  window._cu.confirmDel=id=>{document.querySelectorAll('[id^="menu-"]').forEach(m=>m.classList.add('hidden'));deleteTargetId=id;isBulkDelete=false;const c=customers.find(x=>x.id===id);document.getElementById('deleteTitle').textContent=`Delete ${c?c.name:'Customer'}?`;document.getElementById('deleteMsg').textContent='All associated data will be permanently removed.';openDelDlg();};
+  window.confirmBulkDelete=()=>{isBulkDelete=true;document.getElementById('deleteTitle').textContent=`Delete ${selectedIds.size} customers?`;document.getElementById('deleteMsg').textContent='This action cannot be undone.';openDelDlg();};
+  function openDelDlg(){const bd=document.getElementById('deleteBackdrop'),dg=document.getElementById('deleteDialog');bd.classList.remove('opacity-0','pointer-events-none');bd.classList.add('opacity-100','pointer-events-auto');setTimeout(()=>{dg.classList.remove('scale-95','opacity-0');dg.classList.add('scale-100','opacity-100');},50);}
+  window.closeDeleteDialog=()=>{const bd=document.getElementById('deleteBackdrop'),dg=document.getElementById('deleteDialog');dg.classList.remove('scale-100','opacity-100');dg.classList.add('scale-95','opacity-0');setTimeout(()=>{bd.classList.remove('opacity-100','pointer-events-auto');bd.classList.add('opacity-0','pointer-events-none');},200);};
+  window.executeDelete=()=>{if(isBulkDelete){const c=selectedIds.size;customers=customers.filter(x=>!selectedIds.has(x.id));selectedIds.clear();showToast(`${c} customers deleted`,'success');}else if(deleteTargetId){const c=customers.find(x=>x.id===deleteTargetId);customers=customers.filter(x=>x.id!==deleteTargetId);selectedIds.delete(deleteTargetId);showToast(`${c?c.name:'Customer'} deleted`,'success');}deleteTargetId=null;refreshStats();closeDeleteDialog();render();};
+
+  /* ─── Stats ─── */
+  function refreshStats(){
+    document.getElementById('statTotal').textContent=customers.length;
+    document.getElementById('statRevenue').textContent=fmtM(customers.reduce((s,c)=>s+c.revenue,0));
+    document.getElementById('statOutstanding').textContent=fmtM(customers.reduce((s,c)=>s+c.outstanding,0));
+    document.getElementById('statActive').textContent=customers.filter(c=>c.lastOrder>='2026-03-01').length;
+  }
+
+  document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeForm();closeDetail();closeDeleteDialog();}});
+
+  window.showToast=(msg,type)=>{const t=document.getElementById('feedbackToast'),ic=document.getElementById('toastIcon'),tx=document.getElementById('toastText');t.className='fixed bottom-6 left-1/2 -translate-x-1/2 z-[90] flex items-center gap-3 px-5 py-3 rounded-xl shadow-lg border text-sm font-semibold pointer-events-none transition-all duration-300';if(type==='success'){t.classList.add('bg-green-50','border-green-200','text-green-700');ic.innerHTML='<polyline points="20 6 9 17 4 12"/>';}else if(type==='error'){t.classList.add('bg-red-50','border-red-200','text-red-700');ic.innerHTML='<circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>';}else{t.classList.add('bg-neutral-50','border-neutral-200','text-neutral-700');ic.innerHTML='<circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>';}tx.textContent=msg;requestAnimationFrame(()=>{t.classList.remove('opacity-0','translate-y-4');t.classList.add('opacity-100','translate-y-0');});setTimeout(()=>{t.classList.remove('opacity-100','translate-y-0');t.classList.add('opacity-0','translate-y-4');},2800);};
+
+  render();refreshStats();
+})();
+</script>
 
 {% endblock %}
