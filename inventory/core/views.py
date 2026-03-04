@@ -17,28 +17,31 @@ def temp(request):
     context = {
         "title": "Temp",
     }
-    return render(request, "base.html", context)
+    return render(request, "test.html", context)
 
 
 
 def home(request):
-  context = {
-    "title": "Home",
-  }
-  return render(request, "home.html", context)
+    if request.user.is_authenticated:
+        return redirect("dashboard")
+
+    context = {
+        "title": "Home",
+    }
+    return render(request, "home.html", context)
 
 
 def login_view(request):
-  context = {
-    "title": "Login",
-  }
-  return render(request, "log_sign_page.html", context)
+    context = {
+        "title": "Login",
+    }
+    return render(request, "log_sign_page.html", context)
 
 def register_view(request):
-  context = {
-    "title": "Register",
-  }
-  return render(request, "log_sign_page.html", context)
+    context = {
+        "title": "Register",
+    }
+    return render(request, "log_sign_page.html", context)
 
 
 
@@ -91,8 +94,62 @@ def register_api(request):
 
 
 
+def app_home(request):
+    if not request.user.is_authenticated:
+        return redirect("login")
+    else:
+        return redirect("dashboard")
+
 def dashboard(request):
-  context = {
-    "title": "Dashboard",
-  }
-  return render(request, "test.html", context)
+    if not request.user.is_authenticated:
+        return redirect("login")
+    context = {
+        "title": "Dashboard",
+    }
+    return render(request, "core/dashboard.html", context)
+
+
+
+def items_view(request):
+    if not request.user.is_authenticated:
+        return redirect("login")
+    context = {
+        "title": "Items & Goods",
+    }
+    return render(request, "core/items-goods.html", context)
+
+
+
+def suppliers_view(request):
+    if not request.user.is_authenticated:
+        return redirect("login")
+    context = {
+        "title": "Suppliers",
+    }
+    return render(request, "core/suppliers.html", context)
+
+
+def customers_view(request):
+    if not request.user.is_authenticated:
+        return redirect("login")
+    context = {
+        "title": "Customers",
+    }
+    return render(request, "core/customers.html", context)
+
+
+def goods_in_view(request):
+    if not request.user.is_authenticated:
+        return redirect("login")
+    context = {
+        "title": "Goods In",
+    }
+    return render(request, "core/goods-in.html", context)
+
+def goods_out_view(request):
+    if not request.user.is_authenticated:
+        return redirect("login")
+    context = {
+        "title": "Goods Out",
+    }
+    return render(request, "core/goods-out.html", context)

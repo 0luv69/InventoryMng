@@ -8,7 +8,8 @@ html { scroll-behavior: smooth; }
 body { font-family: 'Inter', system-ui, sans-serif; background: #fffffc; color: #171717; overflow-x: hidden; }
 
 
-
+.slidebar-design::-webkit-scrollbar { width: 3px; }
+.slidebar-design::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.06); border-radius: 3px; }
 
 /* ══════════════════════════════════════════
         WHITE GLASS TOAST SYSTEM

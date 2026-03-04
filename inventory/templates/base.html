@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>StockFlow — Dashboard</title>
+  <title>{% block title %}InventoryChamps{% endblock %}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -12,117 +12,455 @@
 
 </head>
 <body>
+    <!-- ══════════════════════════════════════
+    SIDEBAR
+    ══════════════════════════════════════ -->
+    <aside
+        id="sidebar"
+        class="fixed top-0 left-0 bottom-0 w-[260px] bg-white border-r border-neutral-100 flex flex-col z-50
+            transition-all duration-300 ease-out-expo
+            max-md:-translate-x-full max-md:w-[280px] max-md:shadow-none">
 
-    <aside class="sidebar" id="sidebar">
         <!-- Logo -->
-        <div class="sidebar-header">
-        <div class="logo-box">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
-            <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
-            <line x1="12" y1="22.08" x2="12" y2="12"/>
-            </svg>
-        </div>
-        <span class="logo-text">StockFlow</span>
+        <div class="flex items-center gap-2.5 px-6 pt-6 pb-5 border-b border-neutral-50 sidebar-header">
+            <div class="w-[34px] h-[34px] bg-green-500 rounded-[10px] flex items-center justify-center shrink-0">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+                <line x1="12" y1="22.08" x2="12" y2="12"/>
+                </svg>
+            </div>
+            <span class="text-[1.05rem] font-extrabold tracking-tight text-neutral-900 sidebar-label whitespace-nowrap overflow-hidden transition-all duration-300">InventoryChamps</span>
         </div>
 
         <!-- Navigation -->
-        <nav class="sidebar-nav" id="sidebarNav">
+        <nav id="sidebarNav" class="flex-1 overflow-y-auto p-3 scrollbar-thin slidebar-design">
 
-        <!-- Group: Main -->
-        <div class="nav-group-label">Overview</div>
+        <!-- Group: Overview -->
+        <div class="text-[0.65rem] font-bold uppercase tracking-widest text-neutral-400 px-3 pt-1 pb-2 whitespace-nowrap overflow-hidden transition-all duration-300">Overview</div>
 
-        <a class="nav-item active" data-page="dashboard" onclick="navigateTo(this, 'dashboard')">
-            <div class="active-dot"></div>
-            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
-            Dashboard
-        </a>
-
-        <!-- Group: Inventory -->
-        <div class="nav-group-label">Inventory</div>
-
-        <a class="nav-item" data-page="items" onclick="navigateTo(this, 'items')">
-            <div class="active-dot"></div>
-            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
-            Items & Goods
-            <span class="nav-badge">248</span>
-        </a>
-
-        <a class="nav-item" data-page="goods-in" onclick="navigateTo(this, 'goods-in')">
-            <div class="active-dot"></div>
-            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>
-            Goods In
-            <span class="nav-badge">12</span>
-        </a>
-
-        <a class="nav-item" data-page="goods-out" onclick="navigateTo(this, 'goods-out')">
-            <div class="active-dot"></div>
-            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 3v5a1 1 0 0 1-1 1h-1"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
-            Goods Out
-        </a>
-
-        <a class="nav-item" data-page="spoilage" onclick="navigateTo(this, 'spoilage')">
-            <div class="active-dot"></div>
-            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-            Spoilage & Loss
-            <span class="nav-badge warn">3</span>
-        </a>
+            <a class="nav-item group relative flex items-center gap-3 px-3 py-2.5 rounded-[10px] text-[0.8125rem] font-medium text-neutral-500 cursor-pointer transition-all duration-200 mb-0.5 border border-transparent hover:bg-stone-50 hover:text-neutral-700"
+                data-url="{% url 'dashboard' %}" 
+                data-page="dashboard" onclick="navigateTo(this, 'dashboard')" title="Dashboard">
+                <div class="active-dot absolute -left-1.5 top-1/2 -translate-y-1/2 w-1 h-5 bg-green-500 rounded-r opacity-0 transition-opacity duration-300"></div>
+                <svg class="w-5 h-5 shrink-0 text-neutral-400 group-hover:text-neutral-600 transition-colors duration-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+                <span class="sidebar-label whitespace-nowrap overflow-hidden transition-all duration-300">Dashboard</span>
+            </a>
 
         <!-- Group: People -->
-        <div class="nav-group-label">People</div>
+        <div class="text-[0.65rem] font-bold uppercase tracking-widest text-neutral-400 px-3 pt-5 pb-2 whitespace-nowrap overflow-hidden transition-all duration-300">People</div>
 
-        <a class="nav-item" data-page="suppliers" onclick="navigateTo(this, 'suppliers')">
-            <div class="active-dot"></div>
-            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
-            Suppliers
-        </a>
+            <a class="nav-item group relative flex items-center gap-3 px-3 py-2.5 rounded-[10px] text-[0.8125rem] font-medium text-neutral-500 cursor-pointer transition-all duration-200 mb-0.5 border border-transparent hover:bg-stone-50 hover:text-neutral-700"
+                data-url="{% url 'suppliers' %}"
+                data-page="suppliers" onclick="navigateTo(this, 'suppliers')" title="Suppliers">
+                <div class="active-dot absolute -left-1.5 top-1/2 -translate-y-1/2 w-1 h-5 bg-green-500 rounded-r opacity-0 transition-opacity duration-300"></div>
+                <svg class="w-5 h-5 shrink-0 text-neutral-400 group-hover:text-neutral-600 transition-colors duration-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+                <span class="sidebar-label whitespace-nowrap overflow-hidden transition-all duration-300">Suppliers</span>
+            </a>
 
-        <a class="nav-item" data-page="customers" onclick="navigateTo(this, 'customers')">
-            <div class="active-dot"></div>
-            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-            Customers
-        </a>
+            <a class="nav-item group relative flex items-center gap-3 px-3 py-2.5 rounded-[10px] text-[0.8125rem] font-medium text-neutral-500 cursor-pointer transition-all duration-200 mb-0.5 border border-transparent hover:bg-stone-50 hover:text-neutral-700"
+                data-url="{% url 'customers' %}"
+                data-page="customers" onclick="navigateTo(this, 'customers')" title="Customers">
+                <div class="active-dot absolute -left-1.5 top-1/2 -translate-y-1/2 w-1 h-5 bg-green-500 rounded-r opacity-0 transition-opacity duration-300"></div>
+                <svg class="w-5 h-5 shrink-0 text-neutral-400 group-hover:text-neutral-600 transition-colors duration-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                <span class="sidebar-label whitespace-nowrap overflow-hidden transition-all duration-300">Customers</span>
+            </a>
+
+
+        <!-- Group: Inventory -->
+        <div class="text-[0.65rem] font-bold uppercase tracking-widest text-neutral-400 px-3 pt-5 pb-2 whitespace-nowrap overflow-hidden transition-all duration-300">Inventory</div>
+
+            <a class="nav-item group relative flex items-center gap-3 px-3 py-2.5 rounded-[10px] text-[0.8125rem] font-medium text-neutral-500 cursor-pointer transition-all duration-200 mb-0.5 border border-transparent hover:bg-stone-50 hover:text-neutral-700"
+                data-url="{% url 'items' %}"
+                data-page="items-&-goods" onclick="navigateTo(this, 'items-&-goods')" title="Items & Goods">
+                <div class="active-dot absolute -left-1.5 top-1/2 -translate-y-1/2 w-1 h-5 bg-green-500 rounded-r opacity-0 transition-opacity duration-300"></div>
+                <svg class="w-5 h-5 shrink-0 text-neutral-400 group-hover:text-neutral-600 transition-colors duration-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+                <span class="sidebar-label whitespace-nowrap overflow-hidden transition-all duration-300">Items &amp; Goods</span>
+                <span class="nav-badge ml-auto min-w-[20px] h-5 px-1.5 rounded-md text-[0.65rem] font-bold flex items-center justify-center bg-green-50 text-green-600 border border-green-200 sidebar-label transition-all duration-300">248</span>
+            </a>
+
+            <a class="nav-item group relative flex items-center gap-3 px-3 py-2.5 rounded-[10px] text-[0.8125rem] font-medium text-neutral-500 cursor-pointer transition-all duration-200 mb-0.5 border border-transparent hover:bg-stone-50 hover:text-neutral-700"
+                data-url="{% url 'goods_in' %}"
+                data-page="goods-in" onclick="navigateTo(this, 'goods-in')" title="Goods In">
+                <div class="active-dot absolute -left-1.5 top-1/2 -translate-y-1/2 w-1 h-5 bg-green-500 rounded-r opacity-0 transition-opacity duration-300"></div>
+                <svg class="w-5 h-5 shrink-0 text-neutral-400 group-hover:text-neutral-600 transition-colors duration-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>
+                <span class="sidebar-label whitespace-nowrap overflow-hidden transition-all duration-300">Goods In</span>
+                <span class="nav-badge ml-auto min-w-[20px] h-5 px-1.5 rounded-md text-[0.65rem] font-bold flex items-center justify-center bg-green-50 text-green-600 border border-green-200 sidebar-label transition-all duration-300">12</span>
+            </a>
+
+            <a class="nav-item group relative flex items-center gap-3 px-3 py-2.5 rounded-[10px] text-[0.8125rem] font-medium text-neutral-500 cursor-pointer transition-all duration-200 mb-0.5 border border-transparent hover:bg-stone-50 hover:text-neutral-700"
+                data-url="{% url 'goods_out' %}"
+                data-page="goods-out" onclick="navigateTo(this, 'goods-out')" title="Goods Out">
+                <div class="active-dot absolute -left-1.5 top-1/2 -translate-y-1/2 w-1 h-5 bg-green-500 rounded-r opacity-0 transition-opacity duration-300"></div>
+                <svg class="w-5 h-5 shrink-0 text-neutral-400 group-hover:text-neutral-600 transition-colors duration-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 3v5a1 1 0 0 1-1 1h-1"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+                <span class="sidebar-label whitespace-nowrap overflow-hidden transition-all duration-300">Goods Out</span>
+            </a>
+
+            <a class="nav-item group relative flex items-center gap-3 px-3 py-2.5 rounded-[10px] text-[0.8125rem] font-medium text-neutral-500 cursor-pointer transition-all duration-200 mb-0.5 border border-transparent hover:bg-stone-50 hover:text-neutral-700"
+                data-page="spoilage" onclick="navigateTo(this, 'spoilage')" title="Spoilage & Loss">
+                <div class="active-dot absolute -left-1.5 top-1/2 -translate-y-1/2 w-1 h-5 bg-green-500 rounded-r opacity-0 transition-opacity duration-300"></div>
+                <svg class="w-5 h-5 shrink-0 text-neutral-400 group-hover:text-neutral-600 transition-colors duration-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                <span class="sidebar-label whitespace-nowrap overflow-hidden transition-all duration-300">Spoilage &amp; Loss</span>
+                <span class="nav-badge ml-auto min-w-[20px] h-5 px-1.5 rounded-md text-[0.65rem] font-bold flex items-center justify-center bg-amber-100 text-amber-700 border border-amber-300 sidebar-label transition-all duration-300">3</span>
+            </a>
+
 
         <!-- Group: Finance -->
-        <div class="nav-group-label">Finance</div>
+        <div class="text-[0.65rem] font-bold uppercase tracking-widest text-neutral-400 px-3 pt-5 pb-2 whitespace-nowrap overflow-hidden transition-all duration-300">Finance</div>
 
-        <a class="nav-item" data-page="payments" onclick="navigateTo(this, 'payments')">
-            <div class="active-dot"></div>
-            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-            Payments
-        </a>
+            <a class="nav-item group relative flex items-center gap-3 px-3 py-2.5 rounded-[10px] text-[0.8125rem] font-medium text-neutral-500 cursor-pointer transition-all duration-200 mb-0.5 border border-transparent hover:bg-stone-50 hover:text-neutral-700"
+                data-page="payments" onclick="navigateTo(this, 'payments')" title="Payments">
+                <div class="active-dot absolute -left-1.5 top-1/2 -translate-y-1/2 w-1 h-5 bg-green-500 rounded-r opacity-0 transition-opacity duration-300"></div>
+                <svg class="w-5 h-5 shrink-0 text-neutral-400 group-hover:text-neutral-600 transition-colors duration-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                <span class="sidebar-label whitespace-nowrap overflow-hidden transition-all duration-300">Payments</span>
+            </a>
 
-        <a class="nav-item" data-page="reports" onclick="navigateTo(this, 'reports')">
-            <div class="active-dot"></div>
-            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-            Reports
-        </a>
+            <a class="nav-item group relative flex items-center gap-3 px-3 py-2.5 rounded-[10px] text-[0.8125rem] font-medium text-neutral-500 cursor-pointer transition-all duration-200 mb-0.5 border border-transparent hover:bg-stone-50 hover:text-neutral-700"
+                data-page="reports" onclick="navigateTo(this, 'reports')" title="Reports">
+                <div class="active-dot absolute -left-1.5 top-1/2 -translate-y-1/2 w-1 h-5 bg-green-500 rounded-r opacity-0 transition-opacity duration-300"></div>
+                <svg class="w-5 h-5 shrink-0 text-neutral-400 group-hover:text-neutral-600 transition-colors duration-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                <span class="sidebar-label whitespace-nowrap overflow-hidden transition-all duration-300">Reports</span>
+            </a>
 
         <!-- Group: System -->
-        <div class="nav-group-label">System</div>
+        <div class="text-[0.65rem] font-bold uppercase tracking-widest text-neutral-400 px-3 pt-5 pb-2 whitespace-nowrap overflow-hidden transition-all duration-300">System</div>
 
-        <a class="nav-item" data-page="settings" onclick="navigateTo(this, 'settings')">
-            <div class="active-dot"></div>
-            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-            Settings
-        </a>
+            <a class="nav-item group relative flex items-center gap-3 px-3 py-2.5 rounded-[10px] text-[0.8125rem] font-medium text-neutral-500 cursor-pointer transition-all duration-200 mb-0.5 border border-transparent hover:bg-stone-50 hover:text-neutral-700"
+                data-page="settings" onclick="navigateTo(this, 'settings')" title="Settings">
+                <div class="active-dot absolute -left-1.5 top-1/2 -translate-y-1/2 w-1 h-5 bg-green-500 rounded-r opacity-0 transition-opacity duration-300"></div>
+                <svg class="w-5 h-5 shrink-0 text-neutral-400 group-hover:text-neutral-600 transition-colors duration-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                <span class="sidebar-label whitespace-nowrap overflow-hidden transition-all duration-300">Settings</span>
+            </a>
 
         </nav>
 
+        <!-- Collapse toggle button (desktop only) -->
+        <div class="px-3 py-2 border-t border-neutral-50 max-md:hidden">
+        <button onclick="toggleSidebarCollapse()" id="collapseBtn" title="Collapse sidebar"
+                class="w-full flex items-center gap-3 px-3 py-2.5 rounded-[10px] text-[0.8125rem] font-medium text-neutral-500 cursor-pointer transition-all duration-200 hover:bg-stone-50 hover:text-neutral-700">
+            <svg id="collapseIcon" class="w-5 h-5 shrink-0 text-neutral-400 transition-transform duration-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="11 17 6 12 11 7"/>
+            <polyline points="18 17 13 12 18 7"/>
+            </svg>
+            <span class="sidebar-label whitespace-nowrap overflow-hidden transition-all duration-300">Collapse</span>
+        </button>
+        </div>
+
         <!-- User -->
-        <div class="sidebar-footer">
-        <div class="user-card" onclick="toast.info('Opening profile settings...')">
-            <div class="user-avatar">JD</div>
-            <div class="user-info">
-            <div class="user-name">John Doe</div>
-            <div class="user-role">Admin</div>
+        <div class="p-4 border-t border-neutral-50 sidebar-footer">
+        <div class="group flex items-center gap-2.5 px-3 py-2.5 rounded-xl cursor-pointer transition-all duration-200 hover:bg-stone-50">
+            <div class="w-[34px] h-[34px] rounded-[10px] bg-neutral-100 flex items-center justify-center text-neutral-500 text-xs font-bold shrink-0">JD</div>
+            <div class="flex-1 min-w-0 sidebar-label overflow-hidden transition-all duration-300">
+            <div class="text-[0.8125rem] font-semibold text-neutral-800 truncate">John Doe</div>
+            <div class="text-[0.7rem] text-neutral-400 font-medium">Admin</div>
             </div>
-            <svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+            <svg class="text-neutral-300 group-hover:text-neutral-500 transition-colors duration-200 sidebar-label" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
         </div>
         </div>
     </aside>
+
     <!-- Mobile overlay -->
-    <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+    <div id="sidebarOverlay" onclick="closeSidebar()"
+        class="fixed inset-0 bg-black/20 backdrop-blur-sm z-[45] opacity-0 pointer-events-none transition-opacity duration-300">
+    </div>
+
+    <!-- ══════════════════════════════════════
+    MAIN AREA
+    ══════════════════════════════════════ -->
+
+    <div id="main" class="ml-[260px] min-h-screen transition-all duration-300 ease-out-expo max-md:ml-0">
+        <!-- Top bar -->
+        <div class="sticky top-0 z-40 h-16 bg-surface/85 backdrop-blur-md border-b border-neutral-100 flex items-center justify-between px-8 max-md:px-4">
+        <div class="flex items-center gap-4">
+            <!-- Hamburger (mobile only) -->
+            <button onclick="openSidebar()" aria-label="Open menu"
+                    class="hidden max-md:flex w-[38px] h-[38px] border border-neutral-200 rounded-[10px] bg-white text-neutral-600 items-center justify-center cursor-pointer transition-all duration-200 hover:bg-stone-50">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+            </button>
+            <div id="breadcrumb" class="flex cursor-pointer items-center gap-1.5 text-xs text-neutral-400 font-medium max-[480px]:hidden">
+                <a class="text-neutral-400 no-underline transition-colors duration-200 hover:text-neutral-600">Home</a>
+                <span class="text-neutral-300">/</span>
+                <span id="breadcrumbCurrent" title="{% block page_subtitle %}This is Title{% endblock %}" class="text-neutral-600">{% block page_title %}Dashboard{% endblock %}</span>
+            </div>
+        </div>
+        <div class="flex items-center gap-2">
+            <button aria-label="Search"
+                    class="w-[38px] h-[38px] border border-neutral-200 rounded-[10px] bg-white text-neutral-500 flex items-center justify-center cursor-pointer transition-all duration-200 hover:bg-stone-50 hover:text-neutral-600 hover:border-neutral-300">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            </button>
+            <button aria-label="Notifications"
+                    class="relative w-[38px] h-[38px] border border-neutral-200 rounded-[10px] bg-white text-neutral-500 flex items-center justify-center cursor-pointer transition-all duration-200 hover:bg-stone-50 hover:text-neutral-600 hover:border-neutral-300">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+            <span class="absolute top-2 right-2 w-[7px] h-[7px] bg-green-500 rounded-full border-2 border-white"></span>
+            </button>
+        </div>
+        </div>
+
+        <!-- Page content -->
+        <div class="px-8 pt-7 pb-20 max-md:px-4 max-md:pt-5">
+            {% block content %}
+            <!-- Default content can go here, or it can be left empty -->
+            {% endblock %}
+        </div>
+    </div>
+
+
+
+
+    <!-- Toast Container -->
+    <div class="toast-container">
+        <div class="toast-stack" id="toastStack">
+        <div class="toast-peek p2"></div>
+        <div class="toast-peek p1"></div>
+        <div id="toastSlot"></div>
+        <div class="toast-badge" id="toastBadge"></div>
+        </div>
+    </div>
+
+    <script src="{% static 'js/notification.js' %}"></script>
+
+
+
+    <script>
+        /* ══════════════════════════════════════
+        STATE
+        ══════════════════════════════════════ */
+
+        const sidebar        = document.getElementById('sidebar');
+        const sidebarOverlay = document.getElementById('sidebarOverlay');
+        const mainContent    = document.getElementById('main');
+        const collapseIcon   = document.getElementById('collapseIcon');
+
+        const EXPANDED_W = '260px';
+        const COLLAPSED_W = '72px';
+
+        let isCollapsed = false;
+
+
+        /* ══════════════════════════════════════
+        MOBILE SIDEBAR (unchanged)
+        ══════════════════════════════════════ */
+
+        function openSidebar() {
+        sidebar.classList.add('max-md:translate-x-0', 'max-md:shadow-[16px_0_48px_rgba(0,0,0,0.08)]');
+        sidebar.classList.remove('max-md:-translate-x-full', 'max-md:shadow-none');
+        sidebarOverlay.classList.add('opacity-100', 'pointer-events-auto');
+        sidebarOverlay.classList.remove('opacity-0', 'pointer-events-none');
+        document.body.style.overflow = 'hidden';
+        }
+
+        function closeSidebar() {
+        sidebar.classList.remove('max-md:translate-x-0', 'max-md:shadow-[16px_0_48px_rgba(0,0,0,0.08)]');
+        sidebar.classList.add('max-md:-translate-x-full', 'max-md:shadow-none');
+        sidebarOverlay.classList.remove('opacity-100', 'pointer-events-auto');
+        sidebarOverlay.classList.add('opacity-0', 'pointer-events-none');
+        document.body.style.overflow = '';
+        }
+
+        document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeSidebar();
+        });
+
+        window.addEventListener('resize', () => {
+        if (window.innerWidth > 768) closeSidebar();
+        });
+
+
+        /* ══════════════════════════════════════
+        DESKTOP COLLAPSE / EXPAND
+        ══════════════════════════════════════ */
+
+        function toggleSidebarCollapse() {
+        // Only works on desktop (>768px)
+        if (window.innerWidth <= 768) return;
+
+        isCollapsed = !isCollapsed;
+
+        if (isCollapsed) {
+            // Collapse: shrink sidebar to icon-only width
+            sidebar.style.width = COLLAPSED_W;
+            mainContent.style.marginLeft = COLLAPSED_W;
+
+            // Hide all text labels & badges
+            document.querySelectorAll('.sidebar-label').forEach(el => {
+            el.classList.add('hidden');
+            });
+
+            document.querySelectorAll('.tracking-widest').forEach(el => {
+            el.classList.add('opacity-0');
+            });
+
+            // Center the header logo
+            const header = sidebar.querySelector('.sidebar-header');
+            if (header) header.classList.add('justify-center', 'px-0');
+
+            // Center nav items
+            document.querySelectorAll('.nav-item').forEach(n => {
+            n.classList.add('justify-center');
+            n.classList.remove('gap-3');
+            n.classList.add('gap-0');
+            });
+
+            // Center collapse button
+            const collapseBtn = document.getElementById('collapseBtn');
+            collapseBtn.classList.add('justify-center');
+            collapseBtn.classList.remove('gap-3');
+            collapseBtn.classList.add('gap-0');
+
+            // Center user card
+            const footer = sidebar.querySelector('.sidebar-footer');
+            if (footer) {
+            footer.querySelectorAll('.group').forEach(g => {
+                g.classList.add('justify-center');
+                g.classList.remove('gap-2.5');
+                g.classList.add('gap-0');
+            });
+            }
+
+            // Rotate the collapse icon to point right (expand)
+            collapseIcon.style.transform = 'rotate(180deg)';
+
+            // Shrink padding
+            sidebar.querySelector('.sidebar-header')?.classList.replace('px-6', 'px-3');
+            document.getElementById('sidebarNav')?.classList.replace('p-3', 'p-2');
+
+        } else {
+            // Expand: restore full width
+            sidebar.style.width = EXPANDED_W;
+            mainContent.style.marginLeft = EXPANDED_W;
+
+            // Show all text labels & badges
+            document.querySelectorAll('.sidebar-label').forEach(el => {
+            el.classList.remove('hidden');
+            });
+
+            document.querySelectorAll('.tracking-widest').forEach(el => {
+            el.classList.remove('opacity-0');
+            });
+
+            // Restore header
+            const header = sidebar.querySelector('.sidebar-header');
+            if (header) header.classList.remove('justify-center', 'px-0');
+
+            // Restore nav items
+            document.querySelectorAll('.nav-item').forEach(n => {
+            n.classList.remove('justify-center');
+            n.classList.remove('gap-0');
+            n.classList.add('gap-3');
+            });
+
+            // Restore collapse button
+            const collapseBtn = document.getElementById('collapseBtn');
+            collapseBtn.classList.remove('justify-center');
+            collapseBtn.classList.remove('gap-0');
+            collapseBtn.classList.add('gap-3');
+
+            // Restore user card
+            const footer = sidebar.querySelector('.sidebar-footer');
+            if (footer) {
+            footer.querySelectorAll('.group').forEach(g => {
+                g.classList.remove('justify-center');
+                g.classList.remove('gap-0');
+                g.classList.add('gap-2.5');
+            });
+            }
+
+            // Reset collapse icon
+            collapseIcon.style.transform = '';
+
+            // Restore padding
+            sidebar.querySelector('.sidebar-header')?.classList.replace('px-3', 'px-6');
+            document.getElementById('sidebarNav')?.classList.replace('p-2', 'p-3');
+        }
+        }
+
+        // If window resizes to mobile while collapsed, reset to expanded state
+        // so mobile drawer works correctly
+        window.addEventListener('resize', () => {
+        if (window.innerWidth <= 768 && isCollapsed) {
+            // Silently reset to expanded state for mobile
+            isCollapsed = false;
+            sidebar.style.width = '';
+            mainContent.style.marginLeft = '';
+            document.querySelectorAll('.sidebar-label').forEach(el => {
+            el.classList.remove('hidden');
+            });
+            const header = sidebar.querySelector('.sidebar-header');
+            if (header) header.classList.remove('justify-center', 'px-0');
+            document.querySelectorAll('.nav-item').forEach(n => {
+            n.classList.remove('justify-center', 'gap-0');
+            n.classList.add('gap-3');
+            });
+            const collapseBtn = document.getElementById('collapseBtn');
+            collapseBtn.classList.remove('justify-center', 'gap-0');
+            collapseBtn.classList.add('gap-3');
+            const footer = sidebar.querySelector('.sidebar-footer');
+            if (footer) {
+            footer.querySelectorAll('.group').forEach(g => {
+                g.classList.remove('justify-center', 'gap-0');
+                g.classList.add('gap-2.5');
+            });
+            }
+            collapseIcon.style.transform = '';
+            sidebar.querySelector('.sidebar-header')?.classList.replace('px-3', 'px-6');
+            document.getElementById('sidebarNav')?.classList.replace('p-2', 'p-3');
+        }
+        });
+
+
+        /* ══════════════════════════════════════
+        NAVIGATION — Active state
+        ══════════════════════════════════════ */
+
+        const pageTitles = {
+        'dashboard':  { title: 'Dashboard',        sub: 'Welcome back, John. Here\'s your inventory overview.' },
+        'items':      { title: 'Items & Goods',     sub: 'Manage your product catalogue and stock levels.' },
+        'goods-in':   { title: 'Goods In',          sub: 'Track incoming shipments and warehouse receiving.' },
+        'goods-out':  { title: 'Goods Out',         sub: 'Monitor dispatched goods and sales fulfilment.' },
+        'spoilage':   { title: 'Spoilage & Loss',   sub: 'Review expired, damaged, or lost inventory.' },
+        'suppliers':  { title: 'Suppliers',          sub: 'Manage your vendor network and contacts.' },
+        'customers':  { title: 'Customers',          sub: 'Your client directory and transaction history.' },
+        'payments':   { title: 'Payments',           sub: 'Cash, credit, and all payment records.' },
+        'reports':    { title: 'Reports',            sub: 'Analytics and insights on your inventory.' },
+        'settings':   { title: 'Settings',           sub: 'Manage account, preferences, and system config.' },
+        };
+
+        const activeClasses   = ['bg-green-50', 'text-green-700', 'font-semibold', 'border-green-500/10'];
+        const inactiveClasses = ['text-neutral-500', 'font-medium', 'border-transparent', 'hover:bg-stone-50', 'hover:text-neutral-700'];
+
+        function navigateTo(el, page) {
+            currentPage = document.getElementById('breadcrumbCurrent').textContent.trim().toLowerCase().replace(/\s+/g, '-');
+            element_url = el.getAttribute('data-url') || '#';
+            if (currentPage == page) {
+                toast.info(`You are on the correct page (${currentPage})`);
+                return;
+            }else{
+                console.info(`Navigating to ${currentPage} (URL: ${element_url})`);
+                window.location.href = element_url;
+            }
+            // Close mobile sidebar
+            closeSidebar();
+        }
+
+
+        window.addEventListener('DOMContentLoaded', () => {
+            // On page load, activate the nav item that matches the current page
+            const currentPage = document.getElementById('breadcrumbCurrent').textContent.trim().toLowerCase().replace(/\s+/g, '-');
+            console.info(`Current page: ${currentPage}`);
+            const activeNavItem = document.querySelector(`.nav-item[data-page="${currentPage}"]`);
+            if (activeNavItem) {
+                activeNavItem.classList.remove(...inactiveClasses);
+                activeNavItem.classList.add(...activeClasses);
+                const activeIcon = activeNavItem.querySelector('svg');
+                if (activeIcon) {
+                    activeIcon.classList.remove('text-neutral-400', 'group-hover:text-neutral-600');
+                    activeIcon.classList.add('text-green-500');
+                }
+                const activeDot = activeNavItem.querySelector('.active-dot');
+                if (activeDot) activeDot.classList.replace('opacity-0', 'opacity-100');
+            }
+        });
+    </script>
 
 </body>
 </html>

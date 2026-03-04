@@ -5,13 +5,23 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>InventoryChamps — Inventory Management</title>
+  <meta name="description" content="InventoryChamps - Comprehensive inventory management system for tracking goods, suppliers, customers, and financial transactions.">
+  <meta name="keywords" content="inventory management, stock tracking, goods management, warehouse, supplier management, customer management">
+  <meta name="author" content="InventoryChamps">
+  <meta name="robots" content="index, follow">
+  <meta property="og:title" content="InventoryChamps - Inventory Management System">
+  <meta property="og:description" content="Comprehensive inventory management system for tracking goods, suppliers, customers, and financial transactions.">
+  <meta property="og:type" content="website">
+  <link rel="canonical" href="https://yourwebsite.com/">
+
+
+
+
   {% tailwind_css %}
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
-
-
     /* ── Navbar ── */
     .navbar {
       position: fixed; top: 0; left: 0; right: 0; z-index: 100;
@@ -246,7 +256,7 @@
     }
   </style>
 </head>
-<body>
+<body class="slidebar-design">
 
   <nav class="navbar" id="navbar">
     <div class="max-w-7xl mx-auto px-6 lg:px-8">
@@ -608,82 +618,82 @@
   </div>
 
 
-{% include "login_signin_model.html" %}
+  {% include "login_signin_model.html" %}
 
 
-<script src="{% static 'js/notification.js' %}"></script>
+  <script src="{% static 'js/notification.js' %}"></script>
 
-<script>
-    // ── Navbar scroll effect ──
-    window.addEventListener('scroll', () => {
-      document.getElementById('navbar').classList.toggle('scrolled', window.scrollY > 10);
-    });
-
-    // ── Mobile menu ──
-    document.getElementById('menuToggle').addEventListener('click', () => {
-      document.getElementById('mobileMenu').classList.add('open');
-    });
-    document.getElementById('menuClose').addEventListener('click', closeMobile);
-    function closeMobile() {
-      document.getElementById('mobileMenu').classList.remove('open');
-    }
-
-    // ── Scroll reveal ──
-    const reveals = document.querySelectorAll('.reveal');
-    const revealObserver = new IntersectionObserver((entries) => {
-      entries.forEach((entry, i) => {
-        if (entry.isIntersecting) {
-          setTimeout(() => entry.target.classList.add('visible'), i * 80);
-          revealObserver.unobserve(entry.target);
-        }
+  <script>
+      // ── Navbar scroll effect ──
+      window.addEventListener('scroll', () => {
+        document.getElementById('navbar').classList.toggle('scrolled', window.scrollY > 10);
       });
-    }, { threshold: 0.15 });
-    reveals.forEach(el => revealObserver.observe(el));
 
-    // ── Stat counter animation ──
-    const stats = document.querySelectorAll('.stat-number[data-target]');
-    const statObserver = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          const el = entry.target;
-          const target = parseFloat(el.dataset.target);
-          const isDecimal = target % 1 !== 0;
-          const duration = 1900;
-          const start = performance.now();
-          const suffix = isDecimal ? '%' : '+';
+      // ── Mobile menu ──
+      document.getElementById('menuToggle').addEventListener('click', () => {
+        document.getElementById('mobileMenu').classList.add('open');
+      });
+      document.getElementById('menuClose').addEventListener('click', closeMobile);
+      function closeMobile() {
+        document.getElementById('mobileMenu').classList.remove('open');
+      }
 
-          function tick(now) {
-            const progress = Math.min((now - start) / duration, 1);
-            const eased = 1 - Math.pow(1 - progress, 4); // ease-out quart
-            const current = eased * target;
-            el.textContent = (isDecimal ? current.toFixed(1) : Math.floor(current).toLocaleString()) + suffix;
-            if (progress < 1) requestAnimationFrame(tick);
+      // ── Scroll reveal ──
+      const reveals = document.querySelectorAll('.reveal');
+      const revealObserver = new IntersectionObserver((entries) => {
+        entries.forEach((entry, i) => {
+          if (entry.isIntersecting) {
+            setTimeout(() => entry.target.classList.add('visible'), i * 80);
+            revealObserver.unobserve(entry.target);
           }
-          requestAnimationFrame(tick);
-          statObserver.unobserve(el);
-        }
-      });
-    }, { threshold: 0.5 });
-    stats.forEach(el => statObserver.observe(el));
+        });
+      }, { threshold: 0.15 });
+      reveals.forEach(el => revealObserver.observe(el));
 
-    // ── Animated flow nodes — cycling highlight ──
-    const nodes = [1, 2, 3, 4, 5];
-    let currentNode = 0;
-    function cycleNodes() {
-      // Reset all
-      nodes.forEach(n => {
-        document.getElementById(`node-${n}`).style.borderColor = '#e5e5e5';
-        document.getElementById(`dot-${n}`).classList.remove('active');
-      });
-      // Activate current
-      const n = nodes[currentNode];
-      document.getElementById(`node-${n}`).style.borderColor = '#22c55e';
-      document.getElementById(`dot-${n}`).classList.add('active');
-      currentNode = (currentNode + 1) % nodes.length;
-    }
-    cycleNodes();
-    setInterval(cycleNodes, 2200);
-</script>
+      // ── Stat counter animation ──
+      const stats = document.querySelectorAll('.stat-number[data-target]');
+      const statObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            const el = entry.target;
+            const target = parseFloat(el.dataset.target);
+            const isDecimal = target % 1 !== 0;
+            const duration = 1900;
+            const start = performance.now();
+            const suffix = isDecimal ? '%' : '+';
+
+            function tick(now) {
+              const progress = Math.min((now - start) / duration, 1);
+              const eased = 1 - Math.pow(1 - progress, 4); // ease-out quart
+              const current = eased * target;
+              el.textContent = (isDecimal ? current.toFixed(1) : Math.floor(current).toLocaleString()) + suffix;
+              if (progress < 1) requestAnimationFrame(tick);
+            }
+            requestAnimationFrame(tick);
+            statObserver.unobserve(el);
+          }
+        });
+      }, { threshold: 0.5 });
+      stats.forEach(el => statObserver.observe(el));
+
+      // ── Animated flow nodes — cycling highlight ──
+      const nodes = [1, 2, 3, 4, 5];
+      let currentNode = 0;
+      function cycleNodes() {
+        // Reset all
+        nodes.forEach(n => {
+          document.getElementById(`node-${n}`).style.borderColor = '#e5e5e5';
+          document.getElementById(`dot-${n}`).classList.remove('active');
+        });
+        // Activate current
+        const n = nodes[currentNode];
+        document.getElementById(`node-${n}`).style.borderColor = '#22c55e';
+        document.getElementById(`dot-${n}`).classList.add('active');
+        currentNode = (currentNode + 1) % nodes.length;
+      }
+      cycleNodes();
+      setInterval(cycleNodes, 2200);
+  </script>
 
 </body>
 </html>
