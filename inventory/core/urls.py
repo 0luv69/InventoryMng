@@ -30,4 +30,9 @@ urlpatterns = [
 
     path('app/profile/', views.profile_view, name='profile'),
 
+
+    path('update-profile/api/', views.save_profile, name='save_profile'),
+    path('update-pwd/api/', views.update_pwd, name='update_pwd'),
+    path('update-company/api/', views.update_company, name='update_company'),
+
 ]

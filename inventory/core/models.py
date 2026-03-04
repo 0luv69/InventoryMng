@@ -29,7 +29,12 @@ class Company(TimeStampedModel):
     city = models.CharField(max_length=80, blank=True)
     state = models.CharField(max_length=80, blank=True)
     country = models.CharField(max_length=80, blank=True)
+
+
     currency = models.CharField(max_length=3, choices=CURRENCY_CHOICES, default="NPR")
+    low_stock_threshold = models.PositiveIntegerField(default=20, validators=[MinValueValidator(1)])
+    fiscal_year_start = models.CharField(max_length=20, default="shrawan")
+    tax_id = models.CharField(max_length=50, blank=True)
 
     def save(self, *args, **kwargs):
         if not self.slug:
@@ -47,7 +52,7 @@ class UserProfile(TimeStampedModel):
     """
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="profile")
     company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name="users", null=True, blank=True)
-
+    phone_num = models.CharField(max_length=30, blank=True)
     def __str__(self):
         return f"{self.user} @ {self.company.name}"
     
