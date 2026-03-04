@@ -55,6 +55,27 @@ body { font-family: 'Inter', system-ui, sans-serif; background: #fffffc; color: 
     .toast-stack.q2 .toast-peek.p1,
     .toast-stack.q2 .toast-peek.p2 { opacity: 1; }
 
+  
+
+    @keyframes peek1_change {
+      0% {
+        transform: translateX(-50%) translateY(7px) scaleX(0.95);
+        opacity: 0.6;
+      }
+      50% {
+        transform: translateX(-50%) translateY(7px) scaleX(1.05);
+        opacity: 1;
+      }
+      100% {
+        transform: translateX(-50%) translateY(7px) scaleX(0.95);
+        opacity: 0.6;
+      }
+    }
+
+    .animate_change {
+      animation: peek1_change 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
     /* ── Queue badge ── */
     .toast-badge {
       position: absolute;
@@ -78,7 +99,7 @@ body { font-family: 'Inter', system-ui, sans-serif; background: #fffffc; color: 
     }
     .toast-badge.show {
       opacity: 1;
-      transform: scale(1);
+      transform:  scale(1);
     }
 
     /* ── Toast ── */
@@ -120,16 +141,16 @@ body { font-family: 'Inter', system-ui, sans-serif; background: #fffffc; color: 
     .toast.exit {
       opacity: 0;
       transform: translateY(8px) scale(0.96);
-      transition: opacity 0.38s ease,
-                  transform 0.3s ease;
+      transition: opacity 0.33s ease,
+                  transform 0.33s ease;
     }
 
     /* THROW dismiss: fling right + rotate + fade */
     .toast.throw {
       opacity: 0;
       transform: translateX(120%) rotate(8deg) scale(0.9);
-      transition: opacity 0.7s cubic-bezier(0.4, 0, 1, 1),
-                  transform 0.9s cubic-bezier(0.4, 0, 1, 1);
+      transition: opacity 0.23s cubic-bezier(0.4, 0, 1, 1),
+                  transform 0.23s cubic-bezier(0.4, 0, 1, 1);
     }
 
     /* Top shimmer */

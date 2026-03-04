@@ -50,7 +50,7 @@ const toast = (() => {
         return controller;
     }
 
-    function push(type, msg, duration = 3000) {
+    function push(type, msg, duration = 2500) {
         const id = makeId();
         const item = { id, type, msg, duration };
         queue.push(item);
@@ -119,7 +119,7 @@ const toast = (() => {
 
     function start() {
         started = Date.now();
-        timeout = setTimeout(() => dismiss('auto'), remaining);
+        timeout = setTimeout(() => dismiss('manual'), remaining); // dismiss('auto')
         bar.style.animationPlayState = 'running';
     }
 
@@ -146,11 +146,8 @@ const toast = (() => {
 
         // Pick animation based on reason
         el.classList.remove('show');
-        if (reason === 'manual') {
-        el.classList.add('throw');   // fling right + rotate
-        } else {
-        el.classList.add('exit');    // gentle slide down
-        }
+        el.classList.add(reason === 'manual' ? 'throw' : 'exit');
+        
 
         let cleaned = false;
         function cleanup() {

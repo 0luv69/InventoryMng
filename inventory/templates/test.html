@@ -382,72 +382,6 @@
       pointer-events: all;
     }
 
-
-    /* ══════════════════════════════════════
-       TOAST SYSTEM
-       ══════════════════════════════════════ */
-
-    .toast-container {
-      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
-      z-index: 10000; width: calc(100% - 32px); max-width: 400px; pointer-events: none;
-    }
-    .toast-stack { position: relative; }
-    .toast-peek {
-      position: absolute; bottom: 0; left: 50%;
-      height: 52px; border-radius: 18px;
-      pointer-events: none; opacity: 0;
-      transition: all 0.45s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-    .toast-peek.p1 { width: 90%; transform: translateX(-50%) translateY(7px); background: rgba(255,255,255,0.5); border: 1px solid rgba(0,0,0,0.05); }
-    .toast-peek.p2 { width: 80%; transform: translateX(-50%) translateY(13px); background: rgba(255,255,255,0.3); border: 1px solid rgba(0,0,0,0.03); }
-    .toast-stack.q1 .toast-peek.p1,
-    .toast-stack.q2 .toast-peek.p1,
-    .toast-stack.q2 .toast-peek.p2 { opacity: 1; }
-    .toast-badge {
-      position: absolute; top: -10px; right: -6px;
-      min-width: 22px; height: 22px; padding: 0 6px; border-radius: 100px;
-      background: rgba(255,255,255,0.85); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
-      border: 1px solid rgba(0,0,0,0.08); color: #525252; font-size: 0.65rem; font-weight: 700;
-      display: flex; align-items: center; justify-content: center;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.06); opacity: 0; transform: scale(0.4);
-      transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1); pointer-events: none; z-index: 2;
-    }
-    .toast-badge.show { opacity: 1; transform: scale(1); }
-
-    .tst {
-      position: relative; z-index: 1;
-      background: rgba(255,255,255,0.65); backdrop-filter: blur(24px) saturate(1.2);
-      -webkit-backdrop-filter: blur(24px) saturate(1.2);
-      border: 1px solid rgba(0,0,0,0.07); padding: 14px 16px; border-radius: 18px;
-      display: flex; align-items: center; gap: 12px; pointer-events: all; overflow: hidden;
-      box-shadow: 0 4px 24px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.8);
-      opacity: 0; transform: translateY(14px) scale(0.97);
-      transition: opacity 0.4s cubic-bezier(0.16,1,0.3,1), transform 0.4s cubic-bezier(0.16,1,0.3,1);
-    }
-    .tst.show { opacity: 1; transform: translateY(0) scale(1); }
-    .tst.exit { opacity: 0; transform: translateY(8px) scale(0.96); transition: opacity 0.28s ease, transform 0.28s ease; }
-    .tst.throw { opacity: 0; transform: translateX(120%) rotate(8deg) scale(0.9); transition: opacity 0.4s cubic-bezier(0.4,0,1,1), transform 0.4s cubic-bezier(0.4,0,1,1); }
-    .tst::before { content:''; position:absolute; top:0; left:0; right:0; height:1px; background:linear-gradient(90deg,transparent 5%,rgba(255,255,255,0.9) 35%,#fff 50%,rgba(255,255,255,0.9) 65%,transparent 95%); }
-    .tst-icon { width:28px; height:28px; min-width:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
-    .tst-icon.success { background:rgba(34,197,94,0.1); border:1px solid rgba(34,197,94,0.18); }
-    .tst-icon.error { background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.15); }
-    .tst-icon.info { background:rgba(59,130,246,0.08); border:1px solid rgba(59,130,246,0.15); }
-    .tst-msg { flex:1; font-size:0.8125rem; font-weight:500; line-height:1.45; color:#1a1a1a; }
-    .tst-close {
-      width:28px; height:28px; min-width:28px; border:none; border-radius:8px;
-      background:rgba(0,0,0,0.03); color:rgba(0,0,0,0.25);
-      display:flex; align-items:center; justify-content:center;
-      cursor:pointer; transition:all 0.2s ease; padding:0; flex-shrink:0;
-    }
-    .tst-close:hover { background:rgba(0,0,0,0.06); color:rgba(0,0,0,0.5); }
-    .tst-bar { position:absolute; bottom:0; left:0; height:2px; width:100%; transform-origin:left; border-radius:0 0 18px 18px; opacity:0.5; }
-    .tst-bar.success { background:linear-gradient(90deg,#22c55e,#86efac); }
-    .tst-bar.error { background:linear-gradient(90deg,#ef4444,#fca5a5); }
-    .tst-bar.info { background:linear-gradient(90deg,#3b82f6,#93c5fd); }
-    .tst:hover .tst-bar { animation-play-state:paused !important; }
-    @keyframes shrink { from { transform:scaleX(1); } to { transform:scaleX(0); } }
-
-
     /* ══════════════════════════════════════
        RESPONSIVE
        ══════════════════════════════════════ */
@@ -667,15 +601,7 @@
   </div>
 
 
-  <!-- Toast Container -->
-  <div class="toast-container">
-    <div class="toast-stack" id="toastStack">
-      <div class="toast-peek p2"></div>
-      <div class="toast-peek p1"></div>
-      <div id="toastSlot"></div>
-      <div class="toast-badge" id="toastBadge"></div>
-    </div>
-  </div>
+ 
 
 
   <script>
@@ -743,94 +669,7 @@
 
       // Close mobile sidebar
       closeSidebar();
-    }
-
-
-    /* ══════════════════════════════════════
-       GLASS TOAST ENGINE
-       ══════════════════════════════════════ */
-
-    const toast = (() => {
-      const queue = [];
-      let active = false;
-
-      const icons = {
-        success: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`,
-        error:   `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>`,
-        info:    `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>`,
-      };
-      const closeIcon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
-      const slot = document.getElementById('toastSlot');
-      const stack = document.getElementById('toastStack');
-      const badge = document.getElementById('toastBadge');
-
-      function push(type, msg, dur = 2500) {
-        queue.push({ type, msg, dur });
-        updatePeek();
-        if (!active) next();
-      }
-      function next() {
-        if (!queue.length) { active = false; updatePeek(); return; }
-        active = true;
-        const { type, msg, dur } = queue.shift();
-        updatePeek();
-        render(type, msg, dur);
-      }
-      function updatePeek() {
-        const n = queue.length;
-        stack.classList.remove('q1','q2');
-        if (n === 1) stack.classList.add('q1');
-        if (n >= 2) stack.classList.add('q2');
-        if (n > 0) { badge.textContent = '+' + n; badge.classList.add('show'); }
-        else badge.classList.remove('show');
-      }
-      function render(type, msg, duration) {
-        slot.innerHTML = '';
-        const el = document.createElement('div');
-        el.className = 'tst';
-        el.innerHTML = `
-          <div class="tst-icon ${type}">${icons[type]}</div>
-          <span class="tst-msg">${esc(msg)}</span>
-          <button class="tst-close" aria-label="Dismiss">${closeIcon}</button>
-          <div class="tst-bar ${type}"></div>`;
-        slot.appendChild(el);
-        const bar = el.querySelector('.tst-bar');
-        bar.style.animation = `shrink ${duration}ms linear forwards`;
-        requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add('show')));
-
-        let remaining = duration, started = Date.now(), timeout = null, done = false;
-        function start() { started = Date.now(); timeout = setTimeout(() => dismiss('auto'), remaining); bar.style.animationPlayState = 'running'; }
-        function pause() { if (timeout) { clearTimeout(timeout); timeout = null; } remaining = Math.max(0, remaining - (Date.now() - started)); bar.style.animationPlayState = 'paused'; }
-        function dismiss(reason) {
-          if (done) return; done = true;
-          if (timeout) { clearTimeout(timeout); timeout = null; }
-          el.removeEventListener('mouseenter', pause);
-          el.removeEventListener('mouseleave', start);
-          el.removeEventListener('touchstart', pause);
-          el.removeEventListener('touchend', start);
-          el.classList.remove('show');
-          el.classList.add(reason === 'manual' ? 'throw' : 'exit');
-          let cleaned = false;
-          function cleanup() { if (cleaned) return; cleaned = true; el.remove(); next(); }
-          el.addEventListener('transitionend', cleanup, { once: true });
-          setTimeout(cleanup, 500);
-        }
-        el.addEventListener('mouseenter', pause);
-        el.addEventListener('mouseleave', start);
-        el.addEventListener('touchstart', pause, { passive: true });
-        el.addEventListener('touchend', start, { passive: true });
-        el.querySelector('.tst-close').addEventListener('click', (e) => { e.stopPropagation(); dismiss('manual'); });
-        start();
-      }
-      function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
-
-      return {
-        success: (msg, ms) => push('success', msg, ms),
-        error:   (msg, ms) => push('error', msg, ms),
-        info:    (msg, ms) => push('info', msg, ms),
-      };
-    })();
-  </script>
+    }    
 
 </body>
 </html>

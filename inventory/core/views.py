@@ -13,6 +13,12 @@ from .models import RequestDemo, Company, UserProfile, Unit
 # ──────────────────────────────────────
 
 
+def temp(request):
+    context = {
+        "title": "Temp",
+    }
+    return render(request, "base.html", context)
+
 
 
 def home(request):
@@ -82,3 +88,11 @@ def register_api(request):
         message=remarks,
     )
     return JsonResponse({"detail": "Your request has been submitted successfully."}, status=201)
+
+
+
+def dashboard(request):
+  context = {
+    "title": "Dashboard",
+  }
+  return render(request, "test.html", context)
