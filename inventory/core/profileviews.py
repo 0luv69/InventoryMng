@@ -15,8 +15,6 @@ def profile_view(request):
         return redirect("login")
 
     userProfile = get_object_or_404(UserProfile, user=request.user)
-
-    print("User Profile:", userProfile)
     userSession = UserSession.objects.filter(user=request.user).order_by("-last_activity")[:20]
 
     context = {

@@ -33,6 +33,7 @@ def home(request):
     return render(request, "home.html", context)
 
 
+# Account related views: login, register, logout, profile, update profile, change password, etc.
 def login_view(request):
     context = {
         "title": "Login",
@@ -44,8 +45,6 @@ def contactus_view(request):
         "title": "Register",
     }
     return render(request, "log_sign_page.html", context)
-
-
 
 def login_api(request):
     if request.method != "POST":
@@ -80,7 +79,6 @@ def login_api(request):
     )
 
     return JsonResponse({"detail": "Logged in.", "user": {"id": user.id, "email": user.email}, "redirect_url": "/app/dashboard/"})
-
 
 def contactus_api(request):
     if request.method != "POST":
@@ -119,6 +117,10 @@ def logout_api(request):
     logout(request)
     return JsonResponse({"success": True, "detail": "Logged out.", "redirect_url": "/"})
 
+
+# ---- END OF AUTH VIEWS ----
+
+
 def app_home(request):
     if not request.user.is_authenticated:
         return redirect("login")
@@ -128,18 +130,24 @@ def app_home(request):
 def dashboard(request):
     if not request.user.is_authenticated:
         return redirect("login")
+    
+    userProfile = get_object_or_404(UserProfile, user=request.user)
+
     context = {
         "title": "Dashboard",
+        "userProfile": userProfile,
     }
     return render(request, "core/dashboard.html", context)
-
 
 
 def items_view(request):
     if not request.user.is_authenticated:
         return redirect("login")
+    
+    userProfile = get_object_or_404(UserProfile, user=request.user)
     context = {
         "title": "Items & Goods",
+        "userProfile": userProfile,
     }
     return render(request, "core/items-goods.html", context)
 
@@ -148,56 +156,72 @@ def items_view(request):
 def suppliers_view(request):
     if not request.user.is_authenticated:
         return redirect("login")
+    userProfile = get_object_or_404(UserProfile, user=request.user)
     context = {
         "title": "Suppliers",
+        "userProfile": userProfile,
     }
     return render(request, "core/suppliers.html", context)
 
 def customers_view(request):
     if not request.user.is_authenticated:
         return redirect("login")
+    
+    userProfile = get_object_or_404(UserProfile, user=request.user)
     context = {
         "title": "Customers",
+        "userProfile": userProfile,
     }
     return render(request, "core/customers.html", context)
 
 def goods_in_view(request):
     if not request.user.is_authenticated:
         return redirect("login")
+    
+    userProfile = get_object_or_404(UserProfile, user=request.user)
     context = {
         "title": "Goods In",
+        "userProfile": userProfile,
     }
     return render(request, "core/goods-in.html", context)
 
 def goods_out_view(request):
     if not request.user.is_authenticated:
         return redirect("login")
+    userProfile = get_object_or_404(UserProfile, user=request.user)
     context = {
         "title": "Goods Out",
+        "userProfile": userProfile,
     }
     return render(request, "core/goods-out.html", context)
 
 def payments_view(request):
     if not request.user.is_authenticated:
         return redirect("login")
+    userProfile = get_object_or_404(UserProfile, user=request.user)
     context = {
         "title": "Payments",
+        "userProfile": userProfile,
     }
     return render(request, "core/payment.html", context)
 
 def spoil_damage_view(request):
     if not request.user.is_authenticated:
         return redirect("login")
+    userProfile = get_object_or_404(UserProfile, user=request.user)
     context = {
         "title": "Spoilage & Loss",
+        "userProfile": userProfile,
     }
     return render(request, "core/spoil_damage.html", context)
 
 def reports_view(request):
     if not request.user.is_authenticated:
         return redirect("login")
+    userProfile = get_object_or_404(UserProfile, user=request.user)
     context = {
         "title": "Reports",
+        "userProfile": userProfile,
     }
     return render(request, "core/reports.html", context)
 
