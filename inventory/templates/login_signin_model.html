@@ -242,7 +242,7 @@
         })
         .then((data) => {
           toast.success(data.message || 'Logged in successfully — welcome back!');
-          if (data.redirect) window.location.href = data.redirect;
+          if (data.redirect_url) window.location.href = data.redirect_url;
           else setTimeout(() => closeModal('login'), 600);
         })
         .catch((err) => {
@@ -312,7 +312,7 @@
         })
         .then((data) => {
           toast.success(data.message || 'Submitted successfully!');
-          if (data.redirect) window.location.href = data.redirect;
+          if (data.redirect_url) window.location.href = data.redirect_url;
           else setTimeout(() => closeModal('register'), 600);
         })
         .catch((err) => {

@@ -2,6 +2,7 @@ from django.conf import settings
 from django.core.validators import MinValueValidator
 from django.db import models
 from django.utils.text import slugify
+from django.contrib.auth.models import User
 
 
 class TimeStampedModel(models.Model):
@@ -10,6 +11,20 @@ class TimeStampedModel(models.Model):
 
     class Meta:
         abstract = True
+
+
+class UserSession(TimeStampedModel):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    uuid = models.CharField(max_length=40, unique=True)
+    session_key = models.CharField(max_length=40)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    other_info = models.TextField(blank=True)
+    user_agent = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_activity = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.user.username} - {self.session_key}"
 
 
 class Company(TimeStampedModel):

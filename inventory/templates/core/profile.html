@@ -187,16 +187,66 @@
       <div class="bg-white border border-neutral-100 rounded-2xl p-6 mt-8">
         <h3 class="text-sm font-bold text-neutral-900 mb-4">Active Sessions</h3>
         <div class="space-y-3" id="sessionsContainer">
-          <div class="flex items-center gap-4 p-3 bg-green-50/50 border border-green-200/50 rounded-xl">
-            <div class="w-9 h-9 rounded-lg bg-green-100 flex items-center justify-center shrink-0"><svg class="w-4 h-4 text-green-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></div>
-            <div class="flex-1 min-w-0"><div class="text-sm font-semibold text-neutral-800">Chrome on macOS</div><div class="text-xs text-neutral-400">Kathmandu, Nepal · Current session</div></div>
-            <span class="text-[0.6rem] font-bold text-green-600 bg-green-100 px-2 py-0.5 rounded-md">Active</span>
-          </div>
-          <div class="flex items-center gap-4 p-3 border border-neutral-100 rounded-xl">
-            <div class="w-9 h-9 rounded-lg bg-neutral-100 flex items-center justify-center shrink-0"><svg class="w-4 h-4 text-neutral-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg></div>
-            <div class="flex-1 min-w-0"><div class="text-sm font-semibold text-neutral-800">Safari on iPhone</div><div class="text-xs text-neutral-400">Last active 2 hours ago</div></div>
-            <button onclick="revokeSession(this)" class="text-xs font-semibold text-red-500 hover:text-red-700 transition-colors">Revoke</button>
-          </div>
+          {% for session in userSessions %}
+            <div class="flex items-center gap-4 p-3 rounded-xl border
+              {% if session.is_active %}
+                bg-green-50/50 border-green-200/50
+              {% else %}
+                border-neutral-100
+              {% endif %}">
+
+              <!-- icon -->
+              <div class="w-9 h-9 rounded-lg flex items-center justify-center shrink-0
+                {% if session.is_active %}bg-green-100{% else %}bg-neutral-100{% endif %}">
+                {% if "Mobile" in session.user_agent or "iPhone" in session.user_agent or "Android" in session.user_agent %}
+                  <svg class="w-4 h-4 {% if session.is_active %}text-green-600{% else %}text-neutral-400{% endif %}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect>
+                    <line x1="12" y1="18" x2="12.01" y2="18"></line>
+                  </svg>
+                {% else %}
+                  <svg class="w-4 h-4 {% if session.is_active %}text-green-600{% else %}text-neutral-400{% endif %}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                    <line x1="8" y1="21" x2="16" y2="21"></line>
+                    <line x1="12" y1="17" x2="12" y2="21"></line>
+                  </svg>
+                {% endif %}
+              </div>
+
+              <!-- details -->
+              <div class="flex-1 min-w-0">
+                <div class="text-sm font-semibold text-neutral-800 truncate">
+                  {{ session.user_agent|default:"Unknown device" }}
+                </div>
+                <div class="text-xs text-neutral-400">
+                  {{ session.ip_address|default:"Unknown IP" }}
+                  {% if session.session_key == request.session.session_key %}
+                    · Current session
+                  {% else %}
+                    · Last active {{ session.last_activity|timesince }} ago
+                  {% endif %}
+                </div>
+              </div>
+
+              <!-- action/status -->
+              {% if session.session_key == request.session.session_key %}
+                <span class="text-[0.6rem] font-bold text-green-600 bg-green-100 px-2 py-0.5 rounded-md">Current</span>
+                {% elif session.is_active %}
+                <!--<button
+                data-session-key="{{ session.uuid }}"
+                onclick="revokeSession(this)"
+                class="text-xs font-semibold text-red-500 hover:text-red-700 transition-colors">
+                Revoke
+                </button> -->
+                <span class="text-[0.6rem] font-bold text-grey-600 bg-green-100 px-2 py-0.5 rounded-md">Other.</span>
+              {% else %}
+                <span class="text-[0.6rem] font-semibold text-neutral-500 bg-neutral-100 px-2 py-0.5 rounded-md">Expired</span>
+              {% endif %}
+            </div>
+          {% empty %}
+            <div class="text-sm text-neutral-500 p-3 border border-dashed rounded-xl">
+              No session history found.
+            </div>
+          {% endfor %}
         </div>
       </div>
     </div>
@@ -408,10 +458,15 @@
 
     let initialProfileData = {};
 
-    function activeSaveBTN(btn){
-      btn.disabled=false;
+    function activeSaveBTN(btn, resetbtn, enable=true){
       document.getElementById('profileSaveText').textContent='Save Changes';
       document.getElementById('profileSpinner').classList.add('hidden');
+
+      if (enable){
+        btn.disabled=false;
+        resetbtn.disabled=false;
+      }
+
     }
 
     function getProfileData() {
@@ -443,7 +498,7 @@
           document.getElementById(id).addEventListener('input', updateProfileButtons);
         });
     }
-    function resetProfile() {
+     window.resetProfile = function() {
       document.getElementById('pFirstName').value = initialProfileData.first_name;
       document.getElementById('pLastName').value = initialProfileData.last_name;
       document.getElementById('pEmail').value = initialProfileData.email;
@@ -452,12 +507,17 @@
       updateProfileButtons();
     }
     
-    function saveProfile(e) {
+    window.saveProfile = function(e) {
       e.preventDefault();
 
       const btn=document.getElementById('profileSaveBtn');
-      btn.disabled=true;document.getElementById('profileSaveText').textContent='Saving…';
+      btn.disabled=true;
+      const resetbtn=document.getElementById('profileDiscardBtn');
+      resetbtn.disabled=true;
+      
+      document.getElementById('profileSaveText').textContent='Saving…';
       document.getElementById('profileSpinner').classList.remove('hidden');
+
 
       fn = document.getElementById('pFirstName').value.trim();
       ln = document.getElementById('pLastName').value.trim();
@@ -465,17 +525,17 @@
       phone = document.getElementById('pPhone').value.trim();
       if(!fn || !ln){
         toast.error('First and last name are required');
-        activeSaveBTN(btn);
+        activeSaveBTN(btn, resetbtn);
         return;
       }
       if (email && !validateEmail(email)){
         toast.error('Please enter a valid email address');
-        activeSaveBTN(btn);
+        activeSaveBTN(btn, resetbtn);
         return;
       }
       if (phone && !validatePhone(phone)){
         toast.error('Please enter a valid phone number');
-        activeSaveBTN(btn);
+        activeSaveBTN(btn, resetbtn);
         return;
       }
 
@@ -502,13 +562,15 @@
         if (data.success) {
           profileLastSaved.textContent = 'Last saved: ' + data.updated_at;
           toast.success('Profile updated successfully');
+          activeSaveBTN(btn, resetbtn, false);
+          storeInitialProfileData();
         } else {
           throw new Error(data.error || 'Unknown error');
         }
       }).catch(err => {
         toast.error('Error updating profile: ' + err.message);
+        activeSaveBTN(btn, resetbtn);
       }).finally(() => {
-        activeSaveBTN(btn);
         if (infoToast && typeof infoToast.dismiss === 'function') infoToast.dismiss('exit');
       });
     };
@@ -519,167 +581,18 @@
     });
   })();
 
-  /* ═══ SAVE COMPANY ═══ */
 
-  let initalCompanyData = {};
-  function getInitalCompanyData() {
-    return {
-      name: document.getElementById('cName').value.trim(),
-      email: document.getElementById('cEmail').value.trim(),
-      phone: document.getElementById('cPhone').value.trim(),
-      address: document.getElementById('cAddress').value.trim(),
-      city: document.getElementById('cCity').value.trim(),
-      state: document.getElementById('cState').value.trim(),
-      country: document.getElementById('cCountry').value.trim(),
-      currency: document.getElementById('cCurrency').value,
-      fiscal_year_start: document.getElementById('cFiscalYear').value,
-      tax_id: document.getElementById('cTaxId').value.trim(),
-      low_stock_threshold: document.getElementById('cLowStock').value.trim(),
-    };
-  }
-
-  function hasCompanyChanged() {
-    const current = getInitalCompanyData();
-    return JSON.stringify(current) !== JSON.stringify(initalCompanyData);
-  }
-
-  function storeInitialCompanyData() {
-    initalCompanyData = getInitalCompanyData();
-  }
-
-  function updateCompanyButtons() {
-    const saveBtn = document.getElementById('companySaveBtn');
-    const discardBtn = document.getElementById('companyDiscardBtn');
-
-    const changed = hasCompanyChanged();
-
-    saveBtn.disabled = !changed;
-    discardBtn.disabled = !changed;
-  }
-
-  function attachCompanyListeners() {
-    ['cName','cEmail','cPhone','cAddress','cCity','cState','cCountry','cCurrency','cFiscalYear','cTaxId','cLowStock'].forEach(id => {
-      document.getElementById(id).addEventListener('input', updateCompanyButtons);
-    });
-  }
-
-  function resetCompany() {
-    document.getElementById('cName').value = initalCompanyData.name;
-    document.getElementById('cEmail').value = initalCompanyData.email;
-    document.getElementById('cPhone').value = initalCompanyData.phone;
-    document.getElementById('cAddress').value = initalCompanyData.address;
-    document.getElementById('cCity').value = initalCompanyData.city;
-    document.getElementById('cState').value = initalCompanyData.state;
-    document.getElementById('cCountry').value = initalCompanyData.country;
-    document.getElementById('cCurrency').value = initalCompanyData.currency;
-    document.getElementById('cFiscalYear').value = initalCompanyData.fiscal_year_start;
-    document.getElementById('cTaxId').value = initalCompanyData.tax_id;
-    document.getElementById('cLowStock').value = initalCompanyData.low_stock_threshold;
-
-    updateCompanyButtons();
-  }
-
-  function activeCompanySaveBtn(btn){
-    btn.disabled=false;
-    document.getElementById('companySaveText').textContent='Save Company';
-    document.getElementById('companySpinner').classList.add('hidden');
-  }
-
-  window.addEventListener('DOMContentLoaded', () => {
-    storeInitialCompanyData();
-    attachCompanyListeners();
-  });
-
-
-  function saveCompany(e){
-    e.preventDefault();
-    const btn=document.getElementById('companySaveBtn');
-    btn.disabled=true;
-    document.getElementById('companySaveText').textContent='Saving…';
-    document.getElementById('companySpinner').classList.remove('hidden');
-
-      const data = getInitalCompanyData();
-  
-        if (!data.name) {
-          toast.error('Company name is required');
-          activeCompanySaveBtn(btn);
-          return;
-        }
-        if (data.email && !validateEmail(data.email)){
-          toast.error('Please enter a valid email address');
-          activeCompanySaveBtn(btn);
-          return;
-        }
-        if (data.phone && !validatePhone(data.phone)){
-          toast.error('Please enter a valid phone number');
-          activeCompanySaveBtn(btn);
-          return;
-        }
-  
-        const csrftoken = getCookie('csrftoken');
-        const infoToast = toast.info('Updating company...', 15000);
-  
-        fetch('/update-company/api/', {
-          method: 'POST',
-          credentials: 'same-origin',
-          headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrftoken},
-          body: JSON.stringify(data)
-        })
-        .then(async (res) => {
-            const data = await res.json().catch(() => ({}));
-            if (!res.ok) throw new Error(data.message || 'Network response was not ok');
-            return data;
-        })
-        .then((data) => {
-          if (data.success) {
-            companyLastSaved.textContent = 'Last saved: ' + data.updated_at;
-            toast.success('Company updated successfully');
-            storeInitialCompanyData();
-            updateCompanyButtons();
-          } else {
-            throw new Error(data.error || 'Unknown error');
-          }
-        }).catch(err => {
-          toast.error('Error updating company: ' + err.message);
-        }).finally(() => {
-          activeCompanySaveBtn(btn);
-          if (infoToast && typeof infoToast.dismiss === 'function') infoToast.dismiss('exit');
-        });
-    
-
-  };
-
-
+      /* ═══ PASSWORD ═══ */
   (function(){
-
-    /* ═══ SECTION NAVIGATION ═══ */
-    window.switchSection=sec=>{
-      document.querySelectorAll('.sec-btn').forEach(b=>{b.classList.remove('text-green-700','font-semibold','bg-green-50');b.classList.add('text-neutral-500','font-medium');});
-      const btn=document.getElementById('secBtn'+sec.charAt(0).toUpperCase()+sec.slice(1));
-      btn.classList.remove('text-neutral-500','font-medium');btn.classList.add('text-green-700','font-semibold','bg-green-50');
-      document.querySelectorAll('.settings-section').forEach(s=>s.classList.add('hidden'));
-      document.getElementById('sec'+sec.charAt(0).toUpperCase()+sec.slice(1)).classList.remove('hidden');
-    };
-
-    /* ═══ AVATAR PREVIEW ═══ */
-    window.previewAvatar=input=>{if(!input.files||!input.files[0])return;const r=new FileReader();r.onload=e=>{const img=document.getElementById('avatarImg');img.src=e.target.result;img.classList.remove('hidden');document.getElementById('avatarInitials').classList.add('hidden');};r.readAsDataURL(input.files[0]);toast.info('Photo selected — save to apply');};
-
-    /* ═══ COMPANY LOGO PREVIEW ═══ */
-    window.previewCompLogo=input=>{if(!input.files||!input.files[0])return;const r=new FileReader();r.onload=e=>{const img=document.getElementById('compLogoImg');img.src=e.target.result;img.classList.remove('hidden');document.getElementById('compLogoInitial').classList.add('hidden');};r.readAsDataURL(input.files[0]);toast.info('Logo selected — save to apply');};
-
-    
-
-
-    /* ═══ PASSWORD ═══ */
-    window.checkPwStrength=val=>{
-      const bars=[document.getElementById('pwBar1'),document.getElementById('pwBar2'),document.getElementById('pwBar3'),document.getElementById('pwBar4')];
-      const txt=document.getElementById('pwStrengthText');
-      let score=0;if(val.length>=8)score++;if(/[A-Z]/.test(val))score++;if(/[0-9]/.test(val))score++;if(/[^A-Za-z0-9]/.test(val))score++;
-      const colors=['bg-neutral-200','bg-red-400','bg-amber-400','bg-green-400','bg-green-500'];
-      const labels=['—','Weak','Fair','Good','Strong'];const tColors=['text-neutral-400','text-red-500','text-amber-500','text-green-500','text-green-600'];
-      bars.forEach((b,i)=>{b.className='flex-1 h-1 rounded-full transition-colors duration-300 '+(i<score?colors[score]:'bg-neutral-200');});
-      txt.textContent=labels[score];txt.className='text-[0.6rem] font-bold ml-2 w-12 '+tColors[score];
-    };
+      window.checkPwStrength=val=>{
+        const bars=[document.getElementById('pwBar1'),document.getElementById('pwBar2'),document.getElementById('pwBar3'),document.getElementById('pwBar4')];
+        const txt=document.getElementById('pwStrengthText');
+        let score=0;if(val.length>=8)score++;if(/[A-Z]/.test(val))score++;if(/[0-9]/.test(val))score++;if(/[^A-Za-z0-9]/.test(val))score++;
+        const colors=['bg-neutral-200','bg-red-400','bg-amber-400','bg-green-400','bg-green-500'];
+        const labels=['—','Weak','Fair','Good','Strong'];const tColors=['text-neutral-400','text-red-500','text-amber-500','text-green-500','text-green-600'];
+        bars.forEach((b,i)=>{b.className='flex-1 h-1 rounded-full transition-colors duration-300 '+(i<score?colors[score]:'bg-neutral-200');});
+        txt.textContent=labels[score];txt.className='text-[0.6rem] font-bold ml-2 w-12 '+tColors[score];
+      };
 
     window.togglePwVis=btn=>{const input=btn.previousElementSibling;input.type=input.type==='password'?'text':'password';};
 
@@ -726,10 +639,181 @@
               if (infoToast && typeof infoToast.dismiss === 'function') infoToast.dismiss('exit');
             });
         
+    };
+
+    
+      window.revokeSession=btn=>{
+        const row=btn.closest('.flex');
+        row.style.opacity='0.5';
+        btn.textContent='Revoking…';
+        btn.disabled = true;
+
+        const csrftoken = getCookie('csrftoken');
+        const infoToast = toast.warning('Revoking Session Under Construction...', 15000);
+    };
+  })();
+
+  /* ═══ SAVE COMPANY ═══ */
+  (function(){
+
+    let initalCompanyData = {};
+    function getInitalCompanyData() {
+      return {
+        name: document.getElementById('cName').value.trim(),
+        email: document.getElementById('cEmail').value.trim(),
+        phone: document.getElementById('cPhone').value.trim(),
+        address: document.getElementById('cAddress').value.trim(),
+        city: document.getElementById('cCity').value.trim(),
+        state: document.getElementById('cState').value.trim(),
+        country: document.getElementById('cCountry').value.trim(),
+        currency: document.getElementById('cCurrency').value,
+        fiscal_year_start: document.getElementById('cFiscalYear').value,
+        tax_id: document.getElementById('cTaxId').value.trim(),
+        low_stock_threshold: document.getElementById('cLowStock').value.trim(),
       };
+    }
 
-    window.revokeSession=btn=>{const row=btn.closest('.flex');row.style.opacity='0.5';btn.textContent='Revoking…';setTimeout(()=>{row.remove();toast.success('Session revoked');},600);};
+    function hasCompanyChanged() {
+      const current = getInitalCompanyData();
+      return JSON.stringify(current) !== JSON.stringify(initalCompanyData);
+    }
 
+    function storeInitialCompanyData() {
+      initalCompanyData = getInitalCompanyData();
+    }
+
+    function updateCompanyButtons() {
+      const saveBtn = document.getElementById('companySaveBtn');
+      const discardBtn = document.getElementById('companyDiscardBtn');
+
+      const changed = hasCompanyChanged();
+
+      saveBtn.disabled = !changed;
+      discardBtn.disabled = !changed;
+    }
+
+    function attachCompanyListeners() {
+      ['cName','cEmail','cPhone','cAddress','cCity','cState','cCountry','cCurrency','cFiscalYear','cTaxId','cLowStock'].forEach(id => {
+        document.getElementById(id).addEventListener('input', updateCompanyButtons);
+      });
+    }
+
+    window.resetCompany = function() {
+      document.getElementById('cName').value = initalCompanyData.name;
+      document.getElementById('cEmail').value = initalCompanyData.email;
+      document.getElementById('cPhone').value = initalCompanyData.phone;
+      document.getElementById('cAddress').value = initalCompanyData.address;
+      document.getElementById('cCity').value = initalCompanyData.city;
+      document.getElementById('cState').value = initalCompanyData.state;
+      document.getElementById('cCountry').value = initalCompanyData.country;
+      document.getElementById('cCurrency').value = initalCompanyData.currency;
+      document.getElementById('cFiscalYear').value = initalCompanyData.fiscal_year_start;
+      document.getElementById('cTaxId').value = initalCompanyData.tax_id;
+      document.getElementById('cLowStock').value = initalCompanyData.low_stock_threshold;
+
+      updateCompanyButtons();
+    }
+
+    window.activeCompanySaveBtn = function(btn, resetbtn, enable=true){
+      document.getElementById('companySaveText').textContent='Save Company';
+      document.getElementById('companySpinner').classList.add('hidden');
+      if (enable){
+        btn.disabled=false;
+        resetbtn.disabled=false;
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      storeInitialCompanyData();
+      attachCompanyListeners();
+    });
+
+
+    window.saveCompany = function(e){
+      e.preventDefault();
+      const btn=document.getElementById('companySaveBtn');
+      btn.disabled=true;
+
+      const resetbtn=document.getElementById('companyDiscardBtn');
+      resetbtn.disabled=true;
+
+      document.getElementById('companySaveText').textContent='Saving…';
+      document.getElementById('companySpinner').classList.remove('hidden');
+
+        const data = getInitalCompanyData();
+    
+          if (!data.name) {
+            toast.error('Company name is required');
+            window.activeCompanySaveBtn(btn, resetbtn);
+            return;
+          }
+          if (data.email && !validateEmail(data.email)){
+            toast.error('Please enter a valid email address');
+            window.activeCompanySaveBtn(btn, resetbtn);
+            return;
+          }
+          if (data.phone && !validatePhone(data.phone)){
+            toast.error('Please enter a valid phone number');
+            window.activeCompanySaveBtn(btn, resetbtn);
+            return;
+          }
+    
+          const csrftoken = getCookie('csrftoken');
+          const infoToast = toast.info('Updating company...', 15000);
+    
+          fetch('/update-company/api/', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrftoken},
+            body: JSON.stringify(data)
+          })
+          .then(async (res) => {
+              const data = await res.json().catch(() => ({}));
+              if (!res.ok) throw new Error(data.message || 'Network response was not ok');
+              return data;
+          })
+          .then((data) => {
+            if (data.success) {
+              companyLastSaved.textContent = 'Last saved: ' + data.updated_at;
+              toast.success('Company updated successfully');
+              window.activeCompanySaveBtn(btn, resetbtn, false);
+              storeInitialCompanyData();
+              window.updateCompanyButtons();
+            } else {
+              throw new Error(data.error || 'Unknown error');
+            }
+          }).catch(err => {
+            toast.error('Error updating company: ' + err.message);
+            window.activeCompanySaveBtn(btn, resetbtn);
+          }).finally(() => {
+            if (infoToast && typeof infoToast.dismiss === 'function') infoToast.dismiss('exit');
+          });
+      
+
+    };
+  })();
+
+
+
+  // others:
+  (function(){
+
+    /* ═══ SECTION NAVIGATION ═══ */
+    window.switchSection=sec=>{
+      document.querySelectorAll('.sec-btn').forEach(b=>{b.classList.remove('text-green-700','font-semibold','bg-green-50');b.classList.add('text-neutral-500','font-medium');});
+      const btn=document.getElementById('secBtn'+sec.charAt(0).toUpperCase()+sec.slice(1));
+      btn.classList.remove('text-neutral-500','font-medium');btn.classList.add('text-green-700','font-semibold','bg-green-50');
+      document.querySelectorAll('.settings-section').forEach(s=>s.classList.add('hidden'));
+      document.getElementById('sec'+sec.charAt(0).toUpperCase()+sec.slice(1)).classList.remove('hidden');
+    };
+
+    /* ═══ AVATAR PREVIEW ═══ */
+    window.previewAvatar=input=>{if(!input.files||!input.files[0])return;const r=new FileReader();r.onload=e=>{const img=document.getElementById('avatarImg');img.src=e.target.result;img.classList.remove('hidden');document.getElementById('avatarInitials').classList.add('hidden');};r.readAsDataURL(input.files[0]);toast.info('Photo selected — save to apply');};
+
+    /* ═══ COMPANY LOGO PREVIEW ═══ */
+    window.previewCompLogo=input=>{if(!input.files||!input.files[0])return;const r=new FileReader();r.onload=e=>{const img=document.getElementById('compLogoImg');img.src=e.target.result;img.classList.remove('hidden');document.getElementById('compLogoInitial').classList.add('hidden');};r.readAsDataURL(input.files[0]);toast.info('Logo selected — save to apply');};
+
+    
     /* ═══ TOGGLE SWITCH ═══ */
     window.toggleSwitch=btn=>{
       const dot=btn.querySelector('.toggle-dot'),isActive=btn.classList.contains('active');
@@ -744,19 +828,63 @@
 
     /* ═══ DANGER DIALOG ═══ */
     let dangerAction=null;
-    window.confirmDangerAction=action=>{dangerAction=action;
+    window.confirmDangerAction=action=>{
+      dangerAction=action;
       const iw=document.getElementById('dangerIconWrap');
       if(action==='logout'){
         iw.innerHTML='<svg class="w-6 h-6 text-red-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>';
-        document.getElementById('dangerTitle').textContent='Log Out?';document.getElementById('dangerMsg').textContent='You will be returned to the login screen.';document.getElementById('dangerConfirmBtn').textContent='Log Out';
+        document.getElementById('dangerTitle').textContent='Log Out?';
+        document.getElementById('dangerMsg').textContent='You will be returned to the login screen.';
+        document.getElementById('dangerConfirmBtn').textContent='Log Out';
       }
-      const bd=document.getElementById('dangerBackdrop'),dg=document.getElementById('dangerDialog');bd.classList.remove('opacity-0','pointer-events-none');bd.classList.add('opacity-100','pointer-events-auto');setTimeout(()=>{dg.classList.remove('scale-95','opacity-0');dg.classList.add('scale-100','opacity-100');},50);
+      const bd=document.getElementById('dangerBackdrop'),dg=document.getElementById('dangerDialog');
+      bd.classList.remove('opacity-0','pointer-events-none');
+      bd.classList.add('opacity-100','pointer-events-auto');
+      setTimeout(()=>{
+        dg.classList.remove('scale-95','opacity-0');
+        dg.classList.add('scale-100','opacity-100');
+      },50);
     };
-    window.closeDangerDialog=()=>{const bd=document.getElementById('dangerBackdrop'),dg=document.getElementById('dangerDialog');dg.classList.remove('scale-100','opacity-100');dg.classList.add('scale-95','opacity-0');setTimeout(()=>{bd.classList.remove('opacity-100','pointer-events-auto');bd.classList.add('opacity-0','pointer-events-none');},200);};
-    window.executeDanger=()=>{closeDangerDialog();if(dangerAction==='logout'){toast.info('Logging out…');}dangerAction=null;};
+    window.closeDangerDialog=()=>{
+      const bd=document.getElementById('dangerBackdrop'),dg=document.getElementById('dangerDialog');
+      dg.classList.remove('scale-100','opacity-100');
+      dg.classList.add('scale-95','opacity-0');
+      setTimeout(()=>{
+        bd.classList.remove('opacity-100','pointer-events-auto');
+        bd.classList.add('opacity-0','pointer-events-none');
+      },200);
+    };
+    window.executeDanger=()=>{
+      closeDangerDialog();
+      if(dangerAction==='logout'){
+        logout();
+        toast.info('Logging out…');
+      }dangerAction=null;};
 
+    window.logout=()=>{
+      const csrftoken = getCookie('csrftoken');
+      fetch('/logout/api/', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrftoken},
+      })
+      .then(async (res) => {
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(data.message || 'Network response was not ok');
+          return data;
+      })
+      .then((data) => {
+        if (data.success) {
+          toast.success('Logged out successfully');
+          window.location.href = data.redirect_url;
+        } else {
+          throw new Error(data.error || 'Unknown error');
+        }
+      }).catch(err => {
+        toast.error('Error logging out: ' + err.message);
+      });
+    };
     document.addEventListener('keydown',e=>{if(e.key==='Escape')closeDangerDialog();});
-
   })();
 </script>
 

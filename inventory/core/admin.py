@@ -5,11 +5,20 @@ from .models import (
     UserProfile,
     Unit,
     RequestDemo,
+    UserSession,
     # Supplier,
     # Customer,
     # Item,
 )
 
+
+@admin.register(UserSession)
+class UserSessionAdmin(admin.ModelAdmin):
+    list_display = ("user", "session_key", "ip_address", "uuid", "created_at", "last_activity")
+    search_fields = ("user__username", "user__email", "ip_address")
+    list_filter = ("uuid", "created_at", "last_activity")
+    autocomplete_fields = ("user",)
+    ordering = ("-created_at",)
 
 @admin.register(Company)
 class CompanyAdmin(admin.ModelAdmin):

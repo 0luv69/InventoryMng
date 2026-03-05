@@ -1,18 +1,26 @@
 from django.urls import path
 from . import views
 
+
+
+#
+# Profile related views
+#
+
+from .profileviews import profile_view, update_profile, update_pwd, update_company
+
 urlpatterns = [
     path('', views.home, name='home'),
     path('t', views.temp, name='temp'),
 
 
     path('login/', views.login_view, name='login'),
-    path('register/', views.register_view, name='register'),
-    path('signup/', views.register_view, name='register'),
+    path('register/', views.contactus_view, name='register'),
+    path('signup/', views.contactus_view, name='register'),
 
     path("login/api/", views.login_api, name="login_api"),
-    path("register/api/", views.register_api, name="register_api"),
-
+    path("register/api/", views.contactus_api, name="register_api"),
+    path("logout/api/", views.logout_api, name="logout_api"),
 
 
     path('app/dashboard/', views.dashboard, name='dashboard'),
@@ -28,11 +36,9 @@ urlpatterns = [
     path('app/payments/', views.payments_view, name='payments'),
     path('app/reports/', views.reports_view, name='reports'),
 
-    path('app/profile/', views.profile_view, name='profile'),
-
-
-    path('update-profile/api/', views.save_profile, name='save_profile'),
-    path('update-pwd/api/', views.update_pwd, name='update_pwd'),
-    path('update-company/api/', views.update_company, name='update_company'),
+    path('app/profile/', profile_view, name='profile'),
+    path('update-profile/api/', update_profile, name='update_profile'),
+    path('update-pwd/api/', update_pwd, name='update_pwd'),
+    path('update-company/api/', update_company, name='update_company'),
 
 ]
