@@ -290,6 +290,7 @@
       };
 
       const csrftoken = getCookie('csrftoken');
+      console.log('Submitting registration with CSRF token:', csrftoken);
 
       fetch('/register/api/', {
         method: 'POST',

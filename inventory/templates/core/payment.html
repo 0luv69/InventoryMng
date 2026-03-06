@@ -17,7 +17,7 @@
       <h1 class="text-2xl font-extrabold text-neutral-900 tracking-tight">Payments</h1>
       <p class="text-sm text-neutral-400 mt-1">Cash, credit, and all payment records — incoming and outgoing.</p>
     </div>
-    <button onclick="openPaymentForm('in')"
+    <button onclick="openPaymentForm('received')"
             class="inline-flex items-center gap-2 px-5 py-2.5 bg-green-500 text-white text-sm font-semibold rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.05)] hover:bg-green-600 active:scale-[0.97] transition-all duration-200 self-start">
       <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
       Record Payment
@@ -29,42 +29,35 @@
 <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
   <div class="bg-white border border-neutral-100 rounded-2xl px-5 py-4 hover:shadow-[0_2px_12px_rgba(0,0,0,0.04)] transition-all duration-300">
     <div class="text-[0.65rem] font-semibold text-neutral-400 uppercase tracking-wide mb-1">Total Received</div>
-    <div class="text-xl font-extrabold text-green-600 tracking-tight" id="statReceived">$18,640</div>
+    <div class="text-xl font-extrabold text-green-600 tracking-tight" id="statReceived">$0.00</div>
   </div>
   <div class="bg-white border border-neutral-100 rounded-2xl px-5 py-4 hover:shadow-[0_2px_12px_rgba(0,0,0,0.04)] transition-all duration-300">
     <div class="text-[0.65rem] font-semibold text-neutral-400 uppercase tracking-wide mb-1">Total Sent</div>
-    <div class="text-xl font-extrabold text-red-500 tracking-tight" id="statSent">$9,350</div>
+    <div class="text-xl font-extrabold text-red-500 tracking-tight" id="statSent">$0.00</div>
   </div>
   <div class="bg-white border border-neutral-100 rounded-2xl px-5 py-4 hover:shadow-[0_2px_12px_rgba(0,0,0,0.04)] transition-all duration-300">
     <div class="text-[0.65rem] font-semibold text-neutral-400 uppercase tracking-wide mb-1">Net Cash Flow</div>
-    <div class="text-xl font-extrabold text-neutral-900 tracking-tight" id="statNet">$9,290</div>
+    <div class="text-xl font-extrabold text-neutral-900 tracking-tight" id="statNet">$0.00</div>
   </div>
   <div class="bg-white border border-neutral-100 rounded-2xl px-5 py-4 hover:shadow-[0_2px_12px_rgba(0,0,0,0.04)] transition-all duration-300">
     <div class="text-[0.65rem] font-semibold text-neutral-400 uppercase tracking-wide mb-1">This Month</div>
-    <div class="text-xl font-extrabold text-neutral-900 tracking-tight" id="statMonth">24</div>
+    <div class="text-xl font-extrabold text-neutral-900 tracking-tight" id="statMonth">0</div>
   </div>
 </div>
 
-
 <!-- ── Tab Switcher ── -->
 <div class="flex items-center gap-1 mb-4 bg-neutral-100 p-1 rounded-xl w-fit">
-  <button onclick="switchTab('all')" id="tabAll"
-          class="tab-btn px-5 py-2 text-xs font-bold rounded-lg transition-all duration-200 bg-white text-neutral-900 shadow-sm">All</button>
-  <button onclick="switchTab('in')" id="tabIn"
-          class="tab-btn px-5 py-2 text-xs font-bold rounded-lg transition-all duration-200 text-neutral-500 hover:text-neutral-700">Received</button>
-  <button onclick="switchTab('out')" id="tabOut"
-          class="tab-btn px-5 py-2 text-xs font-bold rounded-lg transition-all duration-200 text-neutral-500 hover:text-neutral-700">Sent</button>
+  <button onclick="switchTab('all')" id="tabAll" class="tab-btn px-5 py-2 text-xs font-bold rounded-lg transition-all duration-200 bg-white text-neutral-900 shadow-sm">All</button>
+  <button onclick="switchTab('in')" id="tabIn" class="tab-btn px-5 py-2 text-xs font-bold rounded-lg transition-all duration-200 text-neutral-500 hover:text-neutral-700">Received</button>
+  <button onclick="switchTab('out')" id="tabOut" class="tab-btn px-5 py-2 text-xs font-bold rounded-lg transition-all duration-200 text-neutral-500 hover:text-neutral-700">Sent</button>
 </div>
-
 
 <!-- ── Toolbar ── -->
 <div class="bg-white border border-neutral-100 rounded-2xl mb-4">
   <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 p-4">
     <div class="relative flex-1">
       <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-      <input id="searchInput" type="text" placeholder="Search by payment #, customer, supplier…"
-             oninput="handleSearch(this.value)"
-             class="w-full pl-10 pr-4 py-2.5 text-sm border border-neutral-200 rounded-xl bg-neutral-50/50 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200"/>
+      <input id="searchInput" type="text" placeholder="Search by payment #, customer, supplier, invoice…" oninput="handleSearch(this.value)" class="w-full pl-10 pr-4 py-2.5 text-sm border border-neutral-200 rounded-xl bg-neutral-50/50 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200"/>
     </div>
     <button onclick="toggleFilters()" class="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-neutral-600 bg-white border border-neutral-200 rounded-xl hover:bg-neutral-50 hover:border-neutral-300 transition-all duration-200">
       <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
@@ -72,44 +65,42 @@
     </button>
     <div id="bulkActions" class="hidden items-center gap-2">
       <span class="text-xs font-semibold text-neutral-500"><span id="selectedCount">0</span> selected</span>
-      <button onclick="confirmBulkDelete()" class="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-red-600 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-all duration-200">
+      <button onclick="confirmBulkVoid()" class="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-red-600 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-all duration-200">
         <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-        Delete
+        Void Selected
       </button>
     </div>
   </div>
   <div id="filterPanel" class="hidden border-t border-neutral-100 px-4 py-4">
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       <div><label class="block text-xs font-semibold text-neutral-500 mb-1.5">Method</label><select id="filterMethod" onchange="applyFilters()" class="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400"><option value="">All Methods</option><option value="cash">Cash</option><option value="online">Online / Bank</option><option value="cheque">Cheque</option></select></div>
-      <div><label class="block text-xs font-semibold text-neutral-500 mb-1.5">Status</label><select id="filterStatus" onchange="applyFilters()" class="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400"><option value="">All</option><option value="completed">Completed</option><option value="pending">Pending</option><option value="failed">Failed</option></select></div>
+      <div><label class="block text-xs font-semibold text-neutral-500 mb-1.5">Status</label><select id="filterStatus" onchange="applyFilters()" class="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400"><option value="">All</option><option value="paid">Paid</option><option value="partial">Partial</option><option value="unpaid">Unpaid</option></select></div>
       <div><label class="block text-xs font-semibold text-neutral-500 mb-1.5">Date From</label><input type="date" id="filterDateFrom" onchange="applyFilters()" class="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400"/></div>
       <div><label class="block text-xs font-semibold text-neutral-500 mb-1.5">Date To</label><input type="date" id="filterDateTo" onchange="applyFilters()" class="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400"/></div>
     </div>
-    <div class="flex justify-end mt-3"><button onclick="clearFilters()" class="text-xs font-semibold text-neutral-500 hover:text-neutral-700 transition-colors">Clear all filters</button></div>
+    <div class="flex items-center justify-between mt-3">
+      <label class="flex items-center gap-2 text-xs text-neutral-500 cursor-pointer"><input type="checkbox" id="filterShowVoid" onchange="applyFilters()" class="w-3.5 h-3.5 rounded border-neutral-300 text-green-500 focus:ring-green-500/30"/>Show voided payments</label>
+      <button onclick="clearFilters()" class="text-xs font-semibold text-neutral-500 hover:text-neutral-700 transition-colors">Clear all filters</button>
+    </div>
   </div>
 </div>
 
-
-<!-- ══════════════════════════════════════════════════════════
-     TABLE
-     ══════════════════════════════════════════════════════════ -->
+<!-- ══════════════════════════════════════════════════════════ TABLE ══════════════════════════════════════════════════════════ -->
 <div class="bg-white border border-neutral-100 rounded-2xl overflow-hidden">
   <div class="overflow-x-auto">
     <table class="w-full text-left">
-      <thead>
-        <tr class="border-b border-neutral-100">
-          <th class="w-12 px-4 py-3.5"><input type="checkbox" id="selectAll" onchange="toggleSelectAll(this)" class="w-4 h-4 rounded border-neutral-300 text-green-500 focus:ring-green-500/30 cursor-pointer"/></th>
-          <th class="px-4 py-3.5 text-[0.7rem] font-bold uppercase tracking-wider text-neutral-400">Payment #</th>
-          <th class="px-4 py-3.5 text-[0.7rem] font-bold uppercase tracking-wider text-neutral-400 cursor-pointer hover:text-neutral-600" onclick="sortTable('date')"><div class="flex items-center gap-1">Date <svg class="w-3 h-3 text-neutral-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12l7 7 7-7"/></svg></div></th>
-          <th class="px-4 py-3.5 text-[0.7rem] font-bold uppercase tracking-wider text-neutral-400">Type</th>
-          <th class="px-4 py-3.5 text-[0.7rem] font-bold uppercase tracking-wider text-neutral-400">From / To</th>
-          <th class="px-4 py-3.5 text-[0.7rem] font-bold uppercase tracking-wider text-neutral-400">Reference</th>
-          <th class="px-4 py-3.5 text-[0.7rem] font-bold uppercase tracking-wider text-neutral-400">Method</th>
-          <th class="px-4 py-3.5 text-[0.7rem] font-bold uppercase tracking-wider text-neutral-400 cursor-pointer hover:text-neutral-600" onclick="sortTable('amount')"><div class="flex items-center gap-1">Amount <svg class="w-3 h-3 text-neutral-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12l7 7 7-7"/></svg></div></th>
-          <th class="px-4 py-3.5 text-[0.7rem] font-bold uppercase tracking-wider text-neutral-400">Status</th>
-          <th class="px-4 py-3.5 text-[0.7rem] font-bold uppercase tracking-wider text-neutral-400 text-right">Actions</th>
-        </tr>
-      </thead>
+      <thead><tr class="border-b border-neutral-100">
+        <th class="w-12 px-4 py-3.5"><input type="checkbox" id="selectAll" onchange="toggleSelectAll(this)" class="w-4 h-4 rounded border-neutral-300 text-green-500 focus:ring-green-500/30 cursor-pointer"/></th>
+        <th class="px-4 py-3.5 text-[0.7rem] font-bold uppercase tracking-wider text-neutral-400">Payment #</th>
+        <th class="px-4 py-3.5 text-[0.7rem] font-bold uppercase tracking-wider text-neutral-400 cursor-pointer hover:text-neutral-600" onclick="sortTable('date_paid')"><div class="flex items-center gap-1">Date <svg class="w-3 h-3 text-neutral-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12l7 7 7-7"/></svg></div></th>
+        <th class="px-4 py-3.5 text-[0.7rem] font-bold uppercase tracking-wider text-neutral-400">Type</th>
+        <th class="px-4 py-3.5 text-[0.7rem] font-bold uppercase tracking-wider text-neutral-400">From / To</th>
+        <th class="px-4 py-3.5 text-[0.7rem] font-bold uppercase tracking-wider text-neutral-400">Invoice</th>
+        <th class="px-4 py-3.5 text-[0.7rem] font-bold uppercase tracking-wider text-neutral-400">Method</th>
+        <th class="px-4 py-3.5 text-[0.7rem] font-bold uppercase tracking-wider text-neutral-400 cursor-pointer hover:text-neutral-600" onclick="sortTable('amount')"><div class="flex items-center gap-1">Amount <svg class="w-3 h-3 text-neutral-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12l7 7 7-7"/></svg></div></th>
+        <th class="px-4 py-3.5 text-[0.7rem] font-bold uppercase tracking-wider text-neutral-400">Status</th>
+        <th class="px-4 py-3.5 text-[0.7rem] font-bold uppercase tracking-wider text-neutral-400 text-right">Actions</th>
+      </tr></thead>
       <tbody id="paymentsTableBody"></tbody>
     </table>
   </div>
@@ -117,9 +108,13 @@
     <div class="w-16 h-16 bg-neutral-100 rounded-2xl flex items-center justify-center mb-4"><svg class="w-7 h-7 text-neutral-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
     <h3 class="text-sm font-bold text-neutral-700 mb-1">No payment records</h3>
     <p class="text-xs text-neutral-400 mb-5 max-w-xs">Start by recording a payment received or sent.</p>
-    <button onclick="openPaymentForm('in')" class="inline-flex items-center gap-2 px-4 py-2 bg-green-500 text-white text-xs font-semibold rounded-lg hover:bg-green-600 transition-all duration-200"><svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Record first payment</button>
+    <button onclick="openPaymentForm('received')" class="inline-flex items-center gap-2 px-4 py-2 bg-green-500 text-white text-xs font-semibold rounded-lg hover:bg-green-600 transition-all duration-200"><svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Record first payment</button>
   </div>
-  <div id="paginationBar" class="flex items-center justify-between px-4 py-3 border-t border-neutral-100">
+  <div id="loadingState" class="py-20 flex-col items-center justify-center text-center">
+    <svg class="w-8 h-8 animate-spin text-green-500 mx-auto mb-3" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" stroke-dasharray="32" stroke-linecap="round"/></svg>
+    <p class="text-xs text-neutral-400">Loading payments…</p>
+  </div>
+  <div id="paginationBar" class="hidden flex items-center justify-between px-4 py-3 border-t border-neutral-100">
     <p class="text-xs text-neutral-400 font-medium">Showing <span id="pagStart" class="text-neutral-700 font-semibold">1</span>–<span id="pagEnd" class="text-neutral-700 font-semibold">10</span> of <span id="pagTotal" class="text-neutral-700 font-semibold">0</span></p>
     <div class="flex items-center gap-1">
       <button onclick="goToPage('prev')" id="btnPrev" class="w-8 h-8 flex items-center justify-center rounded-lg border border-neutral-200 text-neutral-400 hover:text-neutral-700 hover:border-neutral-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg></button>
@@ -129,120 +124,82 @@
   </div>
 </div>
 
-
-<!-- ══════════════════════════════════════════════════════════
-     RECORD PAYMENT SLIDE-OVER
-     ══════════════════════════════════════════════════════════ -->
+<!-- ══════════════════════════════════════════════════════════ RECORD PAYMENT SLIDE-OVER ══════════════════════════════════════════════════════════ -->
 <div id="formBackdrop" class="fixed inset-0 bg-black/20 backdrop-blur-sm z-[60] opacity-0 pointer-events-none transition-opacity duration-300" onclick="closePaymentForm()"></div>
 <div id="formPanel" class="fixed top-0 right-0 bottom-0 w-full max-w-lg bg-white z-[65] shadow-[-8px_0_30px_rgba(0,0,0,0.08)] translate-x-full transition-transform duration-300 ease-out flex flex-col">
-
-  <!-- Header -->
   <div class="flex items-center justify-between px-6 py-5 border-b border-neutral-100">
-    <div>
-      <h2 id="formTitle" class="text-lg font-bold text-neutral-900 tracking-tight">Record Payment</h2>
-      <p id="formSubtitle" class="text-xs text-neutral-400 mt-0.5">Payment received from a customer.</p>
-    </div>
+    <div><h2 id="formTitle" class="text-lg font-bold text-neutral-900 tracking-tight">Record Payment</h2><p id="formSubtitle" class="text-xs text-neutral-400 mt-0.5">Payment received from a customer.</p></div>
     <button onclick="closePaymentForm()" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-neutral-100 text-neutral-400 hover:text-neutral-600 transition-all duration-200"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
   </div>
-
-  <!-- Body -->
   <div class="flex-1 overflow-y-auto px-6 py-6">
     <form id="paymentForm" onsubmit="handleFormSubmit(event)" class="space-y-6">
       <input type="hidden" id="editPayId" value=""/>
-
       <!-- Direction toggle -->
       <div>
         <h3 class="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-3">Payment Direction</h3>
         <div class="grid grid-cols-2 gap-3">
-          <button type="button" onclick="setDirection('in')" id="dirInBtn"
-                  class="dir-btn relative px-4 py-4 border-2 rounded-xl text-left transition-all duration-200 border-green-400 bg-green-50">
-            <div class="flex items-center gap-3 mb-1">
-              <div class="w-8 h-8 rounded-lg bg-green-500 flex items-center justify-center"><svg class="w-4 h-4 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></div>
-              <span class="text-sm font-bold text-green-700">Received</span>
-            </div>
+          <button type="button" onclick="setDirection('received')" id="dirInBtn" class="dir-btn relative px-4 py-4 border-2 rounded-xl text-left transition-all duration-200 border-green-400 bg-green-50">
+            <div class="flex items-center gap-3 mb-1"><div class="w-8 h-8 rounded-lg bg-green-500 flex items-center justify-center"><svg class="w-4 h-4 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></div><span class="text-sm font-bold text-green-700">Received</span></div>
             <p class="text-[0.65rem] text-green-600 ml-11">Customer paid us</p>
             <div id="dirInCheck" class="absolute top-3 right-3 w-5 h-5 rounded-full bg-green-500 flex items-center justify-center"><svg class="w-3 h-3 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
           </button>
-          <button type="button" onclick="setDirection('out')" id="dirOutBtn"
-                  class="dir-btn relative px-4 py-4 border-2 rounded-xl text-left transition-all duration-200 border-neutral-200 bg-white hover:border-neutral-300">
-            <div class="flex items-center gap-3 mb-1">
-              <div class="w-8 h-8 rounded-lg bg-neutral-200 flex items-center justify-center"><svg class="w-4 h-4 text-neutral-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg></div>
-              <span class="text-sm font-bold text-neutral-600">Sent</span>
-            </div>
+          <button type="button" onclick="setDirection('sent')" id="dirOutBtn" class="dir-btn relative px-4 py-4 border-2 rounded-xl text-left transition-all duration-200 border-neutral-200 bg-white hover:border-neutral-300">
+            <div class="flex items-center gap-3 mb-1"><div class="w-8 h-8 rounded-lg bg-neutral-200 flex items-center justify-center"><svg class="w-4 h-4 text-neutral-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg></div><span class="text-sm font-bold text-neutral-600">Sent</span></div>
             <p class="text-[0.65rem] text-neutral-400 ml-11">We paid a supplier</p>
             <div id="dirOutCheck" class="hidden absolute top-3 right-3 w-5 h-5 rounded-full bg-red-500 flex items-center justify-center"><svg class="w-3 h-3 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
           </button>
         </div>
       </div>
-
-      <!-- Party search (Customer or Supplier) -->
+      <!-- Party search -->
       <div>
         <h3 class="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-3" id="partyLabel">Customer</h3>
         <div class="relative" id="partySearchWrap">
           <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 pointer-events-none z-10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input type="text" id="partySearchInput" placeholder="Search customer…" autocomplete="off"
-                 oninput="searchParty(this.value)" onfocus="showPartyDropdown()"
-                 class="w-full pl-10 pr-4 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200"/>
+          <input type="text" id="partySearchInput" placeholder="Search customer…" autocomplete="off" oninput="searchParty(this.value)" onfocus="showPartyDropdown()" class="w-full pl-10 pr-4 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200"/>
           <div id="partyDropdown" class="hidden absolute left-0 right-0 top-full mt-1 bg-white border border-neutral-200 rounded-xl shadow-lg z-20 max-h-52 overflow-y-auto"></div>
         </div>
         <div id="selectedPartyChip" class="hidden mt-2 inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-semibold">
-          <span id="selectedPartyName"></span>
+          <span id="selectedPartyName"></span><span id="selectedPartyBalance" class="text-xs font-normal"></span>
           <button type="button" onclick="clearSelectedParty()" class="ml-1 hover:opacity-70 transition-opacity"><svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
         </div>
+        <p id="partyError" class="hidden text-xs text-red-500 mt-1">Please select a customer/supplier.</p>
       </div>
-
+      <!-- Invoice link -->
+      <div id="invoiceSection">
+        <h3 class="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-3">Link to Invoice <span class="font-normal text-neutral-300">(optional)</span></h3>
+        <select id="invoiceSelect" onchange="onInvoiceSelect()" class="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200"><option value="">No invoice / General payment</option></select>
+        <div id="invoiceInfo" class="hidden mt-2 p-3 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-700 space-y-1"></div>
+      </div>
       <!-- Amount -->
       <div>
         <h3 class="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-3">Amount</h3>
-        <div class="relative">
-          <span class="absolute left-4 top-1/2 -translate-y-1/2 text-lg font-semibold text-neutral-400">$</span>
-          <input type="number" id="payAmount" required min="0.01" step="0.01" placeholder="0.00"
-                 class="w-full pl-10 pr-4 py-4 text-2xl font-extrabold text-neutral-900 tracking-tight border border-neutral-200 rounded-xl bg-white placeholder:text-neutral-300 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200"/>
+        <div class="relative"><span class="absolute left-4 top-1/2 -translate-y-1/2 text-lg font-semibold text-neutral-400">$</span>
+          <input type="number" id="payAmount" required min="0.01" step="0.01" placeholder="0.00" class="w-full pl-10 pr-4 py-4 text-2xl font-extrabold text-neutral-900 tracking-tight border border-neutral-200 rounded-xl bg-white placeholder:text-neutral-300 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200"/>
         </div>
         <p id="amountError" class="hidden text-xs text-red-500 mt-1">Please enter a valid amount.</p>
       </div>
-
-      <!-- Reference & Method -->
+      <!-- Details -->
       <div>
         <h3 class="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-3">Details</h3>
         <div class="space-y-4">
           <div class="grid grid-cols-2 gap-4">
-            <div>
-              <label class="block text-xs font-semibold text-neutral-600 mb-1.5">Date <span class="text-red-400">*</span></label>
-              <input type="date" id="payDate" required class="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200"/>
-            </div>
-            <div>
-              <label class="block text-xs font-semibold text-neutral-600 mb-1.5">Payment Method</label>
-              <select id="payMethod" class="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200"><option value="cash">Cash</option><option value="online">Online / Bank Transfer</option><option value="cheque">Cheque</option></select>
-            </div>
+            <div><label class="block text-xs font-semibold text-neutral-600 mb-1.5">Date <span class="text-red-400">*</span></label><input type="date" id="payDate" required class="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200"/></div>
+            <div><label class="block text-xs font-semibold text-neutral-600 mb-1.5">Payment Method</label><select id="payMethod" class="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200"><option value="cash">Cash</option><option value="online">Online / Bank Transfer</option><option value="cheque">Cheque</option></select></div>
           </div>
-          <div>
-            <label class="block text-xs font-semibold text-neutral-600 mb-1.5">Reference <span class="text-neutral-400 font-normal">(invoice, sale, PO #)</span></label>
-            <input type="text" id="payRef" placeholder="e.g. INV-042, SO-008, PO-015"
-                   class="w-full px-4 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200"/>
-          </div>
-
+          <div><label class="block text-xs font-semibold text-neutral-600 mb-1.5">Handled By</label><select id="payReceivedBy" class="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200"><option value="">Select user…</option></select></div>
           <!-- Status -->
-          <div>
-            <label class="block text-xs font-semibold text-neutral-600 mb-1.5">Status</label>
+          <div><label class="block text-xs font-semibold text-neutral-600 mb-1.5">Status</label>
             <div class="flex gap-2" id="payStatusGroup">
-              <button type="button" onclick="setStatus('completed')" data-val="completed" class="sts-btn flex-1 px-3 py-2.5 text-xs font-semibold border rounded-xl transition-all duration-200 text-green-700 border-green-300 bg-green-50">Completed</button>
-              <button type="button" onclick="setStatus('pending')" data-val="pending" class="sts-btn flex-1 px-3 py-2.5 text-xs font-semibold border rounded-xl transition-all duration-200 text-neutral-500 border-neutral-200 bg-white hover:bg-neutral-50">Pending</button>
-              <button type="button" onclick="setStatus('failed')" data-val="failed" class="sts-btn flex-1 px-3 py-2.5 text-xs font-semibold border rounded-xl transition-all duration-200 text-neutral-500 border-neutral-200 bg-white hover:bg-neutral-50">Failed</button>
+              <button type="button" onclick="setStatus('paid')" data-val="paid" class="sts-btn flex-1 px-3 py-2.5 text-xs font-semibold border rounded-xl transition-all duration-200 text-green-700 border-green-300 bg-green-50">Paid</button>
+              <button type="button" onclick="setStatus('partial')" data-val="partial" class="sts-btn flex-1 px-3 py-2.5 text-xs font-semibold border rounded-xl transition-all duration-200 text-neutral-500 border-neutral-200 bg-white hover:bg-neutral-50">Partial</button>
+              <button type="button" onclick="setStatus('unpaid')" data-val="unpaid" class="sts-btn flex-1 px-3 py-2.5 text-xs font-semibold border rounded-xl transition-all duration-200 text-neutral-500 border-neutral-200 bg-white hover:bg-neutral-50">Unpaid</button>
             </div>
           </div>
-
-          <div>
-            <label class="block text-xs font-semibold text-neutral-600 mb-1.5">Notes</label>
-            <textarea id="payNotes" rows="2" placeholder="Payment reference, cheque number, etc."
-                      class="w-full px-4 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white resize-none placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200"></textarea>
-          </div>
+          <div><label class="block text-xs font-semibold text-neutral-600 mb-1.5">Notes</label><textarea id="payNotes" rows="2" placeholder="Payment reference, cheque number, etc." class="w-full px-4 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white resize-none placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200"></textarea></div>
         </div>
       </div>
     </form>
   </div>
-
-  <!-- Footer -->
   <div class="px-6 py-4 border-t border-neutral-100 bg-neutral-50/50 flex items-center gap-3">
     <button onclick="closePaymentForm()" type="button" class="flex-1 px-4 py-2.5 text-sm font-semibold text-neutral-600 bg-white border border-neutral-200 rounded-xl hover:bg-neutral-50 hover:border-neutral-300 transition-all duration-200">Cancel</button>
     <button onclick="document.getElementById('paymentForm').requestSubmit()" type="button" id="submitBtn" class="flex-1 px-4 py-2.5 text-sm font-semibold text-white bg-green-500 rounded-xl hover:bg-green-600 active:scale-[0.97] transition-all duration-200 flex items-center justify-center gap-2">
@@ -265,157 +222,130 @@
   <div class="flex-1 overflow-y-auto px-6 py-6" id="detailBody"></div>
 </div>
 
-
-<!-- ═══ DELETE DIALOG ═══ -->
-<div id="deleteBackdrop" class="fixed inset-0 bg-black/30 backdrop-blur-sm z-[80] opacity-0 pointer-events-none transition-opacity duration-200 flex items-center justify-center">
-  <div id="deleteDialog" class="bg-white rounded-2xl shadow-xl w-full max-w-sm mx-4 p-6 scale-95 opacity-0 transition-all duration-200">
+<!-- ═══ VOID DIALOG ═══ -->
+<div id="voidBackdrop" class="fixed inset-0 bg-black/30 backdrop-blur-sm z-[80] opacity-0 pointer-events-none transition-opacity duration-200 flex items-center justify-center">
+  <div id="voidDialog" class="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 p-6 scale-95 opacity-0 transition-all duration-200">
     <div class="w-12 h-12 bg-red-50 rounded-xl flex items-center justify-center mx-auto mb-4"><svg class="w-6 h-6 text-red-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
-    <h3 id="deleteTitle" class="text-base font-bold text-neutral-900 text-center mb-1">Delete Payment?</h3>
-    <p id="deleteMsg" class="text-sm text-neutral-500 text-center mb-6">This action cannot be undone.</p>
-    <div class="flex gap-3"><button onclick="closeDeleteDialog()" class="flex-1 px-4 py-2.5 text-sm font-semibold text-neutral-600 bg-white border border-neutral-200 rounded-xl hover:bg-neutral-50 transition-all duration-200">Cancel</button><button onclick="executeDelete()" class="flex-1 px-4 py-2.5 text-sm font-semibold text-white bg-red-500 rounded-xl hover:bg-red-600 active:scale-[0.97] transition-all duration-200">Delete</button></div>
+    <h3 id="voidTitle" class="text-base font-bold text-neutral-900 text-center mb-1">Void Payment?</h3>
+    <p id="voidMsg" class="text-sm text-neutral-500 text-center mb-4">Party balance will be restored.</p>
+    <div class="mb-4">
+      <label class="block text-xs font-semibold text-neutral-600 mb-1.5">Reason for voiding <span class="text-red-400">*</span></label>
+      <select id="voidReasonSelect" onchange="toggleVoidCustom()" class="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-400 transition-all duration-200 mb-2"><option value="">Select reason…</option><option value="Duplicate entry">Duplicate entry</option><option value="Wrong party">Wrong party</option><option value="Wrong amount">Wrong amount</option><option value="Data entry error">Data entry error</option><option value="custom">Other (specify)…</option></select>
+      <textarea id="voidReasonCustom" rows="2" placeholder="Enter reason…" class="hidden w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white resize-none placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-400 transition-all duration-200"></textarea>
+      <p id="voidReasonError" class="hidden text-xs text-red-500 mt-1">Reason is required.</p>
+    </div>
+    <div class="flex gap-3"><button onclick="closeVoidDialog()" class="flex-1 px-4 py-2.5 text-sm font-semibold text-neutral-600 bg-white border border-neutral-200 rounded-xl hover:bg-neutral-50 transition-all duration-200">Cancel</button><button onclick="executeVoid()" class="flex-1 px-4 py-2.5 text-sm font-semibold text-white bg-red-500 rounded-xl hover:bg-red-600 active:scale-[0.97] transition-all duration-200">Void &amp; Restore</button></div>
   </div>
 </div>
 
-<!-- ═══ TOAST ═══ -->
-<div id="feedbackToast" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[90] flex items-center gap-3 px-5 py-3 rounded-xl shadow-lg border text-sm font-semibold pointer-events-none opacity-0 translate-y-4 transition-all duration-300">
-  <svg id="toastIcon" class="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></svg>
-  <span id="toastText"></span>
-</div>
-
-
-<!-- ══════════════════════════════════════════════════════════
-     JAVASCRIPT
-     ══════════════════════════════════════════════════════════ -->
+<!-- ══════════════════════════════════════════════════════════ JAVASCRIPT ══════════════════════════════════════════════════════════ -->
 <script>
 (function(){
+  let currentPage=1,perPage=10,selectedIds=new Set(),voidTargetId=null,isBulkVoid=false;
+  let searchQuery='',sortField='date_paid',sortOrder='desc',activeTab='all';
+  let formDirection='received',formPartyId=null,paymentStatus='paid',detailPayId=null;
+  let cachedCustomers=[],cachedSuppliers=[],cachedUsers=[],cachedInvoices=[];
 
-  /* ─── Reference Data ─── */
-  const customers=[
-    {id:1,name:'Riverside Hardware',contact:'Mike Turner',email:'mike@riverside.com',phone:'+1 (555) 111-2233'},
-    {id:2,name:'Metro Office Supplies',contact:'Linda Park',email:'linda@metrooffice.com',phone:'+1 (555) 222-3344'},
-    {id:3,name:'FreshMart Grocery',contact:'Ali Hassan',email:'ali@freshmart.com',phone:'+1 (555) 333-4455'},
-    {id:4,name:'BuildRight Construction',contact:'Carlos Rivera',email:'carlos@buildright.com',phone:'+1 (555) 444-5566'},
-    {id:5,name:'TechZone Electronics',contact:'Priya Sharma',email:'priya@techzone.com',phone:'+1 (555) 555-6677'},
-    {id:6,name:'GreenBasket Organics',contact:'Emma Wilson',email:'emma@greenbasket.com',phone:'+1 (555) 666-7788'},
-  ];
-  const suppliers=[
-    {id:101,name:'Acme Industrial Supply',contact:'Robert Chen',phone:'+1 (555) 234-5678'},
-    {id:102,name:'GreenLeaf Organics',contact:'Maria Santos',phone:'+1 (555) 345-6789'},
-    {id:103,name:'TechParts Global',contact:'David Kim',phone:'+1 (555) 456-7890'},
-    {id:104,name:'Atlas Freight Co.',contact:'Sarah Johnson',phone:'+1 (555) 567-8901'},
-    {id:105,name:'Pristine Packaging Ltd',contact:'Amy Liu',phone:'+1 (555) 678-9012'},
-    {id:106,name:'SafeGuard Chemicals',contact:'Tom Bradley',phone:'+1 (555) 789-0123'},
-  ];
-
-  /* ─── Payment Records ─── */
-  let payments=[
-    {id:1,  payNo:'PAY-001',direction:'in', partyType:'customer',partyId:3, amount:575,    method:'cash',   ref:'SO-001',  status:'completed',date:'2026-03-04',notes:''},
-    {id:2,  payNo:'PAY-002',direction:'in', partyType:'customer',partyId:5, amount:589.40, method:'online', ref:'SO-003',  status:'completed',date:'2026-03-04',notes:''},
-    {id:3,  payNo:'PAY-003',direction:'out',partyType:'supplier',partyId:102,amount:2135,  method:'online', ref:'PO-014',  status:'completed',date:'2026-03-04',notes:'GreenLeaf monthly batch'},
-    {id:4,  payNo:'PAY-004',direction:'in', partyType:'customer',partyId:2, amount:485,    method:'cheque', ref:'SO-004',  status:'pending',  date:'2026-03-04',notes:'Cheque #4421 — clearing'},
-    {id:5,  payNo:'PAY-005',direction:'out',partyType:'supplier',partyId:101,amount:600,   method:'online', ref:'PO-012',  status:'completed',date:'2026-03-03',notes:''},
-    {id:6,  payNo:'PAY-006',direction:'in', partyType:'customer',partyId:6, amount:811.85, method:'online', ref:'SO-005',  status:'completed',date:'2026-03-03',notes:''},
-    {id:7,  payNo:'PAY-007',direction:'out',partyType:'supplier',partyId:105,amount:500,   method:'cash',   ref:'PO-011',  status:'completed',date:'2026-03-02',notes:''},
-    {id:8,  payNo:'PAY-008',direction:'in', partyType:'customer',partyId:4, amount:502,    method:'cash',   ref:'SO-006',  status:'completed',date:'2026-03-02',notes:''},
-    {id:9,  payNo:'PAY-009',direction:'out',partyType:'supplier',partyId:103,amount:650,   method:'online', ref:'',        status:'completed',date:'2026-03-01',notes:'Advance for Q2'},
-    {id:10, payNo:'PAY-010',direction:'in', partyType:'customer',partyId:3, amount:538.02, method:'online', ref:'SO-007',  status:'failed',   date:'2026-03-01',notes:'Card declined — retry pending'},
-    {id:11, payNo:'PAY-011',direction:'out',partyType:'supplier',partyId:106,amount:350,   method:'cash',   ref:'PO-009',  status:'completed',date:'2026-02-28',notes:''},
-    {id:12, payNo:'PAY-012',direction:'in', partyType:'customer',partyId:1, amount:144,    method:'online', ref:'SO-008',  status:'completed',date:'2026-02-28',notes:''},
-    {id:13, payNo:'PAY-013',direction:'out',partyType:'supplier',partyId:102,amount:472,   method:'cheque', ref:'PO-007',  status:'completed',date:'2026-02-27',notes:''},
-    {id:14, payNo:'PAY-014',direction:'in', partyType:'customer',partyId:1, amount:3200,   method:'online', ref:'INV-038', status:'completed',date:'2026-02-25',notes:'Quarterly settlement'},
-    {id:15, payNo:'PAY-015',direction:'out',partyType:'supplier',partyId:101,amount:975,   method:'online', ref:'PO-005',  status:'completed',date:'2026-02-25',notes:''},
-    {id:16, payNo:'PAY-016',direction:'in', partyType:'customer',partyId:5, amount:11795,  method:'online', ref:'INV-035', status:'completed',date:'2026-02-20',notes:'Bulk order settlement'},
-    {id:17, payNo:'PAY-017',direction:'out',partyType:'supplier',partyId:104,amount:3168,  method:'online', ref:'PO-003',  status:'pending',  date:'2026-02-18',notes:'Freight invoice — processing'},
-  ];
-
-  let currentPage=1,perPage=10,selectedIds=new Set(),deleteTargetId=null,isBulkDelete=false,nextId=18,nextNo=18;
-  let searchQ='',fMethod='',fStatus='',fDateFrom='',fDateTo='',sortField='date',sortOrder='desc';
-  let activeTab='all'; // 'all','in','out'
-  let formDirection='in',formPartyId=null,formPartyType='customer',paymentStatus='completed';
-  let detailPayId=null;
-
-  /* ─── Helpers ─── */
-  const getParty=(type,id)=>type==='customer'?customers.find(c=>c.id===id):suppliers.find(s=>s.id===id);
-  const fmtD=d=>new Date(d).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
-  const fmtM=n=>'$'+n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const fmtM=n=>{const v=parseFloat(n)||0;return '$'+v.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});};
+  const fmtD=d=>{if(!d)return'—';return new Date(d+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});};
   const methodLabel={cash:'Cash',online:'Online / Bank',cheque:'Cheque'};
-  const statusBadge={completed:'bg-green-50 text-green-600 border-green-200',pending:'bg-amber-50 text-amber-600 border-amber-200',failed:'bg-red-50 text-red-600 border-red-200'};
-  const dirBadge={in:'bg-green-50 text-green-700 border-green-200',out:'bg-red-50 text-red-600 border-red-200'};
+  const statusBadge={paid:'bg-green-50 text-green-600 border-green-200',partial:'bg-amber-50 text-amber-600 border-amber-200',unpaid:'bg-red-50 text-red-600 border-red-200'};
+  const dirBadge={received:'bg-green-50 text-green-700 border-green-200',sent:'bg-red-50 text-red-600 border-red-200'};
+  const stsColors={paid:['text-green-700','border-green-300','bg-green-50'],partial:['text-amber-700','border-amber-300','bg-amber-50'],unpaid:['text-red-700','border-red-300','bg-red-50']};
+  const stsOff=['text-neutral-500','border-neutral-200','bg-white','hover:bg-neutral-50'];
 
-  /* ─── Tab Switch ─── */
-  window.switchTab=tab=>{activeTab=tab;currentPage=1;document.querySelectorAll('.tab-btn').forEach(b=>{b.classList.remove('bg-white','text-neutral-900','shadow-sm');b.classList.add('text-neutral-500');});const el=document.getElementById('tab'+tab.charAt(0).toUpperCase()+tab.slice(1));el.classList.remove('text-neutral-500');el.classList.add('bg-white','text-neutral-900','shadow-sm');renderTable();};
-
-  /* ─── Filter & Sort ─── */
-  function getFiltered(){
-    let list=[...payments];
-    if(activeTab==='in')list=list.filter(p=>p.direction==='in');
-    if(activeTab==='out')list=list.filter(p=>p.direction==='out');
-    if(searchQ){const q=searchQ.toLowerCase();list=list.filter(p=>{const party=getParty(p.partyType,p.partyId);return p.payNo.toLowerCase().includes(q)||(party&&party.name.toLowerCase().includes(q))||(p.ref&&p.ref.toLowerCase().includes(q));});}
-    if(fMethod)list=list.filter(p=>p.method===fMethod);
-    if(fStatus)list=list.filter(p=>p.status===fStatus);
-    if(fDateFrom)list=list.filter(p=>p.date>=fDateFrom);
-    if(fDateTo)list=list.filter(p=>p.date<=fDateTo);
-    list.sort((a,b)=>{let va=a[sortField],vb=b[sortField];if(va<vb)return sortOrder==='asc'?-1:1;if(va>vb)return sortOrder==='asc'?1:-1;return 0;});
-    return list;
+  async function api(url,opts={}){
+    const csrf=document.querySelector('[name=csrfmiddlewaretoken]')?.value||document.cookie.match(/csrftoken=([^;]+)/)?.[1]||'';
+    const defaults={headers:{'Content-Type':'application/json','X-CSRFToken':csrf},credentials:'same-origin'};
+    const res=await fetch(url,{...defaults,...opts});const json=await res.json();
+    if(!res.ok&&!json.success)throw new Error(json.message||'Request failed');return json;
   }
 
-  /* ─── Render ─── */
-  function renderTable(){
-    const filtered=getFiltered(),total=filtered.length,tp=Math.max(1,Math.ceil(total/perPage));
-    if(currentPage>tp)currentPage=tp;const start=(currentPage-1)*perPage,page=filtered.slice(start,start+perPage);
-    const tbody=document.getElementById('paymentsTableBody'),empty=document.getElementById('emptyState'),pag=document.getElementById('paginationBar');
-    if(!total){tbody.innerHTML='';empty.classList.remove('hidden');empty.classList.add('flex');pag.classList.add('hidden');return;}
-    empty.classList.add('hidden');empty.classList.remove('flex');pag.classList.remove('hidden');
+  async function loadHelpers(){
+    try{
+      const [cRes,sRes,uRes]=await Promise.all([api('/api/payments/helpers/customers/'),api('/api/payments/helpers/suppliers/'),api('/api/payments/helpers/users/')]);
+      cachedCustomers=cRes.customers||[];cachedSuppliers=sRes.suppliers||[];cachedUsers=uRes.users||[];
+      const uSel=document.getElementById('payReceivedBy');uSel.innerHTML='<option value="">Select user…</option>';
+      cachedUsers.forEach(u=>{const o=document.createElement('option');o.value=u.id;o.textContent=u.name+(u.role?' ('+u.role+')':'');uSel.appendChild(o);});
+    }catch(e){console.error('Failed to load helpers:',e);}
+  }
 
-    tbody.innerHTML=page.map(p=>{
-      const party=getParty(p.partyType,p.partyId),checked=selectedIds.has(p.id)?'checked':'';
-      const db=dirBadge[p.direction],sb=statusBadge[p.status]||statusBadge.pending;
-      const arrowIcon=p.direction==='in'
-        ?'<svg class="w-3.5 h-3.5 text-green-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>'
-        :'<svg class="w-3.5 h-3.5 text-red-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>';
-      const amountColor=p.direction==='in'?'text-green-600':'text-red-500';
-      const amountPrefix=p.direction==='in'?'+':'-';
-      return `<tr class="border-b border-neutral-50 hover:bg-neutral-50/50 transition-colors duration-150 group cursor-pointer" onclick="window._pay.openDetail(${p.id})">
-        <td class="px-4 py-3" onclick="event.stopPropagation()"><input type="checkbox" ${checked} onchange="window._pay.toggleSel(${p.id})" class="w-4 h-4 rounded border-neutral-300 text-green-500 focus:ring-green-500/30 cursor-pointer"/></td>
-        <td class="px-4 py-3"><span class="text-sm font-bold text-neutral-700">${p.payNo}</span></td>
-        <td class="px-4 py-3 text-sm text-neutral-600">${fmtD(p.date)}</td>
-        <td class="px-4 py-3"><span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[0.65rem] font-bold border ${db} capitalize">${arrowIcon}${p.direction==='in'?'Received':'Sent'}</span></td>
-        <td class="px-4 py-3"><div class="text-sm font-semibold text-neutral-900">${party?party.name:'—'}</div><div class="text-xs text-neutral-400 capitalize">${p.partyType}</div></td>
-        <td class="px-4 py-3 text-sm text-neutral-500">${p.ref||'—'}</td>
-        <td class="px-4 py-3 text-xs text-neutral-500">${methodLabel[p.method]||p.method}</td>
-        <td class="px-4 py-3 text-sm font-bold ${amountColor}">${amountPrefix}${fmtM(p.amount)}</td>
-        <td class="px-4 py-3"><span class="inline-flex items-center px-2 py-0.5 rounded-md text-[0.65rem] font-bold border ${sb} capitalize">${p.status}</span></td>
-        <td class="px-4 py-3 text-right" onclick="event.stopPropagation()">
-          <div class="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-            <button onclick="window._pay.openEdit(${p.id})" title="Edit" class="w-8 h-8 flex items-center justify-center rounded-lg text-neutral-400 hover:text-green-600 hover:bg-green-50 transition-all duration-200"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
-            <button onclick="window._pay.confirmDel(${p.id})" title="Delete" class="w-8 h-8 flex items-center justify-center rounded-lg text-neutral-400 hover:text-red-600 hover:bg-red-50 transition-all duration-200"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
-          </div>
-        </td>
+  async function loadData(){
+    document.getElementById('loadingState').classList.remove('hidden');document.getElementById('loadingState').classList.add('flex');
+    document.getElementById('emptyState').classList.add('hidden');document.getElementById('emptyState').classList.remove('flex');
+    document.getElementById('paginationBar').classList.add('hidden');
+    try{
+      const params=new URLSearchParams({page:currentPage,per_page:perPage,search:searchQuery,sort:sortField,order:sortOrder,tab:activeTab});
+      const m=document.getElementById('filterMethod').value;if(m)params.set('method',m);
+      const s=document.getElementById('filterStatus').value;if(s)params.set('status',s);
+      const df=document.getElementById('filterDateFrom').value;if(df)params.set('date_from',df);
+      const dt=document.getElementById('filterDateTo').value;if(dt)params.set('date_to',dt);
+      if(document.getElementById('filterShowVoid').checked)params.set('show_void','true');
+      const data=await api('/api/payments/list/?'+params.toString());
+      document.getElementById('statReceived').textContent=fmtM(data.overview.total_received);
+      document.getElementById('statSent').textContent=fmtM(data.overview.total_sent);
+      document.getElementById('statNet').textContent=fmtM(data.overview.net_cash_flow);
+      document.getElementById('statMonth').textContent=data.overview.this_month;
+      const pag=data.pagination;
+      document.getElementById('loadingState').classList.add('hidden');document.getElementById('loadingState').classList.remove('flex');
+      if(pag.total===0){document.getElementById('emptyState').classList.remove('hidden');document.getElementById('emptyState').classList.add('flex');document.getElementById('paymentsTableBody').innerHTML='';return;}
+      document.getElementById('paginationBar').classList.remove('hidden');
+      const start=(pag.page-1)*pag.per_page;
+      document.getElementById('pagStart').textContent=start+1;document.getElementById('pagEnd').textContent=Math.min(start+pag.per_page,pag.total);document.getElementById('pagTotal').textContent=pag.total;
+      const pnEl=document.getElementById('pageNumbers');let pn='';
+      for(let p=1;p<=pag.total_pages;p++){const c=p===pag.page?'bg-green-500 text-white border-green-500':'bg-white text-neutral-600 border-neutral-200 hover:border-neutral-300';pn+=`<button onclick="window._pay.goP(${p})" class="w-8 h-8 flex items-center justify-center rounded-lg border text-xs font-semibold ${c} transition-all duration-200">${p}</button>`;}
+      pnEl.innerHTML=pn;document.getElementById('btnPrev').disabled=pag.page===1;document.getElementById('btnNext').disabled=pag.page===pag.total_pages;currentPage=pag.page;
+      renderTable(data.payments||[]);
+    }catch(e){document.getElementById('loadingState').classList.add('hidden');toast.error(e.message||'Failed to load');}
+  }
+
+  function renderTable(payments){
+    const tbody=document.getElementById('paymentsTableBody');
+    tbody.innerHTML=payments.map(p=>{
+      const chk=selectedIds.has(p.id)?'checked':'';const db=dirBadge[p.payment_type]||dirBadge.received;
+      const sb=statusBadge[p.payment_status]||statusBadge.unpaid;const voidCls=p.is_void?'opacity-50':'';
+      const voidBadge=p.is_void?'<span class="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-[0.6rem] font-bold bg-neutral-200 text-neutral-500">VOID</span>':'';
+      const arrowIcon=p.payment_type==='received'?'<svg class="w-3.5 h-3.5 text-green-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>':'<svg class="w-3.5 h-3.5 text-red-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>';
+      const amtColor=p.payment_type==='received'?'text-green-600':'text-red-500';const amtPrefix=p.payment_type==='received'?'+':'-';
+      return `<tr class="border-b border-neutral-50 hover:bg-neutral-50/50 transition-colors duration-150 group cursor-pointer ${voidCls}" onclick="window._pay.openDetail(${p.id})">
+        <td class="px-4 py-3" onclick="event.stopPropagation()"><input type="checkbox" ${chk} onchange="window._pay.toggleSel(${p.id})" class="w-4 h-4 rounded border-neutral-300 text-green-500 focus:ring-green-500/30 cursor-pointer" ${p.is_void?'disabled':''}/></td>
+        <td class="px-4 py-3"><span class="text-sm font-bold text-neutral-700">${p.reference_no}</span>${voidBadge}</td>
+        <td class="px-4 py-3 text-sm text-neutral-600">${fmtD(p.date_paid)}</td>
+        <td class="px-4 py-3"><span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[0.65rem] font-bold border ${db} capitalize">${arrowIcon}${p.payment_type==='received'?'Received':'Sent'}</span></td>
+        <td class="px-4 py-3"><div class="text-sm font-semibold text-neutral-900">${p.party_name}</div><div class="text-xs text-neutral-400 capitalize">${p.party_type}</div></td>
+        <td class="px-4 py-3 text-sm text-neutral-500">${p.invoice_ref||'—'}</td>
+        <td class="px-4 py-3 text-xs text-neutral-500">${methodLabel[p.payment_method]||p.payment_method}</td>
+        <td class="px-4 py-3 text-sm font-bold ${amtColor}">${amtPrefix}${fmtM(p.amount)}</td>
+        <td class="px-4 py-3"><span class="inline-flex items-center px-2 py-0.5 rounded-md text-[0.65rem] font-bold border ${sb} capitalize">${p.payment_status}</span></td>
+        <td class="px-4 py-3 text-right" onclick="event.stopPropagation()"><div class="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+          ${!p.is_void?`<button onclick="window._pay.openEdit(${p.id})" title="Edit" class="w-8 h-8 flex items-center justify-center rounded-lg text-neutral-400 hover:text-green-600 hover:bg-green-50 transition-all duration-200"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+          <button onclick="window._pay.confirmVoid(${p.id},'${p.reference_no}')" title="Void" class="w-8 h-8 flex items-center justify-center rounded-lg text-neutral-400 hover:text-red-600 hover:bg-red-50 transition-all duration-200"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>`:''}
+        </div></td>
       </tr>`;
     }).join('');
-    document.getElementById('pagStart').textContent=start+1;document.getElementById('pagEnd').textContent=Math.min(start+perPage,total);document.getElementById('pagTotal').textContent=total;
-    const pnEl=document.getElementById('pageNumbers');let pn='';for(let p=1;p<=tp;p++){const c=p===currentPage?'bg-green-500 text-white border-green-500':'bg-white text-neutral-600 border-neutral-200 hover:border-neutral-300';pn+=`<button onclick="window._pay.goP(${p})" class="w-8 h-8 flex items-center justify-center rounded-lg border text-xs font-semibold ${c} transition-all duration-200">${p}</button>`;}pnEl.innerHTML=pn;
-    document.getElementById('btnPrev').disabled=currentPage===1;document.getElementById('btnNext').disabled=currentPage>=tp;updateBulk();
   }
-  function updateBulk(){const b=document.getElementById('bulkActions');if(selectedIds.size>0){b.classList.remove('hidden');b.classList.add('flex');document.getElementById('selectedCount').textContent=selectedIds.size;}else{b.classList.add('hidden');b.classList.remove('flex');}document.getElementById('selectAll').checked=getFiltered().length>0&&getFiltered().every(p=>selectedIds.has(p.id));}
 
   window._pay={};
   window._pay.toggleSel=id=>{selectedIds.has(id)?selectedIds.delete(id):selectedIds.add(id);updateBulk();};
-  window.toggleSelectAll=cb=>{const f=getFiltered();if(cb.checked)f.forEach(p=>selectedIds.add(p.id));else f.forEach(p=>selectedIds.delete(p.id));renderTable();};
-  let sT;window.handleSearch=v=>{clearTimeout(sT);sT=setTimeout(()=>{searchQ=v.trim();currentPage=1;renderTable();},300);};
+  window._pay.goP=p=>{currentPage=p;loadData();};
+  function updateBulk(){const b=document.getElementById('bulkActions');if(selectedIds.size>0){b.classList.remove('hidden');b.classList.add('flex');document.getElementById('selectedCount').textContent=selectedIds.size;}else{b.classList.add('hidden');b.classList.remove('flex');}}
+  window.toggleSelectAll=cb=>{const boxes=document.querySelectorAll('#paymentsTableBody input[type="checkbox"]');boxes.forEach(c=>{if(!c.disabled){c.checked=cb.checked;const id=parseInt(c.getAttribute('onchange').match(/\d+/)?.[0]);if(id){cb.checked?selectedIds.add(id):selectedIds.delete(id);}}});updateBulk();};
+  let sT;window.handleSearch=v=>{clearTimeout(sT);sT=setTimeout(()=>{searchQuery=v.trim();currentPage=1;loadData();},400);};
   window.toggleFilters=()=>{const p=document.getElementById('filterPanel'),t=document.getElementById('filterBtnText');p.classList.contains('hidden')?(p.classList.remove('hidden'),t.textContent='Close'):(p.classList.add('hidden'),t.textContent='Filter');};
-  window.applyFilters=()=>{fMethod=document.getElementById('filterMethod').value;fStatus=document.getElementById('filterStatus').value;fDateFrom=document.getElementById('filterDateFrom').value;fDateTo=document.getElementById('filterDateTo').value;currentPage=1;renderTable();};
-  window.clearFilters=()=>{['filterMethod','filterStatus','filterDateFrom','filterDateTo'].forEach(id=>document.getElementById(id).value='');fMethod='';fStatus='';fDateFrom='';fDateTo='';currentPage=1;renderTable();showToast('Filters cleared','info');};
-  window.sortTable=f=>{if(sortField===f)sortOrder=sortOrder==='asc'?'desc':'asc';else{sortField=f;sortOrder='desc';}renderTable();};
-  window._pay.goP=p=>{currentPage=p;renderTable();};
-  window.goToPage=d=>{if(d==='prev'&&currentPage>1)currentPage--;else if(d==='next')currentPage++;renderTable();};
+  window.applyFilters=()=>{currentPage=1;loadData();};
+  window.clearFilters=()=>{document.getElementById('filterMethod').value='';document.getElementById('filterStatus').value='';document.getElementById('filterDateFrom').value='';document.getElementById('filterDateTo').value='';document.getElementById('filterShowVoid').checked=false;currentPage=1;loadData();toast.info('Filters cleared');};
+  window.sortTable=f=>{if(sortField===f)sortOrder=sortOrder==='asc'?'desc':'asc';else{sortField=f;sortOrder='desc';}currentPage=1;loadData();};
+  window.goToPage=d=>{if(d==='prev'&&currentPage>1)currentPage--;else if(d==='next')currentPage++;loadData();};
+  window.switchTab=tab=>{activeTab=tab;currentPage=1;document.querySelectorAll('.tab-btn').forEach(b=>{b.classList.remove('bg-white','text-neutral-900','shadow-sm');b.classList.add('text-neutral-500');});const el=document.getElementById('tab'+tab.charAt(0).toUpperCase()+tab.slice(1));el.classList.remove('text-neutral-500');el.classList.add('bg-white','text-neutral-900','shadow-sm');loadData();};
 
-  /* ─── Direction Toggle ─── */
+  /* ─── Direction ─── */
   window.setDirection=dir=>{
-    formDirection=dir;formPartyId=null;formPartyType=dir==='in'?'customer':'supplier';
+    formDirection=dir;formPartyId=null;
     document.getElementById('selectedPartyChip').classList.add('hidden');document.getElementById('partySearchInput').value='';
+    document.getElementById('invoiceSelect').innerHTML='<option value="">No invoice / General payment</option>';
+    document.getElementById('invoiceInfo').classList.add('hidden');cachedInvoices=[];
     const iBtn=document.getElementById('dirInBtn'),oBtn=document.getElementById('dirOutBtn'),iChk=document.getElementById('dirInCheck'),oChk=document.getElementById('dirOutCheck');
-    if(dir==='in'){
+    if(dir==='received'){
       iBtn.classList.remove('border-neutral-200','bg-white');iBtn.classList.add('border-green-400','bg-green-50');
       oBtn.classList.remove('border-red-400','bg-red-50');oBtn.classList.add('border-neutral-200','bg-white');
       oBtn.querySelector('.flex > div:first-child').classList.remove('bg-red-500');oBtn.querySelector('.flex > div:first-child').classList.add('bg-neutral-200');
@@ -439,144 +369,155 @@
   /* ─── Party Search ─── */
   window.searchParty=val=>{
     const dd=document.getElementById('partyDropdown');if(!val.trim()){dd.classList.add('hidden');return;}
-    const q=val.toLowerCase(),list=formPartyType==='customer'?customers:suppliers;
-    const matches=list.filter(p=>p.name.toLowerCase().includes(q)||p.contact.toLowerCase().includes(q)||(p.email&&p.email.toLowerCase().includes(q))||(p.phone&&p.phone.includes(q))).slice(0,6);
+    const q=val.toLowerCase(),list=formDirection==='received'?cachedCustomers:cachedSuppliers;
+    const matches=list.filter(p=>p.name.toLowerCase().includes(q)||(p.contact_person||'').toLowerCase().includes(q)||(p.email||'').toLowerCase().includes(q)||(p.phone||'').includes(q)).slice(0,8);
     if(!matches.length){dd.innerHTML='<div class="px-4 py-3 text-xs text-neutral-400">No results found</div>';dd.classList.remove('hidden');return;}
-    dd.innerHTML=matches.map(p=>`<button type="button" onclick="window._pay.selParty(${p.id})" class="w-full text-left px-4 py-2.5 hover:bg-neutral-50 transition-colors duration-150 border-b border-neutral-50 last:border-0"><div class="text-sm font-semibold text-neutral-800">${p.name}</div><div class="text-xs text-neutral-400">${p.contact}${p.email?' · '+p.email:''}</div></button>`).join('');
+    dd.innerHTML=matches.map(p=>`<button type="button" onclick="window._pay.selParty(${p.id})" class="w-full text-left px-4 py-2.5 hover:bg-neutral-50 transition-colors duration-150 border-b border-neutral-50 last:border-0"><div class="text-sm font-semibold text-neutral-800">${p.name}</div><div class="text-xs text-neutral-400">${p.contact_person||''}${p.email?' · '+p.email:''}${p.phone?' · '+p.phone:''}</div></button>`).join('');
     dd.classList.remove('hidden');
   };
   window.showPartyDropdown=()=>{if(document.getElementById('partySearchInput').value.trim())searchParty(document.getElementById('partySearchInput').value);};
   window._pay.selParty=id=>{
-    const list=formPartyType==='customer'?customers:suppliers,p=list.find(x=>x.id===id);if(!p)return;
+    const list=formDirection==='received'?cachedCustomers:cachedSuppliers;const p=list.find(x=>x.id===id);if(!p)return;
     formPartyId=id;document.getElementById('partySearchInput').value='';document.getElementById('partyDropdown').classList.add('hidden');
     const chip=document.getElementById('selectedPartyChip');chip.classList.remove('hidden','bg-blue-50','border-blue-200','text-blue-700','bg-orange-50','border-orange-200','text-orange-700');
-    if(formDirection==='in')chip.classList.add('bg-blue-50','border','border-blue-200','text-blue-700');else chip.classList.add('bg-orange-50','border','border-orange-200','text-orange-700');
+    if(formDirection==='received')chip.classList.add('bg-blue-50','border','border-blue-200','text-blue-700');else chip.classList.add('bg-orange-50','border','border-orange-200','text-orange-700');
     document.getElementById('selectedPartyName').textContent=p.name;
+    document.getElementById('selectedPartyBalance').textContent=p.balance?` · Balance: ${fmtM(p.balance)}`:'';
+    document.getElementById('partyError').classList.add('hidden');
+    loadInvoicesForParty(id);
   };
-  window.clearSelectedParty=()=>{formPartyId=null;document.getElementById('selectedPartyChip').classList.add('hidden');document.getElementById('partySearchInput').value='';};
+  window.clearSelectedParty=()=>{formPartyId=null;document.getElementById('selectedPartyChip').classList.add('hidden');document.getElementById('partySearchInput').value='';document.getElementById('invoiceSelect').innerHTML='<option value="">No invoice / General payment</option>';document.getElementById('invoiceInfo').classList.add('hidden');cachedInvoices=[];};
   document.addEventListener('click',e=>{if(!document.getElementById('partySearchWrap').contains(e.target))document.getElementById('partyDropdown').classList.add('hidden');});
 
-  /* ─── Status Buttons ─── */
-  const stsColors={completed:['text-green-700','border-green-300','bg-green-50'],pending:['text-amber-700','border-amber-300','bg-amber-50'],failed:['text-red-700','border-red-300','bg-red-50']};
-  const stsOff=['text-neutral-500','border-neutral-200','bg-white','hover:bg-neutral-50'];
-  window.setStatus=val=>{paymentStatus=val;document.querySelectorAll('.sts-btn').forEach(b=>{b.classList.remove(...stsColors.completed,...stsColors.pending,...stsColors.failed,...stsOff);b.dataset.val===val?b.classList.add(...stsColors[val]):b.classList.add(...stsOff);});};
+  async function loadInvoicesForParty(partyId){
+    const sel=document.getElementById('invoiceSelect');sel.innerHTML='<option value="">No invoice / General payment</option>';cachedInvoices=[];
+    try{
+      const url=formDirection==='received'?`/api/payments/helpers/sale-invoices/?customer_id=${partyId}`:`/api/payments/helpers/purchase-invoices/?supplier_id=${partyId}`;
+      const data=await api(url);cachedInvoices=data.invoices||[];
+      cachedInvoices.forEach(inv=>{const o=document.createElement('option');o.value=inv.id;o.textContent=`${inv.reference_no} — Balance: ${fmtM(inv.balance)} (Total: ${fmtM(inv.total)})`;sel.appendChild(o);});
+    }catch(e){console.error('Failed to load invoices:',e);}
+  }
+
+  window.onInvoiceSelect=()=>{
+    const invId=document.getElementById('invoiceSelect').value;const info=document.getElementById('invoiceInfo');
+    if(!invId){info.classList.add('hidden');return;}
+    const inv=cachedInvoices.find(i=>i.id==invId);if(!inv){info.classList.add('hidden');return;}
+    info.classList.remove('hidden');
+    info.innerHTML=`<div><strong>Invoice:</strong> ${inv.reference_no} · ${inv.date}</div><div><strong>Total:</strong> ${fmtM(inv.total)} · <strong>Paid:</strong> ${fmtM(inv.paid)} · <strong>Balance Due:</strong> ${fmtM(inv.balance)}</div>`;
+    const amtEl=document.getElementById('payAmount');if(!amtEl.value)amtEl.value=parseFloat(inv.balance).toFixed(2);
+  };
+
+  /* ─── Status ─── */
+  window.setStatus=val=>{paymentStatus=val;document.querySelectorAll('.sts-btn').forEach(b=>{b.classList.remove(...stsColors.paid,...stsColors.partial,...stsColors.unpaid,...stsOff);b.dataset.val===val?b.classList.add(...stsColors[val]):b.classList.add(...stsOff);});};
 
   /* ─── Open / Close Form ─── */
-  window.openPaymentForm=(dir)=>{
+  window.openPaymentForm=dir=>{
     document.getElementById('paymentForm').reset();document.getElementById('editPayId').value='';
-    formPartyId=null;paymentStatus='completed';
-    document.getElementById('selectedPartyChip').classList.add('hidden');document.getElementById('amountError').classList.add('hidden');
+    formPartyId=null;paymentStatus='paid';cachedInvoices=[];
+    document.getElementById('selectedPartyChip').classList.add('hidden');document.getElementById('amountError').classList.add('hidden');document.getElementById('partyError').classList.add('hidden');
+    document.getElementById('invoiceSelect').innerHTML='<option value="">No invoice / General payment</option>';document.getElementById('invoiceInfo').classList.add('hidden');
     document.getElementById('formTitle').textContent='Record Payment';
     document.getElementById('payDate').value=new Date().toISOString().slice(0,10);
-    setDirection(dir||'in');setStatus('completed');
+    setDirection(dir||'received');setStatus('paid');
     const bd=document.getElementById('formBackdrop'),pn=document.getElementById('formPanel');
     bd.classList.remove('opacity-0','pointer-events-none');bd.classList.add('opacity-100','pointer-events-auto');
     pn.classList.remove('translate-x-full');pn.classList.add('translate-x-0');document.body.style.overflow='hidden';
     setTimeout(()=>document.getElementById('payAmount').focus(),350);
   };
-  window._pay.openEdit=id=>{
-    const p=payments.find(x=>x.id===id);if(!p)return;
-    openPaymentForm(p.direction);
-    document.getElementById('editPayId').value=p.id;
-    document.getElementById('formTitle').textContent='Edit — '+p.payNo;
-    setDirection(p.direction);
-    if(p.partyId){formPartyType=p.partyType;window._pay.selParty(p.partyId);}
-    document.getElementById('payAmount').value=p.amount;document.getElementById('payDate').value=p.date;
-    document.getElementById('payMethod').value=p.method;document.getElementById('payRef').value=p.ref||'';
-    document.getElementById('payNotes').value=p.notes||'';setStatus(p.status);
+  window._pay.openEdit=async id=>{
+    try{
+      const data=await api(`/api/payments/detail/${id}/`);const p=data.payment;
+      openPaymentForm(p.payment_type);
+      document.getElementById('editPayId').value=p.id;
+      document.getElementById('formTitle').textContent='Edit — '+p.reference_no;
+      setDirection(p.payment_type);
+      if(p.party_id){
+        const list=p.payment_type==='received'?cachedCustomers:cachedSuppliers;
+        if(!list.find(x=>x.id===p.party_id)){list.push({id:p.party_id,name:p.party_name,contact_person:p.party_contact,phone:p.party_phone,email:p.party_email,balance:'0'});}
+        window._pay.selParty(p.party_id);
+        await loadInvoicesForParty(p.party_id);
+        if(p.invoice_id)document.getElementById('invoiceSelect').value=p.invoice_id;
+      }
+      document.getElementById('payAmount').value=parseFloat(p.amount);document.getElementById('payDate').value=p.date_paid;
+      document.getElementById('payMethod').value=p.payment_method;document.getElementById('payReceivedBy').value=p.received_by_id||'';
+      document.getElementById('payNotes').value=p.notes||'';setStatus(p.payment_status);
+    }catch(e){toast.error(e.message||'Failed to load payment');}
   };
   window.closePaymentForm=()=>{const bd=document.getElementById('formBackdrop'),pn=document.getElementById('formPanel');pn.classList.remove('translate-x-0');pn.classList.add('translate-x-full');bd.classList.remove('opacity-100','pointer-events-auto');bd.classList.add('opacity-0','pointer-events-none');document.body.style.overflow='';};
 
   /* ─── Submit ─── */
-  window.handleFormSubmit=e=>{
+  window.handleFormSubmit=async e=>{
     e.preventDefault();
+    let hasErr=false;
+    if(!formPartyId){document.getElementById('partyError').classList.remove('hidden');hasErr=true;}else{document.getElementById('partyError').classList.add('hidden');}
     const amount=parseFloat(document.getElementById('payAmount').value);
-    if(!amount||amount<=0){document.getElementById('amountError').classList.remove('hidden');return;}
-    document.getElementById('amountError').classList.add('hidden');
+    if(!amount||amount<=0){document.getElementById('amountError').classList.remove('hidden');hasErr=true;}else{document.getElementById('amountError').classList.add('hidden');}
+    if(hasErr)return;
     document.getElementById('submitBtnText').textContent='Saving…';document.getElementById('submitSpinner').classList.remove('hidden');document.getElementById('submitBtn').disabled=true;
-
-    setTimeout(()=>{
-      const editId=parseInt(document.getElementById('editPayId').value);
-      const data={direction:formDirection,partyType:formPartyType,partyId:formPartyId,amount,method:document.getElementById('payMethod').value,ref:document.getElementById('payRef').value.trim(),status:paymentStatus,date:document.getElementById('payDate').value,notes:document.getElementById('payNotes').value.trim()};
-      const party=formPartyId?getParty(formPartyType,formPartyId):null;
-      if(editId){const idx=payments.findIndex(p=>p.id===editId);if(idx!==-1)payments[idx]={...payments[idx],...data};showToast('Payment updated','success');}
-      else{data.id=nextId++;data.payNo='PAY-'+String(nextNo++).padStart(3,'0');payments.unshift(data);showToast(`${fmtM(amount)} ${formDirection==='in'?'received from':'sent to'} ${party?party.name:formPartyType}`,'success');}
-      document.getElementById('submitSpinner').classList.add('hidden');document.getElementById('submitBtn').disabled=false;
-      refreshStats();closePaymentForm();renderTable();
-    },600);
+    const editId=document.getElementById('editPayId').value;
+    const payload={payment_type:formDirection,party_id:formPartyId,amount:document.getElementById('payAmount').value,date_paid:document.getElementById('payDate').value||new Date().toISOString().slice(0,10),received_by_id:document.getElementById('payReceivedBy').value||null,payment_method:document.getElementById('payMethod').value,payment_status:paymentStatus,invoice_id:document.getElementById('invoiceSelect').value||null,notes:document.getElementById('payNotes').value.trim()};
+    try{
+      const url=editId?`/api/payments/update/${editId}/`:'/api/payments/create/';
+      const data=await api(url,{method:'POST',body:JSON.stringify(payload)});
+      toast.success(data.message);closePaymentForm();loadData();
+    }catch(e){toast.error(e.message||'Failed to save');}
+    finally{document.getElementById('submitSpinner').classList.add('hidden');document.getElementById('submitBtn').disabled=false;document.getElementById('submitBtnText').textContent='Record Payment';}
   };
 
   /* ─── Detail Panel ─── */
-  window._pay.openDetail=id=>{
-    detailPayId=id;const p=payments.find(x=>x.id===id);if(!p)return;
-    const party=getParty(p.partyType,p.partyId);
-    document.getElementById('detailTitle').textContent=p.payNo;
-    const dirColor=p.direction==='in'?'green':'red';
-    const db=document.getElementById('detailBody');
-    db.innerHTML=`
-      <div class="flex items-center justify-center mb-6">
-        <div class="text-center">
-          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-lg text-xs font-bold border ${dirBadge[p.direction]} mb-3 capitalize">
-            ${p.direction==='in'?'↓ Received':'↑ Sent'}
-          </div>
-          <div class="text-3xl font-extrabold text-${dirColor}-600 tracking-tight">${p.direction==='in'?'+':'-'}${fmtM(p.amount)}</div>
+  window._pay.openDetail=async id=>{
+    detailPayId=id;
+    try{
+      const data=await api(`/api/payments/detail/${id}/`);const p=data.payment;
+      document.getElementById('detailTitle').textContent=p.reference_no;
+      const dirColor=p.payment_type==='received'?'green':'red';
+      const db=document.getElementById('detailBody');
+      const invSection=p.invoice_ref?`${dRow('Invoice',p.invoice_ref)}${p.invoice_total?dRow('Inv Total',fmtM(p.invoice_total)):''}${p.invoice_paid!==undefined?dRow('Inv Paid',fmtM(p.invoice_paid)):''}${p.invoice_balance!==undefined?dRow('Inv Balance',fmtM(p.invoice_balance)):''}${p.invoice_payment_status?dRow('Inv Status',`<span class="inline-flex items-center px-2 py-0.5 rounded-md text-[0.65rem] font-bold border ${statusBadge[p.invoice_payment_status]} capitalize">${p.invoice_payment_status}</span>`):''}`:dRow('Invoice','— (General payment)');
+      db.innerHTML=`
+        <div class="flex items-center justify-center mb-6"><div class="text-center">
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-lg text-xs font-bold border ${dirBadge[p.payment_type]} mb-3 capitalize">${p.payment_type==='received'?'↓ Received':'↑ Sent'}</div>
+          ${p.is_void?'<div class="inline-flex items-center px-2 py-0.5 rounded text-[0.6rem] font-bold bg-neutral-200 text-neutral-500 mb-3 ml-2">VOID</div>':''}
+          <div class="text-3xl font-extrabold text-${dirColor}-600 tracking-tight">${p.payment_type==='received'?'+':'-'}${fmtM(p.amount)}</div>
+        </div></div>
+        <div class="space-y-1 mb-6">
+          ${dRow('Date',fmtD(p.date_paid))}
+          ${dRow(p.party_type==='customer'?'Customer':'Supplier',p.party_name)}
+          ${p.party_contact?dRow('Contact',p.party_contact):''}
+          ${dRow('Method',methodLabel[p.payment_method]||p.payment_method)}
+          ${invSection}
+          ${dRow('Handled By',p.received_by_name||'—')}
+          ${dRow('Status',`<span class="inline-flex items-center px-2 py-0.5 rounded-md text-[0.65rem] font-bold border ${statusBadge[p.payment_status]} capitalize">${p.payment_status}</span>`)}
         </div>
-      </div>
-      <div class="space-y-1 mb-6">
-        ${dRow('Date',fmtD(p.date))}
-        ${dRow(p.partyType==='customer'?'Customer':'Supplier',party?party.name:'—')}
-        ${party?dRow('Contact',party.contact):''}
-        ${dRow('Method',methodLabel[p.method]||p.method)}
-        ${dRow('Reference',p.ref||'—')}
-        ${dRow('Status',`<span class="inline-flex items-center px-2 py-0.5 rounded-md text-[0.65rem] font-bold border ${statusBadge[p.status]} capitalize">${p.status}</span>`)}
-      </div>
-      ${p.notes?`<div class="mb-6"><h4 class="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-2">Notes</h4><div class="text-sm text-neutral-600 bg-neutral-50 rounded-xl p-4 border border-neutral-100 leading-relaxed">${p.notes}</div></div>`:''}
-    `;
-    const bd=document.getElementById('detailBackdrop'),pn=document.getElementById('detailPanel');
-    bd.classList.remove('opacity-0','pointer-events-none');bd.classList.add('opacity-100','pointer-events-auto');
-    pn.classList.remove('translate-x-full');pn.classList.add('translate-x-0');
+        ${p.notes?`<div class="mb-6"><h4 class="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-2">Notes</h4><div class="text-sm text-neutral-600 bg-neutral-50 rounded-xl p-4 border border-neutral-100 leading-relaxed">${p.notes}</div></div>`:''}
+        ${p.is_void?`<div class="p-3 bg-red-50 border border-red-200 rounded-xl"><div class="text-xs font-bold text-red-600 mb-1">Void Reason</div><div class="text-sm text-red-700">${p.void_reason}</div></div>`:''}`;
+      const bd=document.getElementById('detailBackdrop'),pn=document.getElementById('detailPanel');
+      bd.classList.remove('opacity-0','pointer-events-none');bd.classList.add('opacity-100','pointer-events-auto');
+      pn.classList.remove('translate-x-full');pn.classList.add('translate-x-0');
+    }catch(e){toast.error(e.message||'Failed to load detail');}
   };
   function dRow(l,v){return `<div class="flex items-start py-2.5 border-b border-neutral-50"><span class="w-28 shrink-0 text-xs font-semibold text-neutral-400">${l}</span><span class="text-sm text-neutral-700 flex-1">${v}</span></div>`;}
   window.closeDetail=()=>{const bd=document.getElementById('detailBackdrop'),pn=document.getElementById('detailPanel');pn.classList.remove('translate-x-0');pn.classList.add('translate-x-full');bd.classList.remove('opacity-100','pointer-events-auto');bd.classList.add('opacity-0','pointer-events-none');};
   window.editFromDetail=()=>{closeDetail();setTimeout(()=>window._pay.openEdit(detailPayId),350);};
 
-  /* ─── Delete ─── */
-  window._pay.confirmDel=id=>{deleteTargetId=id;isBulkDelete=false;const p=payments.find(x=>x.id===id);document.getElementById('deleteTitle').textContent='Delete '+(p?p.payNo:'Payment')+'?';document.getElementById('deleteMsg').textContent='This payment record will be permanently removed.';openDelDialog();};
-  window.confirmBulkDelete=()=>{isBulkDelete=true;document.getElementById('deleteTitle').textContent=`Delete ${selectedIds.size} payments?`;document.getElementById('deleteMsg').textContent='These records will be permanently removed.';openDelDialog();};
-  function openDelDialog(){const bd=document.getElementById('deleteBackdrop'),dg=document.getElementById('deleteDialog');bd.classList.remove('opacity-0','pointer-events-none');bd.classList.add('opacity-100','pointer-events-auto');setTimeout(()=>{dg.classList.remove('scale-95','opacity-0');dg.classList.add('scale-100','opacity-100');},50);}
-  window.closeDeleteDialog=()=>{const bd=document.getElementById('deleteBackdrop'),dg=document.getElementById('deleteDialog');dg.classList.remove('scale-100','opacity-100');dg.classList.add('scale-95','opacity-0');setTimeout(()=>{bd.classList.remove('opacity-100','pointer-events-auto');bd.classList.add('opacity-0','pointer-events-none');},200);};
-  window.executeDelete=()=>{
-    if(isBulkDelete){const c=selectedIds.size;payments=payments.filter(p=>!selectedIds.has(p.id));selectedIds.clear();showToast(`${c} payments deleted`,'success');}
-    else if(deleteTargetId){const p=payments.find(x=>x.id===deleteTargetId);payments=payments.filter(x=>x.id!==deleteTargetId);selectedIds.delete(deleteTargetId);showToast(`${p?p.payNo:'Payment'} deleted`,'success');}
-    deleteTargetId=null;refreshStats();closeDeleteDialog();renderTable();
+  /* ─── Void ─── */
+  window._pay.confirmVoid=(id,ref)=>{voidTargetId=id;isBulkVoid=false;document.getElementById('voidTitle').textContent=`Void ${ref}?`;document.getElementById('voidMsg').textContent='Party balance will be restored.';document.getElementById('voidReasonSelect').value='';document.getElementById('voidReasonCustom').classList.add('hidden');document.getElementById('voidReasonCustom').value='';document.getElementById('voidReasonError').classList.add('hidden');openVoidDialog();};
+  window.confirmBulkVoid=()=>{isBulkVoid=true;document.getElementById('voidTitle').textContent=`Void ${selectedIds.size} payment(s)?`;document.getElementById('voidMsg').textContent='Party balances will be restored.';document.getElementById('voidReasonSelect').value='';document.getElementById('voidReasonCustom').classList.add('hidden');document.getElementById('voidReasonCustom').value='';document.getElementById('voidReasonError').classList.add('hidden');openVoidDialog();};
+  window.toggleVoidCustom=()=>{document.getElementById('voidReasonSelect').value==='custom'?document.getElementById('voidReasonCustom').classList.remove('hidden'):document.getElementById('voidReasonCustom').classList.add('hidden');};
+  function openVoidDialog(){const bd=document.getElementById('voidBackdrop'),dg=document.getElementById('voidDialog');bd.classList.remove('opacity-0','pointer-events-none');bd.classList.add('opacity-100','pointer-events-auto');setTimeout(()=>{dg.classList.remove('scale-95','opacity-0');dg.classList.add('scale-100','opacity-100');},50);}
+  window.closeVoidDialog=()=>{const bd=document.getElementById('voidBackdrop'),dg=document.getElementById('voidDialog');dg.classList.remove('scale-100','opacity-100');dg.classList.add('scale-95','opacity-0');setTimeout(()=>{bd.classList.remove('opacity-100','pointer-events-auto');bd.classList.add('opacity-0','pointer-events-none');},200);};
+  window.executeVoid=async()=>{
+    let reason=document.getElementById('voidReasonSelect').value;
+    if(reason==='custom')reason=document.getElementById('voidReasonCustom').value.trim();
+    if(!reason){document.getElementById('voidReasonError').classList.remove('hidden');return;}
+    try{
+      if(isBulkVoid){const data=await api('/api/payments/bulk-void/',{method:'POST',body:JSON.stringify({ids:[...selectedIds],void_reason:reason})});toast.success(data.message);selectedIds.clear();}
+      else{const data=await api(`/api/payments/void/${voidTargetId}/`,{method:'POST',body:JSON.stringify({void_reason:reason})});toast.success(data.message);}
+      closeVoidDialog();updateBulk();loadData();
+    }catch(e){toast.error(e.message||'Failed to void');}
   };
 
-  /* ─── Stats ─── */
-  function refreshStats(){
-    const totalIn=payments.filter(p=>p.direction==='in'&&p.status==='completed').reduce((s,p)=>s+p.amount,0);
-    const totalOut=payments.filter(p=>p.direction==='out'&&p.status==='completed').reduce((s,p)=>s+p.amount,0);
-    document.getElementById('statReceived').textContent=fmtM(totalIn);
-    document.getElementById('statSent').textContent=fmtM(totalOut);
-    document.getElementById('statNet').textContent=fmtM(totalIn-totalOut);
-    document.getElementById('statMonth').textContent=payments.filter(p=>p.date>='2026-03-01').length;
-  }
-
-  /* ─── Keyboard ─── */
-  document.addEventListener('keydown',e=>{if(e.key==='Escape'){closePaymentForm();closeDetail();closeDeleteDialog();}});
-
-  /* ─── Toast ─── */
-  window.showToast=(msg,type)=>{
-    const t=document.getElementById('feedbackToast'),ic=document.getElementById('toastIcon'),tx=document.getElementById('toastText');
-    t.className='fixed bottom-6 left-1/2 -translate-x-1/2 z-[90] flex items-center gap-3 px-5 py-3 rounded-xl shadow-lg border text-sm font-semibold pointer-events-none transition-all duration-300';
-    if(type==='success'){t.classList.add('bg-green-50','border-green-200','text-green-700');ic.innerHTML='<polyline points="20 6 9 17 4 12"/>';}
-    else if(type==='error'){t.classList.add('bg-red-50','border-red-200','text-red-700');ic.innerHTML='<circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>';}
-    else{t.classList.add('bg-neutral-50','border-neutral-200','text-neutral-700');ic.innerHTML='<circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>';}
-    tx.textContent=msg;requestAnimationFrame(()=>{t.classList.remove('opacity-0','translate-y-4');t.classList.add('opacity-100','translate-y-0');});
-    setTimeout(()=>{t.classList.remove('opacity-100','translate-y-0');t.classList.add('opacity-0','translate-y-4');},2800);
-  };
-
-  /* ─── Init ─── */
-  renderTable();refreshStats();
+  document.addEventListener('keydown',e=>{if(e.key==='Escape'){closePaymentForm();closeDetail();closeVoidDialog();}});
+  loadHelpers().then(()=>loadData());
 })();
 </script>
 

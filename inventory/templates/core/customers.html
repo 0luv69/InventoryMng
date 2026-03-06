@@ -40,11 +40,11 @@
   </div>
   <div class="bg-white border border-neutral-100 rounded-2xl px-5 py-4 transition-all duration-300 hover:shadow-[0_2px_12px_rgba(0,0,0,0.04)]">
     <div class="text-[0.65rem] font-semibold text-neutral-400 uppercase tracking-wide mb-1">Outstanding Receivable</div>
-    <div class="text-xl font-extrabold text-amber-600 tracking-tight" id="statReceivable">$0.00</div>
+    <div class="text-xl font-extrabold text-amber-600 tracking-tight" id="statReceivable">0</div>
   </div>
   <div class="bg-white border border-neutral-100 rounded-2xl px-5 py-4 transition-all duration-300 hover:shadow-[0_2px_12px_rgba(0,0,0,0.04)]">
-    <div class="text-[0.65rem] font-semibold text-neutral-400 uppercase tracking-wide mb-1">Total Paid (Lifetime)</div>
-    <div class="text-xl font-extrabold text-neutral-900 tracking-tight" id="statPaidLifetime">$0.00</div>
+    <div class="text-[0.65rem] font-semibold text-neutral-400 uppercase tracking-wide mb-1">Total Received (Lifetime)</div>
+    <div class="text-xl font-extrabold text-neutral-900 tracking-tight" id="statReceivedLifetime">0</div>
   </div>
 </div>
 
@@ -158,7 +158,7 @@
           <th class="px-4 py-3.5 text-[0.7rem] font-bold uppercase tracking-wider text-neutral-400 text-right">Actions</th>
         </tr>
       </thead>
-      <tbody id="suppliersTableBody"></tbody>
+      <tbody id="customersTableBody"></tbody>
     </table>
   </div>
 
@@ -201,7 +201,7 @@
      CARD VIEW
      ══════════════════════════════════════════════════════════ -->
 <div id="cardView" class="hidden">
-  <div id="suppliersCardGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+    <div id="customersCardGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
   <!-- Empty + Pagination shared with table view -->
 </div>
 
@@ -259,35 +259,54 @@
 
   <!-- Form body -->
   <div class="flex-1 overflow-y-auto px-6 py-6">
-    <form id="supplierForm" onsubmit="handleFormSubmit(event)" class="space-y-6">
-      <input type="hidden" id="editSupplierId" value="" />
+        <form id="customerForm" onsubmit="handleFormSubmit(event)" enctype="multipart/form-data" class="space-y-6">
+      <input type="hidden" id="editCustomerId" value="" />
+      <input type="hidden" id="removeLogo" value="0" />
 
       <!-- Section: Basic Info -->
       <div>
         <h3 class="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-4">Basic Information</h3>
         <div class="space-y-4">
+
+          <!-- Logo / Picture Upload -->
           <div>
-            <label for="supName" class="block text-xs font-semibold text-neutral-600 mb-1.5">Company / Customer Name <span class="text-red-400">*</span></label>
-            <input type="text" id="supName" required placeholder="e.g. Acme Supplies Ltd."
+            <label class="block text-xs font-semibold text-neutral-600 mb-1.5">Photo / Logo</label>
+            <div class="flex items-center gap-4">
+              <div id="logoPreviewWrap"
+                   class="w-14 h-14 rounded-xl border-2 border-dashed border-neutral-200 flex items-center justify-center overflow-hidden bg-neutral-50 shrink-0">
+                <img id="logoPreview" src="" alt="" class="hidden w-full h-full object-cover rounded-xl" />
+                <svg id="logoPlaceholder" class="w-6 h-6 text-neutral-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              </div>
+              <div class="flex-1">
+                <input type="file" id="custLogo" accept="image/*" onchange="previewLogo(this)"
+                       class="block w-full text-xs text-neutral-500 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-green-50 file:text-green-600 hover:file:bg-green-100 cursor-pointer" />
+                <button type="button" id="removeLogoBtn" onclick="removeLogo()" class="hidden mt-1.5 text-xs text-red-500 hover:text-red-600 font-semibold transition-colors">Remove photo</button>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label for="custName" class="block text-xs font-semibold text-neutral-600 mb-1.5">Customer Name <span class="text-red-400">*</span></label>
+            <input type="text" id="custName" required placeholder="e.g. Riverside Hardware"
                    class="w-full px-4 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200" />
             <p id="nameError" class="hidden text-xs text-red-500 mt-1">Customer name is required.</p>
           </div>
           <div class="grid grid-cols-2 gap-4">
             <div>
-              <label for="supContact" class="block text-xs font-semibold text-neutral-600 mb-1.5">Contact Person</label>
-              <input type="text" id="supContact" placeholder="John Smith"
+              <label for="custContact" class="block text-xs font-semibold text-neutral-600 mb-1.5">Contact Person</label>
+              <input type="text" id="custContact" placeholder="John Smith"
                      class="w-full px-4 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200" />
             </div>
             <div>
-              <label for="supPhone" class="block text-xs font-semibold text-neutral-600 mb-1.5">Phone</label>
-              <input type="tel" id="supPhone" placeholder="+1 (555) 000-0000"
+              <label for="custPhone" class="block text-xs font-semibold text-neutral-600 mb-1.5">Phone</label>
+              <input type="tel" id="custPhone" placeholder="+1 (555) 000-0000"
                      class="w-full px-4 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200" />
             </div>
           </div>
           <div class="grid grid-cols-2 gap-4">
             <div>
-              <label for="supEmail" class="block text-xs font-semibold text-neutral-600 mb-1.5">Email</label>
-              <input type="email" id="supEmail" placeholder="vendor@example.com"
+              <label for="custEmail" class="block text-xs font-semibold text-neutral-600 mb-1.5">Email</label>
+              <input type="email" id="custEmail" placeholder="client@example.com"
                      class="w-full px-4 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200" />
             </div>
           </div>
@@ -299,26 +318,9 @@
         <h3 class="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-4">Address</h3>
         <div class="space-y-4">
           <div>
-            <label for="supAddress" class="block text-xs font-semibold text-neutral-600 mb-1.5">Street Address</label>
-            <input type="text" id="supAddress" placeholder="123 Warehouse Rd"
-                   class="w-full px-4 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200" />
-          </div>
-          <div class="grid grid-cols-3 gap-4">
-            <div>
-              <label for="supCity" class="block text-xs font-semibold text-neutral-600 mb-1.5">City</label>
-              <input type="text" id="supCity" placeholder="New York"
-                     class="w-full px-4 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200" />
-            </div>
-            <div>
-              <label for="supState" class="block text-xs font-semibold text-neutral-600 mb-1.5">State</label>
-              <input type="text" id="supState" placeholder="NY"
-                     class="w-full px-4 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200" />
-            </div>
-            <div>
-              <label for="supZip" class="block text-xs font-semibold text-neutral-600 mb-1.5">Zip Code</label>
-              <input type="text" id="supZip" placeholder="10001"
-                     class="w-full px-4 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200" />
-            </div>
+            <label for="custAddress" class="block text-xs font-semibold text-neutral-600 mb-1.5">Full Address</label>
+            <textarea id="custAddress" rows="2" placeholder="123 Main St, New York, NY 10001"
+                      class="w-full px-4 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white resize-none placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200"></textarea>
           </div>
         </div>
       </div>
@@ -328,15 +330,15 @@
         <h3 class="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-4">Additional Details</h3>
         <div class="space-y-4">
           <div>
-            <label for="supNotes" class="block text-xs font-semibold text-neutral-600 mb-1.5">Notes</label>
-            <textarea id="supNotes" rows="3" placeholder="Internal notes about this supplier…"
+            <label for="custNotes" class="block text-xs font-semibold text-neutral-600 mb-1.5">Notes</label>
+            <textarea id="custNotes" rows="3" placeholder="Internal notes about this customer…"
                       class="w-full px-4 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white resize-none placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200"></textarea>
           </div>
           <!-- Status toggle -->
           <div class="flex items-center justify-between p-4 bg-neutral-50 rounded-xl border border-neutral-100">
             <div>
               <div class="text-sm font-semibold text-neutral-700">Active Customer</div>
-              <div class="text-xs text-neutral-400 mt-0.5">Inactive customers won't appear in purchase forms</div>
+              <div class="text-xs text-neutral-400 mt-0.5">Inactive customers won't appear in sale forms</div>
             </div>
             <button type="button" id="statusToggle" onclick="toggleStatus()" role="switch" aria-checked="true"
                     class="relative w-10 h-6 bg-green-500 rounded-full transition-colors duration-200 cursor-pointer">
@@ -355,7 +357,7 @@
             class="flex-1 px-4 py-2.5 text-sm font-semibold text-neutral-600 bg-white border border-neutral-200 rounded-xl hover:bg-neutral-50 hover:border-neutral-300 transition-all duration-200">
       Cancel
     </button>
-    <button onclick="document.getElementById('supplierForm').requestSubmit()" type="button" id="submitBtn"
+    <button onclick="document.getElementById('customerForm').requestSubmit()" type="button" id="submitBtn"
             class="flex-1 px-4 py-2.5 text-sm font-semibold text-white bg-green-500 rounded-xl hover:bg-green-600 active:scale-[0.97] transition-all duration-200 flex items-center justify-center gap-2">
       <span id="submitBtnText">Save Customer</span>
       <svg id="submitSpinner" class="hidden w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" stroke-dasharray="32" stroke-linecap="round"/></svg>
@@ -384,12 +386,6 @@
     </div>
   </div>
 </div>
-
-
-<!-- ══════════════════════════════════════════════════════════
-     FEEDBACK TOAST
-     ══════════════════════════════════════════════════════════ -->
-
 
 
 <!-- ══════════════════════════════════════════════════════════
@@ -451,11 +447,42 @@
     return c ? c[1] : '';
   }
 
+  /** For JSON requests (list, delete) */
   async function apiCall(url, method, body) {
     const opts = { method, headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrf() } };
     if (body) opts.body = JSON.stringify(body);
     const res = await fetch(url, opts);
     return await res.json();
+  }
+
+  /** For FormData requests (create, update — supports file upload) */
+  async function apiFormCall(url, formData) {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'X-CSRFToken': getCsrf() },
+      body: formData,
+    });
+    return await res.json();
+  }
+
+  /** Build avatar: use logo if exists, else initials */
+  function avatarHTML(c, size = 9) {
+    if (c.logo) {
+      return `<img src="${c.logo}" alt="${c.name}" class="w-${size} h-${size} rounded-[10px] object-cover shrink-0" />`;
+    }
+    return `<div class="w-${size} h-${size} rounded-[10px] flex items-center justify-center text-xs font-bold shrink-0 ${avatarColor(c.id)}">${getInitials(c.name)}</div>`;
+  }
+  function avatarHTMLCard(c) {
+    if (c.logo) {
+      return `<img src="${c.logo}" alt="${c.name}" class="w-10 h-10 rounded-xl object-cover shrink-0" />`;
+    }
+    return `<div class="w-10 h-10 rounded-xl flex items-center justify-center text-xs font-bold shrink-0 ${avatarColor(c.id)}">${getInitials(c.name)}</div>`;
+  }
+  function avatarHTMLDetail(c) {
+    if (c.logo) {
+      return `<img src="${c.logo}" alt="${c.name}" class="w-14 h-14 rounded-2xl object-cover" />`;
+    }
+    return `<div class="w-14 h-14 rounded-2xl flex items-center justify-center text-lg font-bold ${avatarColor(c.id)}">${getInitials(c.name)}</div>`;
   }
 
 
@@ -477,8 +504,7 @@
       </tr>`;
     tbody.innerHTML = skeletonRow.repeat(6);
 
-    // Skeleton for stat cards
-    ['statTotalCustomers', 'statActive', 'statReceivable', 'statPaidLifetime'].forEach(id => {
+    ['statTotalCustomers', 'statActive', 'statReceivable', 'statReceivedLifetime'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.innerHTML = '<div class="h-6 w-12 bg-neutral-200 rounded animate-pulse"></div>';
     });
@@ -488,7 +514,7 @@
   /* ═══════════════════════════════════════════════
      FETCH DATA FROM API
      ═══════════════════════════════════════════════ */
-  async function fetchSuppliers() {
+  async function fetchCustomers() {
     if (isLoading) return;
     isLoading = true;
     showSkeleton();
@@ -500,7 +526,6 @@
 
     let sortField = sortVal[0];
     let sortOrder = sortVal[1] || 'desc';
-    // Map frontend sort keys to backend
     if (sortField === 'created_at') sortField = 'created_at';
     else if (sortField === 'due') { sortField = 'balance'; sortOrder = 'desc'; }
 
@@ -526,7 +551,7 @@
       document.getElementById('statTotalCustomers').textContent = o.total_customers;
       document.getElementById('statActive').textContent = o.active_customers;
       document.getElementById('statReceivable').textContent = formatMoney(o.total_receivable);
-      document.getElementById('statPaidLifetime').textContent = formatMoney(o.total_paid_lifetime);
+      document.getElementById('statReceivedLifetime').textContent = formatMoney(o.total_received_lifetime);
 
       renderTable();
     } catch (e) {
@@ -557,45 +582,46 @@
     emptyState.classList.add('hidden'); emptyState.classList.remove('flex');
     paginationBar.classList.remove('hidden');
 
-    tbody.innerHTML = customers.map(s => {
-      const checked = selectedIds.has(s.id) ? 'checked' : '';
-      const bal = parseFloat(s.balance) || 0;
-      const statusBadge = s.status === 'active'
+    // Table rows
+    tbody.innerHTML = customers.map(c => {
+      const checked = selectedIds.has(c.id) ? 'checked' : '';
+      const bal = parseFloat(c.balance) || 0;
+      const statusBadge = c.status === 'active'
         ? '<span class="inline-flex items-center px-2 py-0.5 rounded-md text-[0.65rem] font-bold bg-green-50 text-green-600 border border-green-200">Active</span>'
         : '<span class="inline-flex items-center px-2 py-0.5 rounded-md text-[0.65rem] font-bold bg-neutral-100 text-neutral-500 border border-neutral-200">Inactive</span>';
       const dueDisplay = bal > 0
         ? `<span class="text-sm font-semibold text-amber-600">${formatMoney(bal)}</span>`
         : '<span class="text-sm text-neutral-400">—</span>';
       return `
-        <tr class="border-b border-neutral-50 hover:bg-neutral-50/50 transition-colors duration-150 group" data-id="${s.id}">
+        <tr class="border-b border-neutral-50 hover:bg-neutral-50/50 transition-colors duration-150 group" data-id="${c.id}">
           <td class="px-4 py-3">
-            <input type="checkbox" ${checked} onchange="window._sup.toggleSelect(${s.id})"
+            <input type="checkbox" ${checked} onchange="window._cust.toggleSelect(${c.id})"
                    class="w-4 h-4 rounded border-neutral-300 text-green-500 focus:ring-green-500/30 cursor-pointer" />
           </td>
           <td class="px-4 py-3">
-            <button onclick="window._sup.openDetail(${s.id})" class="flex items-center gap-3 text-left">
-              <div class="w-9 h-9 rounded-[10px] flex items-center justify-center text-xs font-bold shrink-0 ${avatarColor(s.id)}">${getInitials(s.name)}</div>
+            <button onclick="window._cust.openDetail(${c.id})" class="flex items-center gap-3 text-left">
+              ${avatarHTML(c)}
               <div>
-                <div class="text-sm font-semibold text-neutral-900 hover:text-green-600 transition-colors duration-200">${s.name}</div>
+                <div class="text-sm font-semibold text-neutral-900 hover:text-green-600 transition-colors duration-200">${c.name}</div>
               </div>
             </button>
           </td>
-          <td class="px-4 py-3 text-sm text-neutral-600">${s.contact_person || '—'}</td>
-          <td class="px-4 py-3 text-sm text-neutral-600">${s.phone || '—'}</td>
-          <td class="px-4 py-3 text-sm text-neutral-500 max-w-[180px] truncate">${s.email || '—'}</td>
+          <td class="px-4 py-3 text-sm text-neutral-600">${c.contact_person || '—'}</td>
+          <td class="px-4 py-3 text-sm text-neutral-600">${c.phone || '—'}</td>
+          <td class="px-4 py-3 text-sm text-neutral-500 max-w-[180px] truncate">${c.email || '—'}</td>
           <td class="px-4 py-3">${dueDisplay}</td>
           <td class="px-4 py-3">${statusBadge}</td>
           <td class="px-4 py-3 text-right">
             <div class="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-              <button onclick="window._sup.openDetail(${s.id})" title="View"
+              <button onclick="window._cust.openDetail(${c.id})" title="View"
                       class="w-8 h-8 flex items-center justify-center rounded-lg text-neutral-400 hover:text-blue-600 hover:bg-blue-50 transition-all duration-200">
                 <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
               </button>
-              <button onclick="window._sup.openSlideOver('edit',${s.id})" title="Edit"
+              <button onclick="window._cust.openSlideOver('edit',${c.id})" title="Edit"
                       class="w-8 h-8 flex items-center justify-center rounded-lg text-neutral-400 hover:text-green-600 hover:bg-green-50 transition-all duration-200">
                 <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
               </button>
-              <button onclick="window._sup.confirmDelete(${s.id})" title="Delete"
+              <button onclick="window._cust.confirmDelete(${c.id})" title="Delete"
                       class="w-8 h-8 flex items-center justify-center rounded-lg text-neutral-400 hover:text-red-600 hover:bg-red-50 transition-all duration-200">
                 <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
               </button>
@@ -605,31 +631,31 @@
     }).join('');
 
     // Card view
-    document.getElementById('suppliersCardGrid').innerHTML = customers.map(s => {
-      const bal = parseFloat(s.balance) || 0;
-      const statusDot = s.status === 'active'
+    document.getElementById('customersCardGrid').innerHTML = customers.map(c => {
+      const bal = parseFloat(c.balance) || 0;
+      const statusDot = c.status === 'active'
         ? '<span class="w-2 h-2 rounded-full bg-green-500"></span>'
         : '<span class="w-2 h-2 rounded-full bg-neutral-400"></span>';
       return `
         <div class="bg-white border border-neutral-100 rounded-2xl p-5 hover:shadow-[0_4px_20px_rgba(0,0,0,0.04)] hover:border-neutral-200 transition-all duration-300 cursor-pointer group"
-             onclick="window._sup.openDetail(${s.id})">
+             onclick="window._cust.openDetail(${c.id})">
           <div class="flex items-start justify-between mb-4">
             <div class="flex items-center gap-3">
-              <div class="w-10 h-10 rounded-xl flex items-center justify-center text-xs font-bold shrink-0 ${avatarColor(s.id)}">${getInitials(s.name)}</div>
+              ${avatarHTMLCard(c)}
               <div>
-                <div class="text-sm font-bold text-neutral-900 group-hover:text-green-600 transition-colors duration-200">${s.name}</div>
-                <div class="text-xs text-neutral-400 flex items-center gap-1.5 mt-0.5">${statusDot} ${s.status === 'active' ? 'Active' : 'Inactive'}</div>
+                <div class="text-sm font-bold text-neutral-900 group-hover:text-green-600 transition-colors duration-200">${c.name}</div>
+                <div class="text-xs text-neutral-400 flex items-center gap-1.5 mt-0.5">${statusDot} ${c.status === 'active' ? 'Active' : 'Inactive'}</div>
               </div>
             </div>
-            <button onclick="event.stopPropagation(); window._sup.openSlideOver('edit',${s.id})"
+            <button onclick="event.stopPropagation(); window._cust.openSlideOver('edit',${c.id})"
                     class="w-7 h-7 flex items-center justify-center rounded-lg text-neutral-300 hover:text-green-600 hover:bg-green-50 opacity-0 group-hover:opacity-100 transition-all duration-200">
               <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
             </button>
           </div>
           <div class="space-y-2 text-xs">
-            ${s.contact_person ? `<div class="flex items-center gap-2 text-neutral-500"><svg class="w-3.5 h-3.5 text-neutral-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>${s.contact_person}</div>` : ''}
-            ${s.phone ? `<div class="flex items-center gap-2 text-neutral-500"><svg class="w-3.5 h-3.5 text-neutral-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>${s.phone}</div>` : ''}
-            ${s.email ? `<div class="flex items-center gap-2 text-neutral-500 truncate"><svg class="w-3.5 h-3.5 text-neutral-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>${s.email}</div>` : ''}
+            ${c.contact_person ? `<div class="flex items-center gap-2 text-neutral-500"><svg class="w-3.5 h-3.5 text-neutral-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>${c.contact_person}</div>` : ''}
+            ${c.phone ? `<div class="flex items-center gap-2 text-neutral-500"><svg class="w-3.5 h-3.5 text-neutral-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>${c.phone}</div>` : ''}
+            ${c.email ? `<div class="flex items-center gap-2 text-neutral-500 truncate"><svg class="w-3.5 h-3.5 text-neutral-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>${c.email}</div>` : ''}
           </div>
           ${bal > 0 ? `<div class="mt-4 pt-3 border-t border-neutral-100 flex items-center justify-between"><span class="text-xs text-neutral-400 font-medium">Outstanding</span><span class="text-sm font-bold text-amber-600">${formatMoney(bal)}</span></div>` : ''}
         </div>`;
@@ -644,7 +670,7 @@
     let pn = '';
     for (let p = 1; p <= totalPages; p++) {
       const cls = p === currentPage ? 'bg-green-500 text-white border-green-500' : 'bg-white text-neutral-600 border-neutral-200 hover:border-neutral-300';
-      pn += `<button onclick="window._sup.goToPage(${p})" class="w-8 h-8 flex items-center justify-center rounded-lg border text-xs font-semibold ${cls} transition-all duration-200">${p}</button>`;
+      pn += `<button onclick="window._cust.goToPage(${p})" class="w-8 h-8 flex items-center justify-center rounded-lg border text-xs font-semibold ${cls} transition-all duration-200">${p}</button>`;
     }
     pnEl.innerHTML = pn;
     document.getElementById('btnPrev').disabled = currentPage === 1;
@@ -656,23 +682,23 @@
     const b = document.getElementById('bulkActions');
     if (selectedIds.size > 0) { b.classList.remove('hidden'); b.classList.add('flex'); document.getElementById('selectedCount').textContent = selectedIds.size; }
     else { b.classList.add('hidden'); b.classList.remove('flex'); }
-    document.getElementById('selectAll').checked = customers.length > 0 && customers.every(s => selectedIds.has(s.id));
+    document.getElementById('selectAll').checked = customers.length > 0 && customers.every(c => selectedIds.has(c.id));
   }
 
 
   /* ═══════════════════════════════════════════════
      EXPOSE TO GLOBAL
      ═══════════════════════════════════════════════ */
-  window._sup = {};
+  window._cust = {};
 
   /* Selection */
-  window._sup.toggleSelect = function(id) {
+  window._cust.toggleSelect = function(id) {
     selectedIds.has(id) ? selectedIds.delete(id) : selectedIds.add(id);
     renderTable();
   };
   window.toggleSelectAll = function(cb) {
-    if (cb.checked) customers.forEach(s => selectedIds.add(s.id));
-    else customers.forEach(s => selectedIds.delete(s.id));
+    if (cb.checked) customers.forEach(c => selectedIds.add(c.id));
+    else customers.forEach(c => selectedIds.delete(c.id));
     renderTable();
   };
 
@@ -680,19 +706,19 @@
   let sTimeout;
   window.handleSearch = function(v) {
     clearTimeout(sTimeout);
-    sTimeout = setTimeout(() => { currentPage = 1; fetchSuppliers(); }, 400);
+    sTimeout = setTimeout(() => { currentPage = 1; fetchCustomers(); }, 400);
   };
   window.toggleFilters = function() {
     const p = document.getElementById('filterPanel');
     const t = document.getElementById('filterBtnText');
     p.classList.contains('hidden') ? (p.classList.remove('hidden'), t.textContent='Close') : (p.classList.add('hidden'), t.textContent='Filter');
   };
-  window.applyFilters = function() { currentPage = 1; fetchSuppliers(); };
+  window.applyFilters = function() { currentPage = 1; fetchCustomers(); };
   window.clearFilters = function() {
     document.getElementById('filterStatus').value = '';
     document.getElementById('filterBalance').value = '';
     document.getElementById('filterSort').value = 'created_at-desc';
-    currentPage = 1; fetchSuppliers(); toast.info('Filters cleared');
+    currentPage = 1; fetchCustomers(); toast.info('Filters cleared');
   };
 
   /* View Toggle */
@@ -714,64 +740,104 @@
   };
 
   /* Pagination */
-  window._sup.goToPage = function(p) { currentPage = p; fetchSuppliers(); };
-  window.goToPage = function(d) { if (d==='prev' && currentPage > 1) currentPage--; else if (d==='next' && currentPage < totalPages) currentPage++; fetchSuppliers(); };
+  window._cust.goToPage = function(p) { currentPage = p; fetchCustomers(); };
+  window.goToPage = function(d) { if (d==='prev' && currentPage > 1) currentPage--; else if (d==='next' && currentPage < totalPages) currentPage++; fetchCustomers(); };
+
+
+  /* ═══════════════════════════════════════════════
+     LOGO PREVIEW HELPERS
+     ═══════════════════════════════════════════════ */
+  window.previewLogo = function(input) {
+    const file = input.files[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) { toast.error('Please select an image file.'); input.value = ''; return; }
+    if (file.size > 5 * 1024 * 1024) { toast.error('Image must be under 5 MB.'); input.value = ''; return; }
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const img = document.getElementById('logoPreview');
+      const ph = document.getElementById('logoPlaceholder');
+      img.src = e.target.result;
+      img.classList.remove('hidden');
+      ph.classList.add('hidden');
+      document.getElementById('removeLogoBtn').classList.remove('hidden');
+      document.getElementById('removeLogo').value = '0';
+    };
+    reader.readAsDataURL(file);
+  };
+
+  window.removeLogo = function() {
+    document.getElementById('custLogo').value = '';
+    document.getElementById('logoPreview').src = '';
+    document.getElementById('logoPreview').classList.add('hidden');
+    document.getElementById('logoPlaceholder').classList.remove('hidden');
+    document.getElementById('removeLogoBtn').classList.add('hidden');
+    document.getElementById('removeLogo').value = '1';
+  };
+
+  function resetLogoUI() {
+    document.getElementById('custLogo').value = '';
+    document.getElementById('logoPreview').src = '';
+    document.getElementById('logoPreview').classList.add('hidden');
+    document.getElementById('logoPlaceholder').classList.remove('hidden');
+    document.getElementById('removeLogoBtn').classList.add('hidden');
+    document.getElementById('removeLogo').value = '0';
+  }
 
 
   /* ═══════════════════════════════════════════════
      DETAIL PANEL
      ═══════════════════════════════════════════════ */
-  window._sup.openDetail = function(id) {
+  window._cust.openDetail = function(id) {
     detailCustomerId = id;
-    const s = customers.find(x => x.id === id);
-    if (!s) return;
-    document.getElementById('detailName').textContent = s.name;
-    const bal = parseFloat(s.balance) || 0;
-    const totalAmt = parseFloat(s.total_amount) || 0;
+    const c = customers.find(x => x.id === id);
+    if (!c) return;
+    document.getElementById('detailName').textContent = c.name;
+    const bal = parseFloat(c.balance) || 0;
+    const totalAmt = parseFloat(c.total_amount) || 0;
 
-    const statusBadge = s.status === 'active'
+    const statusBadge = c.status === 'active'
       ? '<span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold bg-green-50 text-green-600 border border-green-200">Active</span>'
       : '<span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold bg-neutral-100 text-neutral-500 border border-neutral-200">Inactive</span>';
 
     document.getElementById('detailBody').innerHTML = `
       <div class="flex items-center gap-4 mb-6">
-        <div class="w-14 h-14 rounded-2xl flex items-center justify-center text-lg font-bold ${avatarColor(s.id)}">${getInitials(s.name)}</div>
+        ${avatarHTMLDetail(c)}
         <div>
-          <div class="text-lg font-bold text-neutral-900">${s.name}</div>
+          <div class="text-lg font-bold text-neutral-900">${c.name}</div>
           <div class="mt-1">${statusBadge}</div>
         </div>
       </div>
 
       ${bal > 0 ? `
       <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4">
-        <div class="text-xs font-semibold text-amber-700 uppercase tracking-wide mb-1">Outstanding Payable</div>
+        <div class="text-xs font-semibold text-amber-700 uppercase tracking-wide mb-1">Outstanding Receivable</div>
         <div class="text-2xl font-extrabold text-amber-700 tracking-tight">${formatMoney(bal)}</div>
       </div>` : ''}
       <div class="bg-neutral-50 border border-neutral-100 rounded-xl p-4 mb-6">
-        <div class="text-xs font-semibold text-neutral-500 uppercase tracking-wide mb-1">Total Paid (Lifetime)</div>
+        <div class="text-xs font-semibold text-neutral-500 uppercase tracking-wide mb-1">Total Received (Lifetime)</div>
         <div class="text-xl font-extrabold text-neutral-700 tracking-tight">${formatMoney(totalAmt)}</div>
       </div>
 
       <div class="space-y-1 mb-6">
         <h4 class="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-3">Contact</h4>
-        ${detailRow('Contact Person', s.contact_person)}
-        ${detailRow('Phone', s.phone ? `<a href="tel:${s.phone}" class="text-green-600 hover:underline">${s.phone}</a>` : '—')}
-        ${detailRow('Email', s.email ? `<a href="mailto:${s.email}" class="text-green-600 hover:underline">${s.email}</a>` : '—')}
+        ${detailRow('Contact Person', c.contact_person)}
+        ${detailRow('Phone', c.phone ? `<a href="tel:${c.phone}" class="text-green-600 hover:underline">${c.phone}</a>` : '—')}
+        ${detailRow('Email', c.email ? `<a href="mailto:${c.email}" class="text-green-600 hover:underline">${c.email}</a>` : '—')}
       </div>
 
-      ${s.address ? `
+      ${c.address ? `
       <div class="space-y-1 mb-6">
         <h4 class="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-3">Address</h4>
-        <div class="text-sm text-neutral-700 leading-relaxed">${s.address}</div>
+        <div class="text-sm text-neutral-700 leading-relaxed">${c.address}</div>
       </div>` : ''}
 
-      ${s.notes ? `
+      ${c.notes ? `
       <div class="mb-6">
         <h4 class="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-3">Notes</h4>
-        <div class="text-sm text-neutral-600 bg-neutral-50 rounded-xl p-4 border border-neutral-100 leading-relaxed">${s.notes}</div>
+        <div class="text-sm text-neutral-600 bg-neutral-50 rounded-xl p-4 border border-neutral-100 leading-relaxed">${c.notes}</div>
       </div>` : ''}
 
-      <div class="text-xs text-neutral-400 pt-4 border-t border-neutral-100">Added on ${formatDate(s.created_at)}</div>
+      <div class="text-xs text-neutral-400 pt-4 border-t border-neutral-100">Added on ${formatDate(c.created_at)}</div>
     `;
 
     const bd = document.getElementById('detailBackdrop'); const pn = document.getElementById('detailPanel');
@@ -796,25 +862,34 @@
   /* ═══════════════════════════════════════════════
      FORM SLIDE-OVER  (Add / Edit)
      ═══════════════════════════════════════════════ */
-  window._sup.openSlideOver = window.openSlideOver = function(mode, id) {
-    document.getElementById('supplierForm').reset();
+  window._cust.openSlideOver = window.openSlideOver = function(mode, id) {
+    document.getElementById('customerForm').reset();
     document.getElementById('nameError').classList.add('hidden');
-    document.getElementById('editSupplierId').value = '';
+    document.getElementById('editCustomerId').value = '';
     statusEnabled = true; updateStatusUI();
+    resetLogoUI();
 
     if (mode === 'edit' && id) {
-      const s = customers.find(x => x.id === id);
-      if (!s) return;
+      const c = customers.find(x => x.id === id);
+      if (!c) return;
       document.getElementById('formTitle').textContent = 'Edit Customer';
       document.getElementById('submitBtnText').textContent = 'Update Customer';
-      document.getElementById('editSupplierId').value = s.id;
-      document.getElementById('supName').value = s.name;
-      document.getElementById('supContact').value = s.contact_person || '';
-      document.getElementById('supPhone').value = s.phone || '';
-      document.getElementById('supEmail').value = s.email || '';
-      document.getElementById('supAddress').value = s.address || '';
-      document.getElementById('supNotes').value = s.notes || '';
-      statusEnabled = s.status === 'active'; updateStatusUI();
+      document.getElementById('editCustomerId').value = c.id;
+      document.getElementById('custName').value = c.name;
+      document.getElementById('custContact').value = c.contact_person || '';
+      document.getElementById('custPhone').value = c.phone || '';
+      document.getElementById('custEmail').value = c.email || '';
+      document.getElementById('custAddress').value = c.address || '';
+      document.getElementById('custNotes').value = c.notes || '';
+      statusEnabled = c.status === 'active'; updateStatusUI();
+
+      // Show existing logo if any
+      if (c.logo) {
+        document.getElementById('logoPreview').src = c.logo;
+        document.getElementById('logoPreview').classList.remove('hidden');
+        document.getElementById('logoPlaceholder').classList.add('hidden');
+        document.getElementById('removeLogoBtn').classList.remove('hidden');
+      }
     } else {
       document.getElementById('formTitle').textContent = 'Add Customer';
       document.getElementById('submitBtnText').textContent = 'Save Customer';
@@ -824,7 +899,7 @@
     bd.classList.remove('opacity-0','pointer-events-none'); bd.classList.add('opacity-100','pointer-events-auto');
     pn.classList.remove('translate-x-full'); pn.classList.add('translate-x-0');
     document.body.style.overflow = 'hidden';
-    setTimeout(() => document.getElementById('supName').focus(), 350);
+    setTimeout(() => document.getElementById('custName').focus(), 350);
   };
 
   window.closeSlideOver = function() {
@@ -842,41 +917,48 @@
     else { t.classList.remove('bg-green-500'); t.classList.add('bg-neutral-300'); d.style.transform='translateX(0)'; t.setAttribute('aria-checked','false'); }
   }
 
-  /* Form submit — CREATE or UPDATE via API */
+  /* Form submit — CREATE or UPDATE via API (FormData for file upload) */
   window.handleFormSubmit = async function(e) {
     e.preventDefault();
-    const name = document.getElementById('supName').value.trim();
-    if (!name) { document.getElementById('nameError').classList.remove('hidden'); document.getElementById('supName').classList.add('border-red-400'); return; }
-    document.getElementById('nameError').classList.add('hidden'); document.getElementById('supName').classList.remove('border-red-400');
+    const name = document.getElementById('custName').value.trim();
+    if (!name) { document.getElementById('nameError').classList.remove('hidden'); document.getElementById('custName').classList.add('border-red-400'); return; }
+    document.getElementById('nameError').classList.add('hidden'); document.getElementById('custName').classList.remove('border-red-400');
 
     document.getElementById('submitBtnText').textContent = 'Saving…';
     document.getElementById('submitSpinner').classList.remove('hidden');
     document.getElementById('submitBtn').disabled = true;
 
-    const editId = parseInt(document.getElementById('editSupplierId').value);
-    const payload = {
-      name,
-      contact_person: document.getElementById('supContact').value.trim(),
-      phone: document.getElementById('supPhone').value.trim(),
-      email: document.getElementById('supEmail').value.trim(),
-      address: document.getElementById('supAddress').value.trim(),
-      notes: document.getElementById('supNotes').value.trim(),
-      status: statusEnabled ? 'active' : 'inactive',
-    };
+    const editId = document.getElementById('editCustomerId').value;
+
+    const fd = new FormData();
+    fd.append('name', name);
+    fd.append('contact_person', document.getElementById('custContact').value.trim());
+    fd.append('phone', document.getElementById('custPhone').value.trim());
+    fd.append('email', document.getElementById('custEmail').value.trim());
+    fd.append('address', document.getElementById('custAddress').value.trim());
+    fd.append('notes', document.getElementById('custNotes').value.trim());
+    fd.append('status', statusEnabled ? 'active' : 'inactive');
+    fd.append('remove_logo', document.getElementById('removeLogo').value);
+
+    // Attach logo file if selected
+    const logoInput = document.getElementById('custLogo');
+    if (logoInput.files[0]) {
+      fd.append('logo', logoInput.files[0]);
+    }
 
     try {
       let res;
       if (editId) {
-        payload.id = editId;
-        res = await apiCall(API.update, 'POST', payload);
+        fd.append('id', editId);
+        res = await apiFormCall(API.update, fd);
       } else {
-        res = await apiCall(API.create, 'POST', payload);
+        res = await apiFormCall(API.create, fd);
       }
 
       if (res.success) {
         toast.success(res.message);
         closeSlideOver();
-        fetchSuppliers();
+        fetchCustomers();
       } else {
         toast.error(res.message || 'Something went wrong.');
       }
@@ -894,11 +976,11 @@
   /* ═══════════════════════════════════════════════
      DELETE (soft delete via API)
      ═══════════════════════════════════════════════ */
-  window._sup.confirmDelete = window.confirmDelete = function(id) {
+  window._cust.confirmDelete = window.confirmDelete = function(id) {
     deleteTargetId = id; isBulkDelete = false;
-    const s = customers.find(x => x.id === id);
+    const c = customers.find(x => x.id === id);
     document.getElementById('deleteTitle').textContent = 'Delete Customer?';
-    document.getElementById('deleteMsg').textContent = s ? `"${s.name}" will be removed and marked inactive.` : 'This supplier will be removed.';
+    document.getElementById('deleteMsg').textContent = c ? `"${c.name}" will be removed and marked inactive.` : 'This customer will be removed.';
     openDeleteDialog();
   };
   window.confirmBulkDelete = function() {
@@ -932,7 +1014,7 @@
         selectedIds.clear();
         deleteTargetId = null;
         closeDeleteDialog();
-        fetchSuppliers();
+        fetchCustomers();
       } else {
         toast.error(res.message || 'Delete failed.');
       }
@@ -949,7 +1031,7 @@
   /* ═══════════════════════════════════════════════
      INIT — Load data from API on page load
      ═══════════════════════════════════════════════ */
-  fetchSuppliers();
+  fetchCustomers();
 
 })();
 </script>

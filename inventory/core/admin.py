@@ -360,7 +360,7 @@ class PurchaseInvoiceAdmin(admin.ModelAdmin):
     inlines = [PurchaseItemInline]
 
     list_display = (
-        "reference_no", "supplier", "company", "date_received",
+        "reference_no", "company", "date_received",
         "invoice_total_display", "total_paid_display",
         "balance_due_display", "payment_status_badge",
         "is_void", "created_at",
@@ -369,7 +369,7 @@ class PurchaseInvoiceAdmin(admin.ModelAdmin):
         "reference_no", "supplier__name", "company__name", "notes",
     )
     list_filter = ("payment_status", "is_void", "company", "date_received", "created_at")
-    autocomplete_fields = ("company", "supplier", "received_by")
+    autocomplete_fields = ("company",  "received_by")
     ordering = ("-date_received", "-created_at")
     list_per_page = 25
     readonly_fields = (
@@ -381,7 +381,7 @@ class PurchaseInvoiceAdmin(admin.ModelAdmin):
     fieldsets = (
         (None, {
             "fields": (
-                "company", "reference_no", "supplier",
+                "company", "reference_no", 
                 "date_received", "received_by",
             ),
         }),

@@ -4,8 +4,6 @@
 {% block page_title %}Goods Out{% endblock %}
 {% block page_subtitle %}Manage your inventory goods out sales{% endblock %}
 
-
-
 {% block content %}
 
 <!-- ══════════════════════════════════════════════════════════
@@ -33,19 +31,19 @@
 <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
   <div class="bg-white border border-neutral-100 rounded-2xl px-5 py-4 transition-all duration-300 hover:shadow-[0_2px_12px_rgba(0,0,0,0.04)]">
     <div class="text-[0.65rem] font-semibold text-neutral-400 uppercase tracking-wide mb-1">Today's Sales</div>
-    <div class="text-xl font-extrabold text-neutral-900 tracking-tight" id="statToday">5</div>
+    <div class="text-xl font-extrabold text-neutral-900 tracking-tight" id="statToday">0</div>
   </div>
   <div class="bg-white border border-neutral-100 rounded-2xl px-5 py-4 transition-all duration-300 hover:shadow-[0_2px_12px_rgba(0,0,0,0.04)]">
     <div class="text-[0.65rem] font-semibold text-neutral-400 uppercase tracking-wide mb-1">Units Dispatched</div>
-    <div class="text-xl font-extrabold text-green-600 tracking-tight" id="statUnits">93</div>
+    <div class="text-xl font-extrabold text-green-600 tracking-tight" id="statUnits">0</div>
   </div>
   <div class="bg-white border border-neutral-100 rounded-2xl px-5 py-4 transition-all duration-300 hover:shadow-[0_2px_12px_rgba(0,0,0,0.04)]">
     <div class="text-[0.65rem] font-semibold text-neutral-400 uppercase tracking-wide mb-1">Revenue Today</div>
-    <div class="text-xl font-extrabold text-neutral-900 tracking-tight" id="statRevenue">$3,890</div>
+    <div class="text-xl font-extrabold text-neutral-900 tracking-tight" id="statRevenue">$0.00</div>
   </div>
   <div class="bg-white border border-neutral-100 rounded-2xl px-5 py-4 transition-all duration-300 hover:shadow-[0_2px_12px_rgba(0,0,0,0.04)]">
     <div class="text-[0.65rem] font-semibold text-neutral-400 uppercase tracking-wide mb-1">Unpaid Sales</div>
-    <div class="text-xl font-extrabold text-amber-600 tracking-tight" id="statUnpaid">2</div>
+    <div class="text-xl font-extrabold text-amber-600 tracking-tight" id="statUnpaid">0</div>
   </div>
 </div>
 
@@ -58,18 +56,24 @@
              oninput="handleSearch(this.value)"
              class="w-full pl-10 pr-4 py-2.5 text-sm border border-neutral-200 rounded-xl bg-neutral-50/50 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200" />
     </div>
-    <button onclick="toggleFilters()" class="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-neutral-600 bg-white border border-neutral-200 rounded-xl hover:bg-neutral-50 hover:border-neutral-300 transition-all duration-200">
+    <!-- View mode toggle -->
+    <div class="flex border border-neutral-200 rounded-xl overflow-hidden">
+      <button onclick="setViewMode('invoice')" id="viewBtnInvoice" class="px-3 py-2.5 text-xs font-semibold transition-all duration-200 bg-green-500 text-white">Invoice</button>
+      <button onclick="setViewMode('flat')" id="viewBtnFlat" class="px-3 py-2.5 text-xs font-semibold transition-all duration-200 bg-white text-neutral-600 hover:bg-neutral-50">Line Items</button>
+    </div>
+    <button onclick="toggleFilters()" id="filterToggleBtn" class="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-neutral-600 bg-white border border-neutral-200 rounded-xl hover:bg-neutral-50 hover:border-neutral-300 transition-all duration-200">
       <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
       <span id="filterBtnText">Filter</span>
     </button>
     <div id="bulkActions" class="hidden items-center gap-2">
       <span class="text-xs font-semibold text-neutral-500"><span id="selectedCount">0</span> selected</span>
-      <button onclick="confirmBulkDelete()" class="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-red-600 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-all duration-200">
+      <button onclick="confirmBulkVoid()" class="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-red-600 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-all duration-200">
         <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-        Delete
+        Void Selected
       </button>
     </div>
   </div>
+  <!-- Filter panel -->
   <div id="filterPanel" class="hidden border-t border-neutral-100 px-4 py-4">
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       <div><label class="block text-xs font-semibold text-neutral-500 mb-1.5">Customer</label><select id="filterCustomer" onchange="applyFilters()" class="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200"><option value="">All Customers</option></select></div>
@@ -77,50 +81,83 @@
       <div><label class="block text-xs font-semibold text-neutral-500 mb-1.5">Date From</label><input type="date" id="filterDateFrom" onchange="applyFilters()" class="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200"/></div>
       <div><label class="block text-xs font-semibold text-neutral-500 mb-1.5">Date To</label><input type="date" id="filterDateTo" onchange="applyFilters()" class="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200"/></div>
     </div>
-    <div class="flex justify-end mt-3"><button onclick="clearFilters()" class="text-xs font-semibold text-neutral-500 hover:text-neutral-700 transition-colors duration-200">Clear all filters</button></div>
+    <div class="flex items-center justify-between mt-3">
+      <label class="flex items-center gap-2 text-xs text-neutral-500 cursor-pointer">
+        <input type="checkbox" id="filterShowVoid" onchange="applyFilters()" class="w-3.5 h-3.5 rounded border-neutral-300 text-green-500 focus:ring-green-500/30" />
+        Show voided sales
+      </label>
+      <button onclick="clearFilters()" class="text-xs font-semibold text-neutral-500 hover:text-neutral-700 transition-colors duration-200">Clear all filters</button>
+    </div>
   </div>
 </div>
 
 <!-- ══════════════════════════════════════════════════════════
-     SALES TABLE
+     DATA TABLE
      ══════════════════════════════════════════════════════════ -->
 <div class="bg-white border border-neutral-100 rounded-2xl overflow-hidden">
   <div class="overflow-x-auto">
-    <table class="w-full text-left">
+    <!-- Invoice view table -->
+    <table id="invoiceTable" class="w-full text-left">
       <thead>
         <tr class="border-b border-neutral-100">
           <th class="w-12 px-4 py-3.5"><input type="checkbox" id="selectAll" onchange="toggleSelectAll(this)" class="w-4 h-4 rounded border-neutral-300 text-green-500 focus:ring-green-500/30 cursor-pointer"/></th>
-          <th class="px-4 py-3.5 text-[0.7rem] font-bold uppercase tracking-wider text-neutral-400">Sale #</th>
-          <th class="px-4 py-3.5 text-[0.7rem] font-bold uppercase tracking-wider text-neutral-400 cursor-pointer hover:text-neutral-600" onclick="sortTable('date')"><div class="flex items-center gap-1">Date <svg class="w-3 h-3 text-neutral-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12l7 7 7-7"/></svg></div></th>
-          <th class="px-4 py-3.5 text-[0.7rem] font-bold uppercase tracking-wider text-neutral-400">Customer</th>
+          <th class="px-4 py-3.5 text-[0.7rem] font-bold uppercase tracking-wider text-neutral-400 cursor-pointer hover:text-neutral-600 transition-colors" onclick="sortTable('date_dispatched')"><div class="flex items-center gap-1">Date <svg class="w-3 h-3 text-neutral-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12l7 7 7-7"/></svg></div></th>
+          <th class="px-4 py-3.5 text-[0.7rem] font-bold uppercase tracking-wider text-neutral-400 cursor-pointer hover:text-neutral-600 transition-colors" onclick="sortTable('reference_no')"><div class="flex items-center gap-1">Sale # <svg class="w-3 h-3 text-neutral-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12l7 7 7-7"/></svg></div></th>
+          <th class="px-4 py-3.5 text-[0.7rem] font-bold uppercase tracking-wider text-neutral-400 cursor-pointer hover:text-neutral-600 transition-colors" onclick="sortTable('customer')"><div class="flex items-center gap-1">Customer <svg class="w-3 h-3 text-neutral-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12l7 7 7-7"/></svg></div></th>
           <th class="px-4 py-3.5 text-[0.7rem] font-bold uppercase tracking-wider text-neutral-400">Items</th>
-          <th class="px-4 py-3.5 text-[0.7rem] font-bold uppercase tracking-wider text-neutral-400 cursor-pointer hover:text-neutral-600" onclick="sortTable('total')"><div class="flex items-center gap-1">Total <svg class="w-3 h-3 text-neutral-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12l7 7 7-7"/></svg></div></th>
+          <th class="px-4 py-3.5 text-[0.7rem] font-bold uppercase tracking-wider text-neutral-400">Total</th>
+          <th class="px-4 py-3.5 text-[0.7rem] font-bold uppercase tracking-wider text-neutral-400">Payment</th>
+          <th class="px-4 py-3.5 text-[0.7rem] font-bold uppercase tracking-wider text-neutral-400">Dispatched By</th>
+          <th class="px-4 py-3.5 text-[0.7rem] font-bold uppercase tracking-wider text-neutral-400 text-right">Actions</th>
+        </tr>
+      </thead>
+      <tbody id="invoiceTableBody"></tbody>
+    </table>
+    <!-- Flat line-item view table -->
+    <table id="flatTable" class="w-full text-left hidden">
+      <thead>
+        <tr class="border-b border-neutral-100">
+          <th class="w-12 px-4 py-3.5"><input type="checkbox" id="selectAllFlat" onchange="toggleSelectAll(this)" class="w-4 h-4 rounded border-neutral-300 text-green-500 focus:ring-green-500/30 cursor-pointer"/></th>
+          <th class="px-4 py-3.5 text-[0.7rem] font-bold uppercase tracking-wider text-neutral-400">Date</th>
+          <th class="px-4 py-3.5 text-[0.7rem] font-bold uppercase tracking-wider text-neutral-400">Sale #</th>
+          <th class="px-4 py-3.5 text-[0.7rem] font-bold uppercase tracking-wider text-neutral-400">Item</th>
+          <th class="px-4 py-3.5 text-[0.7rem] font-bold uppercase tracking-wider text-neutral-400">Customer</th>
+          <th class="px-4 py-3.5 text-[0.7rem] font-bold uppercase tracking-wider text-neutral-400">Qty</th>
+          <th class="px-4 py-3.5 text-[0.7rem] font-bold uppercase tracking-wider text-neutral-400">Price/Unit</th>
+          <th class="px-4 py-3.5 text-[0.7rem] font-bold uppercase tracking-wider text-neutral-400">Line Total</th>
           <th class="px-4 py-3.5 text-[0.7rem] font-bold uppercase tracking-wider text-neutral-400">Payment</th>
           <th class="px-4 py-3.5 text-[0.7rem] font-bold uppercase tracking-wider text-neutral-400 text-right">Actions</th>
         </tr>
       </thead>
-      <tbody id="salesTableBody"></tbody>
+      <tbody id="flatTableBody"></tbody>
     </table>
   </div>
+  <!-- Empty state -->
   <div id="emptyState" class="hidden py-20 flex-col items-center justify-center text-center">
     <div class="w-16 h-16 bg-neutral-100 rounded-2xl flex items-center justify-center mb-4"><svg class="w-7 h-7 text-neutral-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 3v5a1 1 0 0 1-1 1h-1"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg></div>
     <h3 class="text-sm font-bold text-neutral-700 mb-1">No sales recorded yet</h3>
     <p class="text-xs text-neutral-400 mb-5 max-w-xs">Start by creating your first sale to dispatch goods to a customer.</p>
     <button onclick="openSaleForm()" class="inline-flex items-center gap-2 px-4 py-2 bg-green-500 text-white text-xs font-semibold rounded-lg hover:bg-green-600 transition-all duration-200"><svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Create first sale</button>
   </div>
-  <div id="paginationBar" class="flex items-center justify-between px-4 py-3 border-t border-neutral-100">
+  <!-- Loading -->
+  <div id="loadingState" class="py-20 flex-col items-center justify-center text-center">
+    <svg class="w-8 h-8 animate-spin text-green-500 mx-auto mb-3" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" stroke-dasharray="32" stroke-linecap="round"/></svg>
+    <p class="text-xs text-neutral-400">Loading sales…</p>
+  </div>
+  <!-- Pagination -->
+  <div id="paginationBar" class="hidden flex items-center justify-between px-4 py-3 border-t border-neutral-100">
     <p class="text-xs text-neutral-400 font-medium">Showing <span id="pagStart" class="text-neutral-700 font-semibold">1</span>–<span id="pagEnd" class="text-neutral-700 font-semibold">10</span> of <span id="pagTotal" class="text-neutral-700 font-semibold">0</span></p>
     <div class="flex items-center gap-1">
-      <button onclick="goToPage('prev')" id="btnPrev" class="w-8 h-8 flex items-center justify-center rounded-lg border border-neutral-200 text-neutral-400 hover:text-neutral-700 hover:border-neutral-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg></button>
+      <button onclick="goToPage('prev')" id="btnPrev" class="w-8 h-8 flex items-center justify-center rounded-lg border border-neutral-200 text-neutral-400 hover:text-neutral-700 hover:border-neutral-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></button>
       <div id="pageNumbers" class="flex items-center gap-1"></div>
-      <button onclick="goToPage('next')" id="btnNext" class="w-8 h-8 flex items-center justify-center rounded-lg border border-neutral-200 text-neutral-400 hover:text-neutral-700 hover:border-neutral-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></button>
+      <button onclick="goToPage('next')" id="btnNext" class="w-8 h-8 flex items-center justify-center rounded-lg border border-neutral-200 text-neutral-400 hover:text-neutral-700 hover:border-neutral-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></button>
     </div>
   </div>
 </div>
 
 
 <!-- ══════════════════════════════════════════════════════════
-     NEW SALE SLIDE-OVER (Multi-line items)
+     NEW SALE SLIDE-OVER
      ══════════════════════════════════════════════════════════ -->
 <div id="formBackdrop" class="fixed inset-0 bg-black/20 backdrop-blur-sm z-[60] opacity-0 pointer-events-none transition-opacity duration-300" onclick="closeSaleForm()"></div>
 <div id="formPanel" class="fixed top-0 right-0 bottom-0 w-full max-w-3xl bg-white z-[65] shadow-[-8px_0_30px_rgba(0,0,0,0.08)] translate-x-full transition-transform duration-300 ease-out flex flex-col">
@@ -139,20 +176,39 @@
     <form id="saleForm" onsubmit="handleFormSubmit(event)" class="space-y-6">
       <input type="hidden" id="editSaleId" value=""/>
 
-      <!-- ── Customer Selection ── -->
+      <!-- ── Customer & Details ── -->
       <div>
-        <h3 class="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-4">Customer</h3>
-        <div class="relative" id="custSearchWrap">
-          <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 pointer-events-none z-10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-          <input type="text" id="custSearchInput" placeholder="Search customer by name, email, or phone…" autocomplete="off"
-                 oninput="searchCustomers(this.value)" onfocus="showCustDropdown()"
-                 class="w-full pl-10 pr-4 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200"/>
-          <div id="custDropdown" class="hidden absolute left-0 right-0 top-full mt-1 bg-white border border-neutral-200 rounded-xl shadow-lg z-20 max-h-52 overflow-y-auto"></div>
-        </div>
-        <div id="selectedCustChip" class="hidden mt-2 inline-flex items-center gap-2 px-3 py-1.5 bg-blue-50 border border-blue-200 rounded-lg text-sm font-semibold text-blue-700">
-          <span id="selectedCustName"></span>
-          <span id="selectedCustMeta" class="text-xs font-normal text-blue-500"></span>
-          <button type="button" onclick="clearSelectedCust()" class="ml-1 text-blue-500 hover:text-blue-800 transition-colors"><svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+        <h3 class="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-4">Sale Details</h3>
+        <div class="grid grid-cols-2 gap-4">
+          <!-- Customer search -->
+          <div class="col-span-2">
+            <label class="block text-xs font-semibold text-neutral-600 mb-1.5">Customer <span class="text-red-400">*</span></label>
+            <div class="relative" id="custSearchWrap">
+              <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 pointer-events-none z-10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+              <input type="text" id="custSearchInput" placeholder="Search customer…" autocomplete="off"
+                     oninput="searchCustomers(this.value)" onfocus="showCustDropdown()"
+                     class="w-full pl-10 pr-4 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200"/>
+              <div id="custDropdown" class="hidden absolute left-0 right-0 top-full mt-1 bg-white border border-neutral-200 rounded-xl shadow-lg z-20 max-h-52 overflow-y-auto"></div>
+            </div>
+            <div id="selectedCustChip" class="hidden mt-2 inline-flex items-center gap-2 px-3 py-1.5 bg-blue-50 border border-blue-200 rounded-lg text-sm font-semibold text-blue-700">
+              <span id="selectedCustName"></span>
+              <span id="selectedCustMeta" class="text-xs font-normal text-blue-500"></span>
+              <button type="button" onclick="clearSelectedCust()" class="ml-1 text-blue-500 hover:text-blue-800 transition-colors"><svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+            </div>
+            <p id="customerError" class="hidden text-xs text-red-500 mt-1">Please select a customer.</p>
+          </div>
+          <div>
+            <label for="goDate" class="block text-xs font-semibold text-neutral-600 mb-1.5">Date Dispatched</label>
+            <input type="date" id="goDate" class="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200"/>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-neutral-600 mb-1.5">Dispatched By</label>
+            <select id="goDispatchedBy" class="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200"><option value="">Select user…</option></select>
+          </div>
+          <div class="col-span-2">
+            <label for="goNotes" class="block text-xs font-semibold text-neutral-600 mb-1.5">Notes</label>
+            <textarea id="goNotes" rows="2" placeholder="Delivery instructions, invoice ref…" class="w-full px-4 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white resize-none placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200"></textarea>
+          </div>
         </div>
       </div>
 
@@ -160,29 +216,30 @@
       <div>
         <div class="flex items-center justify-between mb-4">
           <h3 class="text-xs font-bold text-neutral-400 uppercase tracking-widest">Line Items</h3>
-          <button type="button" onclick="addLineItem()"
-                  class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-green-600 bg-green-50 border border-green-200 rounded-lg hover:bg-green-100 transition-all duration-200">
+          <button type="button" onclick="addLineItem()" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-green-600 bg-green-50 border border-green-200 rounded-lg hover:bg-green-100 transition-all duration-200">
             <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             Add Item
           </button>
         </div>
-
-        <!-- Line items container -->
-        <div id="lineItemsContainer" class="space-y-3">
-          <!-- Injected by JS -->
-        </div>
-
-        <p id="lineItemsError" class="hidden text-xs text-red-500 mt-2">Add at least one item to the sale.</p>
+        <div id="lineItemsContainer" class="space-y-3"></div>
+        <p id="lineItemsError" class="hidden text-xs text-red-500 mt-2">At least one item is required.</p>
 
         <!-- Totals bar -->
-        <div class="mt-4 bg-neutral-50 rounded-xl border border-neutral-100 divide-y divide-neutral-100">
+        <div id="totalsBar" class="mt-4 bg-neutral-50 rounded-xl border border-neutral-100 divide-y divide-neutral-100">
           <div class="flex items-center justify-between px-4 py-2.5">
-            <span class="text-xs font-semibold text-neutral-500">Subtotal</span>
+            <span class="text-xs font-semibold text-neutral-500">Subtotal (after line discounts)</span>
             <span id="subtotalValue" class="text-sm font-bold text-neutral-700">$0.00</span>
           </div>
-          <div class="flex items-center justify-between px-4 py-2.5">
-            <span class="text-xs font-semibold text-neutral-500">Discount</span>
-            <span id="discountValue" class="text-sm font-semibold text-red-500">-$0.00</span>
+          <div class="flex items-center justify-between px-4 py-2.5 gap-3">
+            <span class="text-xs font-semibold text-neutral-500 shrink-0">Invoice Discount</span>
+            <div class="flex items-center gap-2">
+              <select id="invDiscType" onchange="recalcTotals()" class="px-2 py-1.5 text-xs border border-neutral-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200">
+                <option value="fixed">$ Fixed</option>
+                <option value="percentage">% Percent</option>
+              </select>
+              <input type="number" id="invDiscAmount" min="0" step="0.01" value="0" oninput="recalcTotals()" class="w-24 px-3 py-1.5 text-sm text-right border border-neutral-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200"/>
+            </div>
+            <span id="invDiscValue" class="text-sm font-semibold text-red-500 shrink-0">-$0.00</span>
           </div>
           <div class="flex items-center justify-between px-4 py-3">
             <span class="text-sm font-bold text-neutral-800">Grand Total</span>
@@ -191,28 +248,13 @@
         </div>
       </div>
 
-      <!-- ── Payment & Details ── -->
+      <!-- ── Payment status (read-only) ── -->
       <div>
-        <h3 class="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-4">Payment &amp; Details</h3>
-        <div class="grid grid-cols-2 gap-4">
-          <div>
-            <label class="block text-xs font-semibold text-neutral-600 mb-1.5">Payment Status</label>
-            <div class="flex gap-2" id="payStatusGroup">
-              <button type="button" onclick="setPayStatus('paid')" data-val="paid" class="ps-btn flex-1 px-3 py-2.5 text-xs font-semibold border rounded-xl transition-all duration-200 text-green-700 border-green-300 bg-green-50">Paid</button>
-              <button type="button" onclick="setPayStatus('partial')" data-val="partial" class="ps-btn flex-1 px-3 py-2.5 text-xs font-semibold border rounded-xl transition-all duration-200 text-neutral-500 border-neutral-200 bg-white hover:bg-neutral-50">Partial</button>
-              <button type="button" onclick="setPayStatus('unpaid')" data-val="unpaid" class="ps-btn flex-1 px-3 py-2.5 text-xs font-semibold border rounded-xl transition-all duration-200 text-neutral-500 border-neutral-200 bg-white hover:bg-neutral-50">Unpaid</button>
-            </div>
-          </div>
-          <div>
-            <label class="block text-xs font-semibold text-neutral-600 mb-1.5">Payment Method</label>
-            <select id="goPayMethod" class="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200"><option value="">Select method</option><option value="cash">Cash</option><option value="online">Online / Bank</option><option value="cheque">Cheque</option></select>
-          </div>
+        <h3 class="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-3">Payment Status</h3>
+        <div class="flex items-center gap-3 p-3 bg-amber-50 border border-amber-200 rounded-xl">
+          <svg class="w-4 h-4 text-amber-500 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          <p class="text-xs text-amber-700 font-medium">Payment status is auto-managed. New sales start as <strong>Unpaid</strong> and update when payments are recorded from the Payments page.</p>
         </div>
-        <div class="grid grid-cols-2 gap-4 mt-4">
-          <div><label class="block text-xs font-semibold text-neutral-600 mb-1.5">Date</label><input type="date" id="goDate" class="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200"/></div>
-          <div><label class="block text-xs font-semibold text-neutral-600 mb-1.5">Dispatched By</label><input type="text" id="goDispatchedBy" placeholder="Name" class="w-full px-4 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200"/></div>
-        </div>
-        <div class="mt-4"><label class="block text-xs font-semibold text-neutral-600 mb-1.5">Notes</label><textarea id="goNotes" rows="2" placeholder="Invoice ref, delivery instructions…" class="w-full px-4 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white resize-none placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200"></textarea></div>
       </div>
     </form>
   </div>
@@ -227,23 +269,34 @@
   </div>
 </div>
 
-<!-- ═══ DELETE DIALOG ═══ -->
-<div id="deleteBackdrop" class="fixed inset-0 bg-black/30 backdrop-blur-sm z-[80] opacity-0 pointer-events-none transition-opacity duration-200 flex items-center justify-center">
-  <div id="deleteDialog" class="bg-white rounded-2xl shadow-xl w-full max-w-sm mx-4 p-6 scale-95 opacity-0 transition-all duration-200">
+
+<!-- ══════════════════════════════════════════════════════════
+     VOID DIALOG
+     ══════════════════════════════════════════════════════════ -->
+<div id="voidBackdrop" class="fixed inset-0 bg-black/30 backdrop-blur-sm z-[80] opacity-0 pointer-events-none transition-opacity duration-200 flex items-center justify-center">
+  <div id="voidDialog" class="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 p-6 scale-95 opacity-0 transition-all duration-200">
     <div class="w-12 h-12 bg-red-50 rounded-xl flex items-center justify-center mx-auto mb-4"><svg class="w-6 h-6 text-red-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
-    <h3 id="deleteTitle" class="text-base font-bold text-neutral-900 text-center mb-1">Delete Sale?</h3>
-    <p id="deleteMsg" class="text-sm text-neutral-500 text-center mb-6">All dispatched quantities will be returned to stock.</p>
+    <h3 id="voidTitle" class="text-base font-bold text-neutral-900 text-center mb-1">Void Sale?</h3>
+    <p id="voidMsg" class="text-sm text-neutral-500 text-center mb-4">Stock will be restored for all items in this sale.</p>
+    <div class="mb-4">
+      <label class="block text-xs font-semibold text-neutral-600 mb-1.5">Reason for voiding <span class="text-red-400">*</span></label>
+      <select id="voidReasonSelect" onchange="toggleVoidCustom()" class="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-400 transition-all duration-200 mb-2">
+        <option value="">Select reason…</option>
+        <option value="Duplicate entry">Duplicate entry</option>
+        <option value="Wrong customer">Wrong customer</option>
+        <option value="Wrong items/quantities">Wrong items/quantities</option>
+        <option value="Customer returned goods">Customer returned goods</option>
+        <option value="Data entry error">Data entry error</option>
+        <option value="custom">Other (specify)…</option>
+      </select>
+      <textarea id="voidReasonCustom" rows="2" placeholder="Enter reason…" class="hidden w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white resize-none placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-400 transition-all duration-200"></textarea>
+      <p id="voidReasonError" class="hidden text-xs text-red-500 mt-1">Reason is required.</p>
+    </div>
     <div class="flex gap-3">
-      <button onclick="closeDeleteDialog()" class="flex-1 px-4 py-2.5 text-sm font-semibold text-neutral-600 bg-white border border-neutral-200 rounded-xl hover:bg-neutral-50 transition-all duration-200">Cancel</button>
-      <button onclick="executeDelete()" class="flex-1 px-4 py-2.5 text-sm font-semibold text-white bg-red-500 rounded-xl hover:bg-red-600 active:scale-[0.97] transition-all duration-200">Delete &amp; Restore Stock</button>
+      <button onclick="closeVoidDialog()" class="flex-1 px-4 py-2.5 text-sm font-semibold text-neutral-600 bg-white border border-neutral-200 rounded-xl hover:bg-neutral-50 transition-all duration-200">Cancel</button>
+      <button onclick="executeVoid()" class="flex-1 px-4 py-2.5 text-sm font-semibold text-white bg-red-500 rounded-xl hover:bg-red-600 active:scale-[0.97] transition-all duration-200">Void &amp; Restore Stock</button>
     </div>
   </div>
-</div>
-
-<!-- ═══ TOAST ═══ -->
-<div id="feedbackToast" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[90] flex items-center gap-3 px-5 py-3 rounded-xl shadow-lg border text-sm font-semibold pointer-events-none opacity-0 translate-y-4 transition-all duration-300">
-  <svg id="toastIcon" class="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></svg>
-  <span id="toastText"></span>
 </div>
 
 
@@ -253,347 +306,504 @@
 <script>
 (function(){
 
-  /* ─── Catalogue Data ─── */
-  const items=[
-    {id:1,name:'Organic Olive Oil',unit:'lt',price:15.99,stock:340},
-    {id:2,name:'Basmati Rice',unit:'kg',price:10.50,stock:120},
-    {id:3,name:'Steel Bolts M8x25',unit:'box',price:32.00,stock:15},
-    {id:4,name:'A4 Copy Paper',unit:'pc',price:6.25,stock:200},
-    {id:5,name:'Hydraulic Brake Fluid',unit:'lt',price:22.75,stock:89},
-    {id:6,name:'Wireless Mouse',unit:'pc',price:34.99,stock:56},
-    {id:7,name:'Cinnamon Sticks',unit:'kg',price:9.80,stock:200},
-    {id:8,name:'LED Bulb 9W',unit:'dz',price:48.00,stock:8},
-    {id:9,name:'Hand Sanitizer Gel',unit:'pc',price:5.49,stock:410},
-    {id:10,name:'Corrugated Shipping Box',unit:'box',price:1.80,stock:1200},
-  ];
-  const customers=[
-    {id:1,name:'Riverside Hardware',contact:'Mike Turner',email:'mike@riverside.com',phone:'+1 (555) 111-2233'},
-    {id:2,name:'Metro Office Supplies',contact:'Linda Park',email:'linda@metrooffice.com',phone:'+1 (555) 222-3344'},
-    {id:3,name:'FreshMart Grocery',contact:'Ali Hassan',email:'ali@freshmart.com',phone:'+1 (555) 333-4455'},
-    {id:4,name:'BuildRight Construction',contact:'Carlos Rivera',email:'carlos@buildright.com',phone:'+1 (555) 444-5566'},
-    {id:5,name:'TechZone Electronics',contact:'Priya Sharma',email:'priya@techzone.com',phone:'+1 (555) 555-6677'},
-    {id:6,name:'GreenBasket Organics',contact:'Emma Wilson',email:'emma@greenbasket.com',phone:'+1 (555) 666-7788'},
-  ];
+  /* ─── State ─── */
+  let currentPage=1, perPage=10, selectedIds=new Set();
+  let searchQuery='', sortField='date_dispatched', sortOrder='desc';
+  let viewMode='invoice';
+  let voidTargetId=null, isBulkVoid=false;
+  let selectedCustId=null;
+  let lineItemCounter=0;
 
-  /* ─── Sales Records ─── */
-  let sales=[
-    {id:1,saleNo:'SO-001',custId:3,items:[{itemId:1,qty:20,price:15.99,discount:0},{itemId:7,qty:10,price:9.80,discount:5}],payStatus:'paid',payMethod:'cash',dispatchedBy:'John Doe',notes:'',date:'2026-03-04'},
-    {id:2,saleNo:'SO-002',custId:1,items:[{itemId:3,qty:5,price:32.00,discount:0}],payStatus:'unpaid',payMethod:null,dispatchedBy:'Sarah Miller',notes:'Net-15 terms',date:'2026-03-04'},
-    {id:3,saleNo:'SO-003',custId:5,items:[{itemId:6,qty:10,price:34.99,discount:10},{itemId:9,qty:50,price:5.49,discount:0}],payStatus:'paid',payMethod:'online',dispatchedBy:'John Doe',notes:'',date:'2026-03-04'},
-    {id:4,saleNo:'SO-004',custId:2,items:[{itemId:4,qty:100,price:6.25,discount:0},{itemId:10,qty:200,price:1.80,discount:0}],payStatus:'partial',payMethod:'cheque',dispatchedBy:'Tom Lee',notes:'50% advance',date:'2026-03-03'},
-    {id:5,saleNo:'SO-005',custId:6,items:[{itemId:1,qty:15,price:15.99,discount:0},{itemId:2,qty:30,price:10.50,discount:0},{itemId:7,qty:20,price:9.80,discount:0}],payStatus:'paid',payMethod:'online',dispatchedBy:'John Doe',notes:'',date:'2026-03-03'},
-    {id:6,saleNo:'SO-006',custId:4,items:[{itemId:5,qty:8,price:22.75,discount:0},{itemId:3,qty:10,price:32.00,discount:5}],payStatus:'paid',payMethod:'cash',dispatchedBy:'Sarah Miller',notes:'',date:'2026-03-02'},
-    {id:7,saleNo:'SO-007',custId:3,items:[{itemId:9,qty:100,price:5.49,discount:2}],payStatus:'unpaid',payMethod:null,dispatchedBy:'John Doe',notes:'Charity order',date:'2026-03-01'},
-    {id:8,saleNo:'SO-008',custId:1,items:[{itemId:8,qty:3,price:48.00,discount:0}],payStatus:'paid',payMethod:'online',dispatchedBy:'Tom Lee',notes:'',date:'2026-02-28'},
-  ];
+  let cachedCustomers=[], cachedItems=[], cachedUsers=[];
 
-  let currentPage=1,perPage=10,selectedIds=new Set(),deleteTargetId=null,isBulkDelete=false,nextSaleId=9,nextSaleNo=9;
-  let searchQ='',fCust='',fPay='',fDateFrom='',fDateTo='',sortField='date',sortOrder='desc';
-  let selectedCustId=null,payStatus='paid';
-  let lineItems=[]; // {uid, itemId, itemName, unit, qty, price, discount, stock}
-  let lineUid=0;
+  const fmtMoney = n => { const v=parseFloat(n)||0; return '$'+v.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); };
+  const fmtDate = d => { if(!d) return '—'; return new Date(d+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}); };
+  const payBadge = { paid:'bg-green-50 text-green-600 border-green-200', partial:'bg-amber-50 text-amber-600 border-amber-200', unpaid:'bg-red-50 text-red-600 border-red-200' };
 
-  /* ─── Helpers ─── */
-  const getItem=id=>items.find(i=>i.id===id);
-  const getCust=id=>customers.find(c=>c.id===id);
-  const fmtD=d=>new Date(d).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
-  const fmtM=n=>'$'+n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
-  const payBadge={paid:'bg-green-50 text-green-600 border-green-200',partial:'bg-amber-50 text-amber-600 border-amber-200',unpaid:'bg-red-50 text-red-600 border-red-200'};
-
-  function calcSaleTotal(s){let sub=0,disc=0;s.items.forEach(li=>{sub+=li.qty*li.price;disc+=li.qty*(li.discount||0);});return{sub,disc,total:sub-disc};}
-
-  // Populate customer filter
-  const cfEl=document.getElementById('filterCustomer');
-  customers.forEach(c=>{const o=document.createElement('option');o.value=c.id;o.textContent=c.name;cfEl.appendChild(o);});
-
-  /* ─── Filter / Sort ─── */
-  function getFiltered(){
-    let list=[...sales];
-    if(searchQ){const q=searchQ.toLowerCase();list=list.filter(s=>{const c=getCust(s.custId);const iNames=s.items.map(li=>getItem(li.itemId)).filter(Boolean).map(i=>i.name.toLowerCase()).join(' ');return s.saleNo.toLowerCase().includes(q)||(c&&c.name.toLowerCase().includes(q))||iNames.includes(q);});}
-    if(fCust)list=list.filter(s=>s.custId==fCust);
-    if(fPay)list=list.filter(s=>s.payStatus===fPay);
-    if(fDateFrom)list=list.filter(s=>s.date>=fDateFrom);
-    if(fDateTo)list=list.filter(s=>s.date<=fDateTo);
-    list.sort((a,b)=>{let va,vb;if(sortField==='total'){va=calcSaleTotal(a).total;vb=calcSaleTotal(b).total;}else{va=a.date;vb=b.date;}if(va<vb)return sortOrder==='asc'?-1:1;if(va>vb)return sortOrder==='asc'?1:-1;return 0;});
-    return list;
+  /* ─── API helper ─── */
+  async function api(url, opts={}){
+    const csrf = document.querySelector('[name=csrfmiddlewaretoken]')?.value || document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+    const defaults = { headers:{'Content-Type':'application/json','X-CSRFToken':csrf}, credentials:'same-origin' };
+    const res = await fetch(url, {...defaults, ...opts});
+    const json = await res.json();
+    if(!res.ok && !json.success) throw new Error(json.message || 'Request failed');
+    return json;
   }
 
-  /* ─── Render Table ─── */
-  function renderTable(){
-    const filtered=getFiltered(),total=filtered.length,totalPages=Math.max(1,Math.ceil(total/perPage));
-    if(currentPage>totalPages)currentPage=totalPages;
-    const start=(currentPage-1)*perPage,page=filtered.slice(start,start+perPage);
-    const tbody=document.getElementById('salesTableBody'),empty=document.getElementById('emptyState'),pag=document.getElementById('paginationBar');
-    if(total===0){tbody.innerHTML='';empty.classList.remove('hidden');empty.classList.add('flex');pag.classList.add('hidden');return;}
-    empty.classList.add('hidden');empty.classList.remove('flex');pag.classList.remove('hidden');
+  /* ─── Load helpers ─── */
+  async function loadHelpers(){
+    try {
+      const [itemsRes, custRes, usersRes] = await Promise.all([
+        api('/api/goodsout/helpers/items/'),
+        api('/api/goodsout/helpers/customers/'),
+        api('/api/goodsout/helpers/users/'),
+      ]);
+      cachedItems = itemsRes.items || [];
+      cachedCustomers = custRes.customers || [];
+      cachedUsers = usersRes.users || [];
 
-    tbody.innerHTML=page.map(s=>{
-      const c=getCust(s.custId),t=calcSaleTotal(s),checked=selectedIds.has(s.id)?'checked':'';
-      const itemsSummary=s.items.map(li=>{const it=getItem(li.itemId);return it?`${li.qty}× ${it.name}`:'';}).filter(Boolean).join(', ');
-      const itemsShort=itemsSummary.length>45?itemsSummary.substring(0,45)+'…':itemsSummary;
-      const pb=payBadge[s.payStatus]||payBadge.unpaid;
-      return `<tr class="border-b border-neutral-50 hover:bg-neutral-50/50 transition-colors duration-150 group">
-        <td class="px-4 py-3"><input type="checkbox" ${checked} onchange="window._go.toggleSel(${s.id})" class="w-4 h-4 rounded border-neutral-300 text-green-500 focus:ring-green-500/30 cursor-pointer"/></td>
-        <td class="px-4 py-3"><span class="text-sm font-bold text-green-600">${s.saleNo}</span></td>
-        <td class="px-4 py-3 text-sm text-neutral-600">${fmtD(s.date)}</td>
-        <td class="px-4 py-3"><div class="text-sm font-semibold text-neutral-900">${c?c.name:'—'}</div>${c?`<div class="text-xs text-neutral-400">${c.contact}</div>`:''}</td>
-        <td class="px-4 py-3 text-sm text-neutral-600 max-w-[220px]" title="${itemsSummary}">
-          <div class="flex items-center gap-1.5">${s.items.length>1?`<span class="shrink-0 w-5 h-5 rounded-md bg-neutral-100 text-[0.6rem] font-bold text-neutral-500 flex items-center justify-center">${s.items.length}</span>`:''}
-            <span class="truncate">${itemsShort}</span></div>
-        </td>
-        <td class="px-4 py-3 text-sm font-bold text-neutral-900">${fmtM(t.total)}</td>
-        <td class="px-4 py-3"><span class="inline-flex items-center px-2 py-0.5 rounded-md text-[0.65rem] font-bold border ${pb} capitalize">${s.payStatus}</span></td>
-        <td class="px-4 py-3 text-right">
-          <div class="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-            <button onclick="window._go.openEdit(${s.id})" title="Edit" class="w-8 h-8 flex items-center justify-center rounded-lg text-neutral-400 hover:text-green-600 hover:bg-green-50 transition-all duration-200"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
-            <button onclick="window._go.confirmDel(${s.id})" title="Delete" class="w-8 h-8 flex items-center justify-center rounded-lg text-neutral-400 hover:text-red-600 hover:bg-red-50 transition-all duration-200"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
-          </div>
-        </td>
+      const fSel = document.getElementById('filterCustomer');
+      fSel.innerHTML = '<option value="">All Customers</option>';
+      cachedCustomers.forEach(c => { const o=document.createElement('option'); o.value=c.id; o.textContent=c.name; fSel.appendChild(o); });
+
+      const uSel = document.getElementById('goDispatchedBy');
+      uSel.innerHTML = '<option value="">Select user…</option>';
+      cachedUsers.forEach(u => { const o=document.createElement('option'); o.value=u.id; o.textContent=u.name+(u.role?' ('+u.role+')':''); uSel.appendChild(o); });
+    } catch(e){ console.error('Failed to load helpers:', e); }
+  }
+
+  /* ─── Load & render table ─── */
+  async function loadData(){
+    document.getElementById('loadingState').classList.remove('hidden');
+    document.getElementById('loadingState').classList.add('flex');
+    document.getElementById('emptyState').classList.add('hidden');
+    document.getElementById('emptyState').classList.remove('flex');
+    document.getElementById('paginationBar').classList.add('hidden');
+
+    try {
+      const params = new URLSearchParams({ page:currentPage, per_page:perPage, search:searchQuery, sort:sortField, order:sortOrder, view:viewMode });
+      const cust = document.getElementById('filterCustomer').value;
+      if(cust) params.set('customer', cust);
+      const pay = document.getElementById('filterPayment').value;
+      if(pay) params.set('payment', pay);
+      const df = document.getElementById('filterDateFrom').value;
+      if(df) params.set('date_from', df);
+      const dt = document.getElementById('filterDateTo').value;
+      if(dt) params.set('date_to', dt);
+      if(document.getElementById('filterShowVoid').checked) params.set('show_void','true');
+
+      const data = await api('/api/goodsout/list/?'+params.toString());
+
+      document.getElementById('statToday').textContent = data.overview.today_sales;
+      document.getElementById('statUnits').textContent = data.overview.units_dispatched_today;
+      document.getElementById('statRevenue').textContent = fmtMoney(data.overview.revenue_today);
+      document.getElementById('statUnpaid').textContent = data.overview.unpaid_sales;
+
+      const pag = data.pagination;
+      document.getElementById('loadingState').classList.add('hidden');
+      document.getElementById('loadingState').classList.remove('flex');
+
+      if(pag.total === 0){
+        document.getElementById('emptyState').classList.remove('hidden');
+        document.getElementById('emptyState').classList.add('flex');
+        document.getElementById('invoiceTableBody').innerHTML = '';
+        document.getElementById('flatTableBody').innerHTML = '';
+        return;
+      }
+
+      document.getElementById('paginationBar').classList.remove('hidden');
+      const start = (pag.page-1)*pag.per_page;
+      document.getElementById('pagStart').textContent = start+1;
+      document.getElementById('pagEnd').textContent = Math.min(start+pag.per_page, pag.total);
+      document.getElementById('pagTotal').textContent = pag.total;
+
+      const pnEl = document.getElementById('pageNumbers');
+      let pn='';
+      for(let p=1;p<=pag.total_pages;p++){
+        const c=p===pag.page?'bg-green-500 text-white border-green-500':'bg-white text-neutral-600 border-neutral-200 hover:border-neutral-300';
+        pn+=`<button onclick="window._go.goP(${p})" class="w-8 h-8 flex items-center justify-center rounded-lg border text-xs font-semibold ${c} transition-all duration-200">${p}</button>`;
+      }
+      pnEl.innerHTML=pn;
+      document.getElementById('btnPrev').disabled=pag.page===1;
+      document.getElementById('btnNext').disabled=pag.page===pag.total_pages;
+      currentPage=pag.page;
+
+      if(viewMode==='flat') renderFlatTable(data.rows||[]);
+      else renderInvoiceTable(data.invoices||[]);
+    } catch(e){
+      document.getElementById('loadingState').classList.add('hidden');
+      toast.error(e.message||'Failed to load data');
+    }
+  }
+
+  function renderInvoiceTable(invoices){
+    document.getElementById('invoiceTable').classList.remove('hidden');
+    document.getElementById('flatTable').classList.add('hidden');
+    const tbody=document.getElementById('invoiceTableBody');
+    tbody.innerHTML=invoices.map(inv=>{
+      const chk=selectedIds.has(inv.id)?'checked':'';
+      const pb=payBadge[inv.payment_status]||payBadge.unpaid;
+      const voidCls=inv.is_void?'opacity-50':'';
+      const voidBadge=inv.is_void?'<span class="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-[0.6rem] font-bold bg-neutral-200 text-neutral-500">VOID</span>':'';
+      const itemsSummary=(inv.lines||[]).map(l=>`<span class="inline-flex items-center gap-1 text-xs"><span class="font-semibold text-neutral-800">${l.item_name}</span><span class="text-neutral-400">×${l.quantity}</span></span>`).join(', ');
+      return `<tr class="border-b border-neutral-50 hover:bg-neutral-50/50 transition-colors duration-150 group ${voidCls}">
+        <td class="px-4 py-3"><input type="checkbox" ${chk} onchange="window._go.toggleSel(${inv.id})" class="w-4 h-4 rounded border-neutral-300 text-green-500 focus:ring-green-500/30 cursor-pointer" ${inv.is_void?'disabled':''}/></td>
+        <td class="px-4 py-3 text-sm text-neutral-600">${fmtDate(inv.date_dispatched)}</td>
+        <td class="px-4 py-3"><span class="text-sm font-bold text-green-600">${inv.reference_no}</span>${voidBadge}</td>
+        <td class="px-4 py-3"><div class="text-sm font-semibold text-neutral-900">${inv.customer_name}</div><div class="text-xs text-neutral-400">${inv.customer_contact||''}</div></td>
+        <td class="px-4 py-3 text-xs text-neutral-600 max-w-[200px] truncate">${itemsSummary||'—'}</td>
+        <td class="px-4 py-3 text-sm font-bold text-neutral-900">${fmtMoney(inv.invoice_total)}</td>
+        <td class="px-4 py-3"><span class="inline-flex items-center px-2 py-0.5 rounded-md text-[0.65rem] font-bold border ${pb} capitalize">${inv.payment_status}</span></td>
+        <td class="px-4 py-3 text-sm text-neutral-500">${inv.dispatched_by_name||'—'}</td>
+        <td class="px-4 py-3 text-right"><div class="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+          ${!inv.is_void?`<button onclick="window._go.openEdit(${inv.id})" title="Edit" class="w-8 h-8 flex items-center justify-center rounded-lg text-neutral-400 hover:text-green-600 hover:bg-green-50 transition-all duration-200"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+          <button onclick="window._go.confirmVoid(${inv.id},'${inv.reference_no}')" title="Void" class="w-8 h-8 flex items-center justify-center rounded-lg text-neutral-400 hover:text-red-600 hover:bg-red-50 transition-all duration-200"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>`:''}
+        </div></td>
       </tr>`;
     }).join('');
-
-    document.getElementById('pagStart').textContent=start+1;
-    document.getElementById('pagEnd').textContent=Math.min(start+perPage,total);
-    document.getElementById('pagTotal').textContent=total;
-    const pnEl=document.getElementById('pageNumbers');let pn='';const tp=Math.max(1,Math.ceil(total/perPage));
-    for(let p=1;p<=tp;p++){const c=p===currentPage?'bg-green-500 text-white border-green-500':'bg-white text-neutral-600 border-neutral-200 hover:border-neutral-300';pn+=`<button onclick="window._go.goP(${p})" class="w-8 h-8 flex items-center justify-center rounded-lg border text-xs font-semibold ${c} transition-all duration-200">${p}</button>`;}
-    pnEl.innerHTML=pn;
-    document.getElementById('btnPrev').disabled=currentPage===1;
-    document.getElementById('btnNext').disabled=currentPage>=tp;
-    updateBulk();
   }
-  function updateBulk(){const b=document.getElementById('bulkActions');if(selectedIds.size>0){b.classList.remove('hidden');b.classList.add('flex');document.getElementById('selectedCount').textContent=selectedIds.size;}else{b.classList.add('hidden');b.classList.remove('flex');}document.getElementById('selectAll').checked=getFiltered().length>0&&getFiltered().every(s=>selectedIds.has(s.id));}
 
-  /* ─── Expose ─── */
-  window._go={};
-  window._go.toggleSel=id=>{selectedIds.has(id)?selectedIds.delete(id):selectedIds.add(id);updateBulk();};
-  window.toggleSelectAll=cb=>{const f=getFiltered();if(cb.checked)f.forEach(s=>selectedIds.add(s.id));else f.forEach(s=>selectedIds.delete(s.id));renderTable();};
-  let sT;window.handleSearch=v=>{clearTimeout(sT);sT=setTimeout(()=>{searchQ=v.trim();currentPage=1;renderTable();},300);};
-  window.toggleFilters=()=>{const p=document.getElementById('filterPanel'),t=document.getElementById('filterBtnText');p.classList.contains('hidden')?(p.classList.remove('hidden'),t.textContent='Close'):(p.classList.add('hidden'),t.textContent='Filter');};
-  window.applyFilters=()=>{fCust=document.getElementById('filterCustomer').value;fPay=document.getElementById('filterPayment').value;fDateFrom=document.getElementById('filterDateFrom').value;fDateTo=document.getElementById('filterDateTo').value;currentPage=1;renderTable();};
-  window.clearFilters=()=>{document.getElementById('filterCustomer').value='';document.getElementById('filterPayment').value='';document.getElementById('filterDateFrom').value='';document.getElementById('filterDateTo').value='';fCust='';fPay='';fDateFrom='';fDateTo='';currentPage=1;renderTable();showToast('Filters cleared','info');};
-  window.sortTable=f=>{if(sortField===f)sortOrder=sortOrder==='asc'?'desc':'asc';else{sortField=f;sortOrder='desc';}renderTable();};
-  window._go.goP=p=>{currentPage=p;renderTable();};
-  window.goToPage=d=>{if(d==='prev'&&currentPage>1)currentPage--;else if(d==='next')currentPage++;renderTable();};
+  function renderFlatTable(rows){
+    document.getElementById('invoiceTable').classList.add('hidden');
+    document.getElementById('flatTable').classList.remove('hidden');
+    const tbody=document.getElementById('flatTableBody');
+    tbody.innerHTML=rows.map(r=>{
+      const chk=selectedIds.has(r.id)?'checked':'';
+      const pb=payBadge[r.payment_status]||payBadge.unpaid;
+      const voidCls=r.is_void?'opacity-50':'';
+      return `<tr class="border-b border-neutral-50 hover:bg-neutral-50/50 transition-colors duration-150 group ${voidCls}">
+        <td class="px-4 py-3"><input type="checkbox" ${chk} onchange="window._go.toggleSel(${r.id})" class="w-4 h-4 rounded border-neutral-300 text-green-500 focus:ring-green-500/30 cursor-pointer" ${r.is_void?'disabled':''}/></td>
+        <td class="px-4 py-3 text-sm text-neutral-600">${fmtDate(r.date_dispatched)}</td>
+        <td class="px-4 py-3 text-sm font-bold text-green-600">${r.reference_no}</td>
+        <td class="px-4 py-3"><div class="text-sm font-semibold text-neutral-900">${r.item_name}</div><span class="text-xs text-neutral-400 uppercase">${r.item_unit}</span></td>
+        <td class="px-4 py-3 text-sm text-neutral-600">${r.customer_name}</td>
+        <td class="px-4 py-3 text-sm font-semibold text-neutral-800">${r.quantity}</td>
+        <td class="px-4 py-3 text-sm text-neutral-600">${fmtMoney(r.selling_price)}</td>
+        <td class="px-4 py-3 text-sm font-bold text-neutral-900">${fmtMoney(r.line_total)}</td>
+        <td class="px-4 py-3"><span class="inline-flex items-center px-2 py-0.5 rounded-md text-[0.65rem] font-bold border ${pb} capitalize">${r.payment_status}</span></td>
+        <td class="px-4 py-3 text-right"><div class="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+          ${!r.is_void?`<button onclick="window._go.openEdit(${r.id})" title="Edit" class="w-8 h-8 flex items-center justify-center rounded-lg text-neutral-400 hover:text-green-600 hover:bg-green-50 transition-all duration-200"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>`:''}
+        </div></td>
+      </tr>`;
+    }).join('');
+  }
+
+  /* ─── Expose globals ─── */
+  window._go = {};
+  window._go.toggleSel = function(id){ selectedIds.has(id)?selectedIds.delete(id):selectedIds.add(id); updateBulkBar(); };
+  window._go.goP = function(p){ currentPage=p; loadData(); };
+
+  function updateBulkBar(){
+    const b=document.getElementById('bulkActions');
+    if(selectedIds.size>0){ b.classList.remove('hidden'); b.classList.add('flex'); document.getElementById('selectedCount').textContent=selectedIds.size; }
+    else { b.classList.add('hidden'); b.classList.remove('flex'); }
+  }
+
+  window.toggleSelectAll = function(cb){
+    const checkboxes = document.querySelectorAll('#invoiceTableBody input[type="checkbox"], #flatTableBody input[type="checkbox"]');
+    checkboxes.forEach(c => { if(!c.disabled){ c.checked=cb.checked; const id=parseInt(c.getAttribute('onchange').match(/\d+/)?.[0]); if(id){ cb.checked?selectedIds.add(id):selectedIds.delete(id); } } });
+    updateBulkBar();
+  };
+
+  let sT;
+  window.handleSearch = function(v){ clearTimeout(sT); sT=setTimeout(()=>{ searchQuery=v.trim(); currentPage=1; loadData(); },400); };
+  window.toggleFilters = function(){ const p=document.getElementById('filterPanel'),t=document.getElementById('filterBtnText'); p.classList.contains('hidden')?(p.classList.remove('hidden'),t.textContent='Close'):(p.classList.add('hidden'),t.textContent='Filter'); };
+  window.applyFilters = function(){ currentPage=1; loadData(); };
+  window.clearFilters = function(){
+    document.getElementById('filterCustomer').value=''; document.getElementById('filterPayment').value='';
+    document.getElementById('filterDateFrom').value=''; document.getElementById('filterDateTo').value='';
+    document.getElementById('filterShowVoid').checked=false;
+    currentPage=1; loadData(); toast.info('Filters cleared');
+  };
+  window.sortTable = function(f){ if(sortField===f) sortOrder=sortOrder==='asc'?'desc':'asc'; else { sortField=f; sortOrder='desc'; } currentPage=1; loadData(); };
+  window.goToPage = function(d){ if(d==='prev'&&currentPage>1) currentPage--; else if(d==='next') currentPage++; loadData(); };
+  window.setViewMode = function(m){
+    viewMode=m;
+    document.getElementById('viewBtnInvoice').className = m==='invoice' ? 'px-3 py-2.5 text-xs font-semibold transition-all duration-200 bg-green-500 text-white' : 'px-3 py-2.5 text-xs font-semibold transition-all duration-200 bg-white text-neutral-600 hover:bg-neutral-50';
+    document.getElementById('viewBtnFlat').className = m==='flat' ? 'px-3 py-2.5 text-xs font-semibold transition-all duration-200 bg-green-500 text-white' : 'px-3 py-2.5 text-xs font-semibold transition-all duration-200 bg-white text-neutral-600 hover:bg-neutral-50';
+    currentPage=1; loadData();
+  };
 
   /* ─── Customer Search ─── */
-  window.searchCustomers=val=>{
-    const dd=document.getElementById('custDropdown');if(!val.trim()){dd.classList.add('hidden');return;}
-    const q=val.toLowerCase(),matches=customers.filter(c=>c.name.toLowerCase().includes(q)||c.contact.toLowerCase().includes(q)||c.email.toLowerCase().includes(q)||(c.phone&&c.phone.includes(q))).slice(0,6);
-    if(!matches.length){dd.innerHTML='<div class="px-4 py-3 text-xs text-neutral-400">No customers found</div>';dd.classList.remove('hidden');return;}
-    dd.innerHTML=matches.map(c=>`<button type="button" onclick="window._go.selCust(${c.id})" class="w-full text-left px-4 py-2.5 hover:bg-neutral-50 transition-colors duration-150 border-b border-neutral-50 last:border-0"><div class="text-sm font-semibold text-neutral-800">${c.name}</div><div class="text-xs text-neutral-400">${c.contact} · ${c.email}</div></button>`).join('');
+  window.searchCustomers = function(val){
+    const dd=document.getElementById('custDropdown'); if(!val.trim()){ dd.classList.add('hidden'); return; }
+    const q=val.toLowerCase();
+    const matches=cachedCustomers.filter(c=>c.name.toLowerCase().includes(q)||(c.contact_person||'').toLowerCase().includes(q)||(c.email||'').toLowerCase().includes(q)||(c.phone||'').includes(q)).slice(0,8);
+    if(!matches.length){ dd.innerHTML='<div class="px-4 py-3 text-xs text-neutral-400">No customers found</div>'; dd.classList.remove('hidden'); return; }
+    dd.innerHTML=matches.map(c=>`<button type="button" onclick="window._go.selCust(${c.id})" class="w-full text-left px-4 py-2.5 hover:bg-neutral-50 transition-colors duration-150 border-b border-neutral-50 last:border-0"><div class="text-sm font-semibold text-neutral-800">${c.name}</div><div class="text-xs text-neutral-400">${c.contact_person||''}${c.email?' · '+c.email:''}${c.phone?' · '+c.phone:''}</div></button>`).join('');
     dd.classList.remove('hidden');
   };
-  window.showCustDropdown=()=>{if(document.getElementById('custSearchInput').value.trim())searchCustomers(document.getElementById('custSearchInput').value);};
-  window._go.selCust=id=>{const c=customers.find(x=>x.id===id);if(!c)return;selectedCustId=id;document.getElementById('custSearchInput').value='';document.getElementById('custDropdown').classList.add('hidden');document.getElementById('selectedCustChip').classList.remove('hidden');document.getElementById('selectedCustName').textContent=c.name;document.getElementById('selectedCustMeta').textContent=`· ${c.contact}`;};
-  window.clearSelectedCust=()=>{selectedCustId=null;document.getElementById('selectedCustChip').classList.add('hidden');document.getElementById('custSearchInput').value='';};
-
-  /* ─── Line Items ─── */
-  window.addLineItem=()=>{lineItems.push({uid:++lineUid,itemId:null,itemName:'',unit:'',qty:1,price:0,discount:0,stock:0});renderLineItems();};
-
-  function renderLineItems(){
-    const c=document.getElementById('lineItemsContainer');
-    if(!lineItems.length){c.innerHTML='<div class="text-center py-8 border-2 border-dashed border-neutral-200 rounded-xl"><p class="text-xs text-neutral-400 mb-2">No items added yet</p><button type="button" onclick="addLineItem()" class="text-xs font-semibold text-green-600 hover:text-green-700">+ Add first item</button></div>';recalcTotals();return;}
-    c.innerHTML=lineItems.map((li,idx)=>{
-      const hasItem=!!li.itemId;
-      const stockWarn=hasItem&&li.qty>li.stock?`<span class="text-[0.6rem] font-bold text-red-500">Only ${li.stock} in stock</span>`:'';
-      const lineTotal=(li.qty*li.price)-(li.qty*(li.discount||0));
-      return `<div class="bg-white border border-neutral-200 rounded-xl p-4 relative group" data-uid="${li.uid}">
-        <button type="button" onclick="window._go.removeLine(${li.uid})" class="absolute top-3 right-3 w-7 h-7 flex items-center justify-center rounded-lg text-neutral-300 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all duration-200" title="Remove"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
-
-        <!-- Item search within line -->
-        <div class="mb-3">
-          ${hasItem
-            ?`<div class="flex items-center justify-between"><div class="flex items-center gap-2"><span class="text-sm font-semibold text-neutral-900">${li.itemName}</span><span class="text-[0.65rem] font-bold text-neutral-400 uppercase bg-neutral-100 px-1.5 py-0.5 rounded">${li.unit}</span></div><button type="button" onclick="window._go.clearLineItem(${li.uid})" class="text-xs text-neutral-400 hover:text-red-500 transition-colors">Change</button></div>${stockWarn}`
-            :`<div class="relative" id="lineSearch_${li.uid}">
-                <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-400 pointer-events-none z-10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                <input type="text" placeholder="Search item by name…" autocomplete="off" oninput="window._go.searchLineItem(${li.uid},this.value)" onfocus="window._go.searchLineItem(${li.uid},this.value)"
-                       class="w-full pl-9 pr-4 py-2 text-sm border border-neutral-200 rounded-lg bg-neutral-50/50 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200"/>
-                <div id="lineDd_${li.uid}" class="hidden absolute left-0 right-0 top-full mt-1 bg-white border border-neutral-200 rounded-xl shadow-lg z-30 max-h-44 overflow-y-auto"></div>
-              </div>`}
-        </div>
-
-        <!-- Qty / Price / Discount row -->
-        <div class="grid grid-cols-4 gap-3">
-          <div>
-            <label class="block text-[0.65rem] font-semibold text-neutral-400 mb-1">Qty</label>
-            <input type="number" min="0.01" step="any" value="${li.qty}" onchange="window._go.updateLine(${li.uid},'qty',this.value)"
-                   class="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200 ${hasItem&&li.qty>li.stock?'border-red-300':''}"/>
-          </div>
-          <div>
-            <label class="block text-[0.65rem] font-semibold text-neutral-400 mb-1">Price/Unit</label>
-            <div class="relative"><span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-neutral-400">$</span>
-              <input type="number" min="0" step="0.01" value="${li.price.toFixed(2)}" onchange="window._go.updateLine(${li.uid},'price',this.value)"
-                     class="w-full pl-7 pr-3 py-2 text-sm border border-neutral-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200"/>
-            </div>
-          </div>
-          <div>
-            <label class="block text-[0.65rem] font-semibold text-neutral-400 mb-1">Disc/Unit</label>
-            <div class="relative"><span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-neutral-400">$</span>
-              <input type="number" min="0" step="0.01" value="${(li.discount||0).toFixed(2)}" onchange="window._go.updateLine(${li.uid},'discount',this.value)"
-                     class="w-full pl-7 pr-3 py-2 text-sm border border-neutral-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200"/>
-            </div>
-          </div>
-          <div>
-            <label class="block text-[0.65rem] font-semibold text-neutral-400 mb-1">Total</label>
-            <div class="px-3 py-2 text-sm font-bold text-neutral-900 bg-neutral-50 rounded-lg border border-neutral-100">${fmtM(lineTotal>0?lineTotal:0)}</div>
-          </div>
-        </div>
-      </div>`;
-    }).join('');
-    recalcTotals();
-  }
-
-  // Item search inside line items
-  window._go.searchLineItem=(uid,val)=>{
-    const dd=document.getElementById('lineDd_'+uid);if(!val||!val.trim()){dd.classList.add('hidden');return;}
-    const q=val.toLowerCase(),usedIds=lineItems.filter(l=>l.itemId).map(l=>l.itemId);
-    const matches=items.filter(i=>i.name.toLowerCase().includes(q)&&!usedIds.includes(i.id)).slice(0,6);
-    if(!matches.length){dd.innerHTML='<div class="px-4 py-3 text-xs text-neutral-400">No items found</div>';dd.classList.remove('hidden');return;}
-    dd.innerHTML=matches.map(i=>{
-      const sc=i.stock===0?'text-red-500':i.stock<=20?'text-amber-500':'text-neutral-400';
-      return `<button type="button" onclick="window._go.pickLineItem(${uid},${i.id})" class="w-full text-left px-4 py-2.5 hover:bg-neutral-50 transition-colors duration-150 flex items-center justify-between border-b border-neutral-50 last:border-0"><div><div class="text-sm font-semibold text-neutral-800">${i.name}</div><div class="text-xs text-neutral-400">${i.unit.toUpperCase()} · ${fmtM(i.price)}/unit</div></div><span class="text-xs font-semibold ${sc} shrink-0">${i.stock} avail</span></button>`;
-    }).join('');dd.classList.remove('hidden');
+  window.showCustDropdown = function(){ if(document.getElementById('custSearchInput').value.trim()) searchCustomers(document.getElementById('custSearchInput').value); };
+  window._go.selCust = function(id){
+    const c=cachedCustomers.find(x=>x.id===id); if(!c) return;
+    selectedCustId=id;
+    document.getElementById('custSearchInput').value='';
+    document.getElementById('custDropdown').classList.add('hidden');
+    document.getElementById('selectedCustChip').classList.remove('hidden');
+    document.getElementById('selectedCustName').textContent=c.name;
+    document.getElementById('selectedCustMeta').textContent=c.contact_person?'· '+c.contact_person:'';
+    document.getElementById('customerError').classList.add('hidden');
   };
+  window.clearSelectedCust = function(){ selectedCustId=null; document.getElementById('selectedCustChip').classList.add('hidden'); document.getElementById('custSearchInput').value=''; };
 
-  window._go.pickLineItem=(uid,itemId)=>{
-    const li=lineItems.find(l=>l.uid===uid),it=items.find(i=>i.id===itemId);if(!li||!it)return;
-    li.itemId=it.id;li.itemName=it.name;li.unit=it.unit;li.price=it.price;li.stock=it.stock;li.qty=1;li.discount=0;
-    renderLineItems();
-  };
-  window._go.clearLineItem=uid=>{const li=lineItems.find(l=>l.uid===uid);if(li){li.itemId=null;li.itemName='';li.unit='';li.price=0;li.stock=0;li.qty=1;li.discount=0;}renderLineItems();};
-  window._go.removeLine=uid=>{lineItems=lineItems.filter(l=>l.uid!==uid);renderLineItems();};
-  window._go.updateLine=(uid,field,val)=>{const li=lineItems.find(l=>l.uid===uid);if(!li)return;li[field]=parseFloat(val)||0;renderLineItems();};
-
-  function recalcTotals(){
-    let sub=0,disc=0;
-    lineItems.forEach(li=>{if(li.itemId){sub+=li.qty*li.price;disc+=li.qty*(li.discount||0);}});
-    document.getElementById('subtotalValue').textContent=fmtM(sub);
-    document.getElementById('discountValue').textContent='-'+fmtM(disc);
-    document.getElementById('grandTotalValue').textContent=fmtM(Math.max(0,sub-disc));
-  }
-
-  // Close dropdowns on outside click
-  document.addEventListener('click',e=>{
-    if(!document.getElementById('custSearchWrap').contains(e.target))document.getElementById('custDropdown').classList.add('hidden');
-    lineItems.forEach(li=>{const wrap=document.getElementById('lineSearch_'+li.uid);const dd=document.getElementById('lineDd_'+li.uid);if(wrap&&dd&&!wrap.contains(e.target))dd.classList.add('hidden');});
+  document.addEventListener('click', e => {
+    if(!document.getElementById('custSearchWrap').contains(e.target)) document.getElementById('custDropdown').classList.add('hidden');
+    document.querySelectorAll('.line-item-dropdown').forEach(dd => { if(!dd.parentElement.contains(e.target)) dd.classList.add('hidden'); });
   });
 
-  /* ─── Payment Status ─── */
-  const psColors={paid:['text-green-700','border-green-300','bg-green-50'],partial:['text-amber-700','border-amber-300','bg-amber-50'],unpaid:['text-red-700','border-red-300','bg-red-50']};
-  const psOff=['text-neutral-500','border-neutral-200','bg-white'];
-  window.setPayStatus=val=>{payStatus=val;document.querySelectorAll('.ps-btn').forEach(b=>{b.classList.remove(...psColors.paid,...psColors.partial,...psColors.unpaid,...psOff,'hover:bg-neutral-50');if(b.dataset.val===val)b.classList.add(...psColors[val]);else b.classList.add(...psOff,'hover:bg-neutral-50');});};
-
-  /* ─── Open / Close ─── */
-  window.openSaleForm=()=>{
-    document.getElementById('saleForm').reset();document.getElementById('editSaleId').value='';
-    selectedCustId=null;payStatus='paid';lineItems=[];lineUid=0;
-    document.getElementById('selectedCustChip').classList.add('hidden');
+  /* ─── Line Items ─── */
+  window.addLineItem = function(data=null){
+    lineItemCounter++;
+    const idx=lineItemCounter;
+    const container=document.getElementById('lineItemsContainer');
+    const itemName=data?(cachedItems.find(i=>i.id==data.item_id)?.name||''):'';
+    const div=document.createElement('div');
+    div.id=`line-${idx}`;
+    div.className='bg-neutral-50 border border-neutral-200 rounded-xl p-4 relative group/line';
+    div.innerHTML=`
+      <button type="button" onclick="removeLine(${idx})" class="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover/line:opacity-100 transition-opacity duration-200 shadow-sm hover:bg-red-600">
+        <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+      <div class="grid grid-cols-12 gap-3">
+        <div class="col-span-12 sm:col-span-4">
+          <label class="block text-[0.65rem] font-semibold text-neutral-500 mb-1">Item <span class="text-red-400">*</span></label>
+          <div class="relative">
+            <input type="text" id="lineItem-${idx}" placeholder="Search item…" autocomplete="off" value="${itemName}"
+                   oninput="searchLineItem(${idx}, this.value)" onfocus="searchLineItem(${idx}, this.value)"
+                   class="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg bg-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200"/>
+            <input type="hidden" id="lineItemId-${idx}" value="${data?.item_id||''}"/>
+            <div id="lineItemDD-${idx}" class="line-item-dropdown hidden absolute left-0 right-0 top-full mt-1 bg-white border border-neutral-200 rounded-xl shadow-lg z-30 max-h-44 overflow-y-auto"></div>
+          </div>
+        </div>
+        <div class="col-span-4 sm:col-span-2">
+          <label class="block text-[0.65rem] font-semibold text-neutral-500 mb-1">Qty <span class="text-red-400">*</span></label>
+          <input type="number" id="lineQty-${idx}" min="0.01" step="any" placeholder="0" value="${data?.quantity||''}" oninput="calcLineTotal(${idx})"
+                 class="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg bg-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200"/>
+        </div>
+        <div class="col-span-4 sm:col-span-2">
+          <label class="block text-[0.65rem] font-semibold text-neutral-500 mb-1">Price/Unit</label>
+          <input type="number" id="lineSell-${idx}" min="0" step="0.01" placeholder="0.00" value="${data?.selling_price||''}" oninput="calcLineTotal(${idx})"
+                 class="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg bg-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200"/>
+        </div>
+        <div class="col-span-6 sm:col-span-3">
+          <label class="block text-[0.65rem] font-semibold text-neutral-500 mb-1">Discount</label>
+          <div class="flex gap-1">
+            <select id="lineDiscType-${idx}" onchange="calcLineTotal(${idx})" class="w-16 px-1 py-2 text-[0.65rem] border border-neutral-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200">
+              <option value="fixed" ${data?.discount_type==='fixed'||!data?'selected':''}>$</option>
+              <option value="percentage" ${data?.discount_type==='percentage'?'selected':''}>%</option>
+            </select>
+            <input type="number" id="lineDiscAmt-${idx}" min="0" step="0.01" placeholder="0" value="${data?.discount_amount||'0'}" oninput="calcLineTotal(${idx})"
+                   class="flex-1 px-2 py-2 text-sm border border-neutral-200 rounded-lg bg-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200"/>
+          </div>
+        </div>
+        <div class="col-span-6 sm:col-span-1 flex items-end">
+          <div class="text-sm font-bold text-neutral-900 pb-2" id="lineTotal-${idx}">$0.00</div>
+        </div>
+      </div>`;
+    container.appendChild(div);
     document.getElementById('lineItemsError').classList.add('hidden');
+    if(data) calcLineTotal(idx);
+  };
+
+  window.removeLine = function(idx){ const el=document.getElementById(`line-${idx}`); if(el) el.remove(); recalcTotals(); };
+
+  window.searchLineItem = function(idx, val){
+    const dd=document.getElementById(`lineItemDD-${idx}`);
+    if(!val.trim()){ dd.classList.add('hidden'); return; }
+    const q=val.toLowerCase();
+    const matches=cachedItems.filter(i=>i.name.toLowerCase().includes(q)).slice(0,8);
+    if(!matches.length){ dd.innerHTML='<div class="px-3 py-2 text-xs text-neutral-400">No items found</div>'; dd.classList.remove('hidden'); return; }
+    dd.innerHTML=matches.map(i=>{
+      const stockN=parseFloat(i.stock)||0;
+      const stockCls=stockN===0?'text-red-500':stockN<=20?'text-amber-500':'text-neutral-400';
+      return `<button type="button" onclick="window._go.selectLineItem(${idx},${i.id})" class="w-full text-left px-3 py-2 hover:bg-neutral-50 transition-colors duration-150 flex items-center justify-between gap-2 border-b border-neutral-50 last:border-0">
+        <div><div class="text-xs font-semibold text-neutral-800">${i.name}</div><div class="text-[0.65rem] text-neutral-400">${i.unit.toUpperCase()} · $${parseFloat(i.selling_price).toFixed(2)}</div></div>
+        <span class="text-[0.65rem] font-semibold ${stockCls} shrink-0">${i.stock} in stock</span>
+      </button>`;
+    }).join('');
+    dd.classList.remove('hidden');
+  };
+
+  window._go.selectLineItem = function(idx, id){
+    const it=cachedItems.find(i=>i.id===id); if(!it) return;
+    document.getElementById(`lineItem-${idx}`).value=it.name;
+    document.getElementById(`lineItemId-${idx}`).value=it.id;
+    document.getElementById(`lineItemDD-${idx}`).classList.add('hidden');
+    const sellEl=document.getElementById(`lineSell-${idx}`);
+    if(!sellEl.value) sellEl.value=parseFloat(it.selling_price).toFixed(2);
+    calcLineTotal(idx);
+  };
+
+  window.calcLineTotal = function(idx){
+    const q=parseFloat(document.getElementById(`lineQty-${idx}`)?.value)||0;
+    const p=parseFloat(document.getElementById(`lineSell-${idx}`)?.value)||0;
+    const gross=q*p;
+    const dType=document.getElementById(`lineDiscType-${idx}`)?.value||'fixed';
+    const dAmt=parseFloat(document.getElementById(`lineDiscAmt-${idx}`)?.value)||0;
+    const discVal=dType==='percentage'?gross*(dAmt/100):dAmt;
+    const lineT=Math.max(0,gross-discVal);
+    const el=document.getElementById(`lineTotal-${idx}`);
+    if(el) el.textContent=fmtMoney(lineT);
+    recalcTotals();
+  };
+
+  window.recalcTotals = function(){
+    let subtotal=0;
+    document.querySelectorAll('[id^="lineTotal-"]').forEach(el=>{
+      subtotal+=parseFloat(el.textContent.replace(/[$,]/g,''))||0;
+    });
+    document.getElementById('subtotalValue').textContent=fmtMoney(subtotal);
+    const invDT=document.getElementById('invDiscType').value;
+    const invDA=parseFloat(document.getElementById('invDiscAmount').value)||0;
+    const invDiscVal=invDT==='percentage'?subtotal*(invDA/100):invDA;
+    document.getElementById('invDiscValue').textContent='-'+fmtMoney(invDiscVal);
+    document.getElementById('grandTotalValue').textContent=fmtMoney(Math.max(0,subtotal-invDiscVal));
+  };
+
+  function getLineItems(){
+    const lines=[];
+    document.querySelectorAll('#lineItemsContainer > div').forEach(div=>{
+      const idx=div.id.replace('line-','');
+      const item_id=document.getElementById(`lineItemId-${idx}`)?.value;
+      const qty=document.getElementById(`lineQty-${idx}`)?.value;
+      const sell=document.getElementById(`lineSell-${idx}`)?.value;
+      const dType=document.getElementById(`lineDiscType-${idx}`)?.value||'fixed';
+      const dAmt=document.getElementById(`lineDiscAmt-${idx}`)?.value||'0';
+      if(item_id) lines.push({ item_id:parseInt(item_id), quantity:qty, selling_price:sell, discount_type:dType, discount_amount:dAmt });
+    });
+    return lines;
+  }
+
+  /* ─── Open/Close Form ─── */
+  window.openSaleForm = function(){
+    document.getElementById('saleForm').reset();
+    document.getElementById('editSaleId').value='';
+    selectedCustId=null; lineItemCounter=0;
+    document.getElementById('selectedCustChip').classList.add('hidden');
+    document.getElementById('customerError').classList.add('hidden');
+    document.getElementById('lineItemsError').classList.add('hidden');
+    document.getElementById('lineItemsContainer').innerHTML='';
+    document.getElementById('invDiscType').value='fixed';
+    document.getElementById('invDiscAmount').value='0';
+    document.getElementById('subtotalValue').textContent='$0.00';
+    document.getElementById('invDiscValue').textContent='-$0.00';
+    document.getElementById('grandTotalValue').textContent='$0.00';
     document.getElementById('formTitle').textContent='New Sale';
     document.getElementById('submitBtnText').innerHTML='Confirm &amp; Dispatch';
     document.getElementById('goDate').value=new Date().toISOString().slice(0,10);
-    setPayStatus('paid');addLineItem();
-    const bd=document.getElementById('formBackdrop'),pn=document.getElementById('formPanel');
-    bd.classList.remove('opacity-0','pointer-events-none');bd.classList.add('opacity-100','pointer-events-auto');
-    pn.classList.remove('translate-x-full');pn.classList.add('translate-x-0');document.body.style.overflow='hidden';
+    addLineItem();
+    const bd=document.getElementById('formBackdrop'), pn=document.getElementById('formPanel');
+    bd.classList.remove('opacity-0','pointer-events-none'); bd.classList.add('opacity-100','pointer-events-auto');
+    pn.classList.remove('translate-x-full'); pn.classList.add('translate-x-0');
+    document.body.style.overflow='hidden';
   };
-  window._go.openEdit=id=>{
-    const s=sales.find(x=>x.id===id);if(!s)return;openSaleForm();
-    document.getElementById('editSaleId').value=s.id;
-    document.getElementById('formTitle').textContent='Edit Sale — '+s.saleNo;
-    document.getElementById('submitBtnText').innerHTML='Update &amp; Adjust Stock';
-    if(s.custId)window._go.selCust(s.custId);
-    lineItems=[];lineUid=0;
-    s.items.forEach(li=>{const it=getItem(li.itemId);lineItems.push({uid:++lineUid,itemId:li.itemId,itemName:it?it.name:'',unit:it?it.unit:'',qty:li.qty,price:li.price,discount:li.discount||0,stock:it?it.stock:0});});
-    renderLineItems();
-    document.getElementById('goDate').value=s.date;
-    document.getElementById('goDispatchedBy').value=s.dispatchedBy||'';
-    document.getElementById('goPayMethod').value=s.payMethod||'';
-    document.getElementById('goNotes').value=s.notes||'';
-    setPayStatus(s.payStatus);
-  };
-  window.closeSaleForm=()=>{const bd=document.getElementById('formBackdrop'),pn=document.getElementById('formPanel');pn.classList.remove('translate-x-0');pn.classList.add('translate-x-full');bd.classList.remove('opacity-100','pointer-events-auto');bd.classList.add('opacity-0','pointer-events-none');document.body.style.overflow='';};
 
-  /* ─── Submit ─── */
-  window.handleFormSubmit=e=>{
-    e.preventDefault();
-    const validLines=lineItems.filter(l=>l.itemId&&l.qty>0);
-    if(!validLines.length){document.getElementById('lineItemsError').classList.remove('hidden');return;}
-    document.getElementById('lineItemsError').classList.add('hidden');
-    // Check stock
-    const overstock=validLines.find(l=>l.qty>l.stock);
-    if(overstock&&!document.getElementById('editSaleId').value){showToast(`Not enough stock for "${overstock.itemName}" (${overstock.stock} available)`,'error');return;}
-
-    document.getElementById('submitBtnText').textContent='Processing…';document.getElementById('submitSpinner').classList.remove('hidden');document.getElementById('submitBtn').disabled=true;
-
-    setTimeout(()=>{
-      const editId=parseInt(document.getElementById('editSaleId').value);
-      const saleData={
-        custId:selectedCustId,
-        items:validLines.map(l=>({itemId:l.itemId,qty:l.qty,price:l.price,discount:l.discount||0})),
-        payStatus,payMethod:document.getElementById('goPayMethod').value||null,
-        dispatchedBy:document.getElementById('goDispatchedBy').value.trim(),
-        notes:document.getElementById('goNotes').value.trim(),
-        date:document.getElementById('goDate').value||new Date().toISOString().slice(0,10),
-      };
-      if(editId){
-        const idx=sales.findIndex(s=>s.id===editId);if(idx!==-1){
-          // Restore old stock
-          sales[idx].items.forEach(li=>{const it=getItem(li.itemId);if(it)it.stock+=li.qty;});
-          // Deduct new
-          saleData.items.forEach(li=>{const it=getItem(li.itemId);if(it)it.stock-=li.qty;});
-          sales[idx]={...sales[idx],...saleData};
-        }
-        showToast('Sale updated — stock adjusted','success');
-      }else{
-        saleData.id=nextSaleId++;saleData.saleNo='SO-'+String(nextSaleNo++).padStart(3,'0');
-        saleData.items.forEach(li=>{const it=getItem(li.itemId);if(it)it.stock-=li.qty;});
-        sales.unshift(saleData);
-        const totalQty=saleData.items.reduce((s,l)=>s+l.qty,0);
-        showToast(`${totalQty} units dispatched — stock updated`,'success');
+  window._go.openEdit = async function(id){
+    try {
+      const data=await api(`/api/goodsout/detail/${id}/`);
+      const inv=data.invoice;
+      openSaleForm();
+      document.getElementById('editSaleId').value=inv.id;
+      document.getElementById('formTitle').textContent=`Edit ${inv.reference_no}`;
+      document.getElementById('submitBtnText').innerHTML='Update &amp; Adjust Stock';
+      if(inv.customer_id){
+        selectedCustId=inv.customer_id;
+        document.getElementById('selectedCustChip').classList.remove('hidden');
+        document.getElementById('selectedCustName').textContent=inv.customer_name;
+        document.getElementById('selectedCustMeta').textContent=inv.customer_contact?'· '+inv.customer_contact:'';
       }
-      document.getElementById('submitSpinner').classList.add('hidden');document.getElementById('submitBtn').disabled=false;
-      refreshStats();closeSaleForm();renderTable();
-    },700);
+      document.getElementById('goDate').value=inv.date_dispatched;
+      document.getElementById('goDispatchedBy').value=inv.dispatched_by_id||'';
+      document.getElementById('goNotes').value=inv.notes||'';
+      document.getElementById('invDiscType').value=inv.discount_type||'fixed';
+      document.getElementById('invDiscAmount').value=parseFloat(inv.discount_amount)||0;
+      document.getElementById('lineItemsContainer').innerHTML='';
+      lineItemCounter=0;
+      (inv.lines||[]).forEach(l=>addLineItem(l));
+      recalcTotals();
+    } catch(e){ toast.error(e.message||'Failed to load sale'); }
   };
 
-  /* ─── Stats ─── */
-  function refreshStats(){
-    const today=new Date().toISOString().slice(0,10),ts=sales.filter(s=>s.date===today);
-    document.getElementById('statToday').textContent=ts.length;
-    document.getElementById('statUnits').textContent=ts.reduce((a,s)=>a+s.items.reduce((b,l)=>b+l.qty,0),0);
-    document.getElementById('statRevenue').textContent=fmtM(ts.reduce((a,s)=>a+calcSaleTotal(s).total,0));
-    document.getElementById('statUnpaid').textContent=sales.filter(s=>s.payStatus==='unpaid').length;
-  }
+  window.closeSaleForm = function(){
+    const bd=document.getElementById('formBackdrop'), pn=document.getElementById('formPanel');
+    pn.classList.remove('translate-x-0'); pn.classList.add('translate-x-full');
+    bd.classList.remove('opacity-100','pointer-events-auto'); bd.classList.add('opacity-0','pointer-events-none');
+    document.body.style.overflow='';
+  };
 
-  /* ─── Delete ─── */
-  window._go.confirmDel=id=>{deleteTargetId=id;isBulkDelete=false;const s=sales.find(x=>x.id===id);document.getElementById('deleteTitle').textContent='Delete Sale'+(s?' — '+s.saleNo:'')+'?';document.getElementById('deleteMsg').textContent='All dispatched quantities will be returned to stock.';openDelDialog();};
-  window.confirmBulkDelete=()=>{isBulkDelete=true;document.getElementById('deleteTitle').textContent=`Delete ${selectedIds.size} sales?`;document.getElementById('deleteMsg').textContent='All stock from these sales will be restored.';openDelDialog();};
-  function openDelDialog(){const bd=document.getElementById('deleteBackdrop'),dg=document.getElementById('deleteDialog');bd.classList.remove('opacity-0','pointer-events-none');bd.classList.add('opacity-100','pointer-events-auto');setTimeout(()=>{dg.classList.remove('scale-95','opacity-0');dg.classList.add('scale-100','opacity-100');},50);}
-  window.closeDeleteDialog=()=>{const bd=document.getElementById('deleteBackdrop'),dg=document.getElementById('deleteDialog');dg.classList.remove('scale-100','opacity-100');dg.classList.add('scale-95','opacity-0');setTimeout(()=>{bd.classList.remove('opacity-100','pointer-events-auto');bd.classList.add('opacity-0','pointer-events-none');},200);};
-  window.executeDelete=()=>{
-    if(isBulkDelete){selectedIds.forEach(id=>{const s=sales.find(x=>x.id===id);if(s)s.items.forEach(li=>{const it=getItem(li.itemId);if(it)it.stock+=li.qty;});});const c=selectedIds.size;sales=sales.filter(s=>!selectedIds.has(s.id));selectedIds.clear();showToast(`${c} sales deleted — stock restored`,'success');}
-    else if(deleteTargetId){const s=sales.find(x=>x.id===deleteTargetId);if(s)s.items.forEach(li=>{const it=getItem(li.itemId);if(it)it.stock+=li.qty;});sales=sales.filter(x=>x.id!==deleteTargetId);selectedIds.delete(deleteTargetId);showToast(`Sale deleted — stock restored`,'success');}
-    deleteTargetId=null;refreshStats();closeDeleteDialog();renderTable();
+  /* ─── Form Submit ─── */
+  window.handleFormSubmit = async function(e){
+    e.preventDefault();
+    let hasErr=false;
+    if(!selectedCustId){ document.getElementById('customerError').classList.remove('hidden'); hasErr=true; } else { document.getElementById('customerError').classList.add('hidden'); }
+    const lines=getLineItems();
+    if(!lines.length){ document.getElementById('lineItemsError').classList.remove('hidden'); hasErr=true; } else { document.getElementById('lineItemsError').classList.add('hidden'); }
+    for(const l of lines){
+      if(!l.quantity||parseFloat(l.quantity)<=0){ toast.error('Each item needs a quantity > 0'); return; }
+    }
+    if(hasErr) return;
+
+    document.getElementById('submitBtnText').textContent='Processing…';
+    document.getElementById('submitSpinner').classList.remove('hidden');
+    document.getElementById('submitBtn').disabled=true;
+
+    const editId=document.getElementById('editSaleId').value;
+    const payload={
+      customer_id:selectedCustId,
+      date_dispatched:document.getElementById('goDate').value||new Date().toISOString().slice(0,10),
+      dispatched_by_id:document.getElementById('goDispatchedBy').value||null,
+      notes:document.getElementById('goNotes').value.trim(),
+      discount_type:document.getElementById('invDiscType').value,
+      discount_amount:document.getElementById('invDiscAmount').value||'0',
+      lines:lines,
+    };
+
+    try {
+      const url=editId?`/api/goodsout/update/${editId}/`:'/api/goodsout/create/';
+      const data=await api(url, { method:'POST', body:JSON.stringify(payload) });
+      toast.success(data.message);
+      closeSaleForm(); loadData();
+    } catch(e){ toast.error(e.message||'Failed to save sale'); }
+    finally {
+      document.getElementById('submitSpinner').classList.add('hidden');
+      document.getElementById('submitBtn').disabled=false;
+      document.getElementById('submitBtnText').innerHTML='Confirm &amp; Dispatch';
+    }
+  };
+
+  /* ─── Void dialog ─── */
+  window._go.confirmVoid = function(id, ref){
+    voidTargetId=id; isBulkVoid=false;
+    document.getElementById('voidTitle').textContent=`Void ${ref}?`;
+    document.getElementById('voidMsg').textContent='Stock will be restored for all items in this sale.';
+    document.getElementById('voidReasonSelect').value='';
+    document.getElementById('voidReasonCustom').classList.add('hidden'); document.getElementById('voidReasonCustom').value='';
+    document.getElementById('voidReasonError').classList.add('hidden');
+    openVoidDialog();
+  };
+  window.confirmBulkVoid = function(){
+    isBulkVoid=true;
+    document.getElementById('voidTitle').textContent=`Void ${selectedIds.size} sale(s)?`;
+    document.getElementById('voidMsg').textContent='Stock will be restored for all items in these sales.';
+    document.getElementById('voidReasonSelect').value='';
+    document.getElementById('voidReasonCustom').classList.add('hidden'); document.getElementById('voidReasonCustom').value='';
+    document.getElementById('voidReasonError').classList.add('hidden');
+    openVoidDialog();
+  };
+  window.toggleVoidCustom = function(){ document.getElementById('voidReasonSelect').value==='custom'?document.getElementById('voidReasonCustom').classList.remove('hidden'):document.getElementById('voidReasonCustom').classList.add('hidden'); };
+
+  function openVoidDialog(){
+    const bd=document.getElementById('voidBackdrop'), dg=document.getElementById('voidDialog');
+    bd.classList.remove('opacity-0','pointer-events-none'); bd.classList.add('opacity-100','pointer-events-auto');
+    setTimeout(()=>{ dg.classList.remove('scale-95','opacity-0'); dg.classList.add('scale-100','opacity-100'); },50);
+  }
+  window.closeVoidDialog = function(){
+    const bd=document.getElementById('voidBackdrop'), dg=document.getElementById('voidDialog');
+    dg.classList.remove('scale-100','opacity-100'); dg.classList.add('scale-95','opacity-0');
+    setTimeout(()=>{ bd.classList.remove('opacity-100','pointer-events-auto'); bd.classList.add('opacity-0','pointer-events-none'); },200);
+  };
+  window.executeVoid = async function(){
+    let reason=document.getElementById('voidReasonSelect').value;
+    if(reason==='custom') reason=document.getElementById('voidReasonCustom').value.trim();
+    if(!reason){ document.getElementById('voidReasonError').classList.remove('hidden'); return; }
+    try {
+      if(isBulkVoid){
+        const data=await api('/api/goodsout/bulk-void/', { method:'POST', body:JSON.stringify({ ids:[...selectedIds], void_reason:reason }) });
+        toast.success(data.message); selectedIds.clear();
+      } else {
+        const data=await api(`/api/goodsout/void/${voidTargetId}/`, { method:'POST', body:JSON.stringify({ void_reason:reason }) });
+        toast.success(data.message);
+      }
+      closeVoidDialog(); updateBulkBar(); loadData();
+    } catch(e){ toast.error(e.message||'Failed to void'); }
   };
 
   /* ─── Keyboard ─── */
-  document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeSaleForm();closeDeleteDialog();}});
-
-  /* ─── Toast ─── */
-  window.showToast=(msg,type)=>{
-    const t=document.getElementById('feedbackToast'),ic=document.getElementById('toastIcon'),tx=document.getElementById('toastText');
-    t.className='fixed bottom-6 left-1/2 -translate-x-1/2 z-[90] flex items-center gap-3 px-5 py-3 rounded-xl shadow-lg border text-sm font-semibold pointer-events-none transition-all duration-300';
-    if(type==='success'){t.classList.add('bg-green-50','border-green-200','text-green-700');ic.innerHTML='<polyline points="20 6 9 17 4 12"/>';}
-    else if(type==='error'){t.classList.add('bg-red-50','border-red-200','text-red-700');ic.innerHTML='<circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>';}
-    else{t.classList.add('bg-neutral-50','border-neutral-200','text-neutral-700');ic.innerHTML='<circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>';}
-    tx.textContent=msg;requestAnimationFrame(()=>{t.classList.remove('opacity-0','translate-y-4');t.classList.add('opacity-100','translate-y-0');});
-    setTimeout(()=>{t.classList.remove('opacity-100','translate-y-0');t.classList.add('opacity-0','translate-y-4');},2800);
-  };
+  document.addEventListener('keydown', e=>{ if(e.key==='Escape'){ closeSaleForm(); closeVoidDialog(); } });
 
   /* ─── Init ─── */
-  renderTable();refreshStats();
+  loadHelpers().then(()=>loadData());
+
 })();
 </script>
 

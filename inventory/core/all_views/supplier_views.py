@@ -210,7 +210,6 @@ def supplier_create_api(request):
         phone=(data.get("phone") or "").strip(),
         email=(data.get("email") or "").strip(),
         address=(data.get("address") or "").strip(),
-        description=(data.get("description") or "").strip(),
         notes=(data.get("notes") or "").strip(),
         status=data.get("status", "active") if data.get("status") in ("active", "inactive") else "active",
     )
