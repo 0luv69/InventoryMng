@@ -32,19 +32,19 @@
 <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
   <div class="bg-white border border-neutral-100 rounded-2xl px-5 py-4 transition-all duration-300 hover:shadow-[0_2px_12px_rgba(0,0,0,0.04)]">
     <div class="text-[0.65rem] font-semibold text-neutral-400 uppercase tracking-wide mb-1">Total Suppliers</div>
-    <div class="text-xl font-extrabold text-neutral-900 tracking-tight" id="statTotalSuppliers">36</div>
+    <div class="text-xl font-extrabold text-neutral-900 tracking-tight" id="statTotalSuppliers">0</div>
   </div>
   <div class="bg-white border border-neutral-100 rounded-2xl px-5 py-4 transition-all duration-300 hover:shadow-[0_2px_12px_rgba(0,0,0,0.04)]">
     <div class="text-[0.65rem] font-semibold text-neutral-400 uppercase tracking-wide mb-1">Active</div>
-    <div class="text-xl font-extrabold text-green-600 tracking-tight" id="statActive">31</div>
+    <div class="text-xl font-extrabold text-green-600 tracking-tight" id="statActive">0</div>
   </div>
   <div class="bg-white border border-neutral-100 rounded-2xl px-5 py-4 transition-all duration-300 hover:shadow-[0_2px_12px_rgba(0,0,0,0.04)]">
     <div class="text-[0.65rem] font-semibold text-neutral-400 uppercase tracking-wide mb-1">Outstanding Payable</div>
-    <div class="text-xl font-extrabold text-amber-600 tracking-tight">$12,480</div>
+    <div class="text-xl font-extrabold text-amber-600 tracking-tight" id="statPayable">$0.00</div>
   </div>
   <div class="bg-white border border-neutral-100 rounded-2xl px-5 py-4 transition-all duration-300 hover:shadow-[0_2px_12px_rgba(0,0,0,0.04)]">
-    <div class="text-[0.65rem] font-semibold text-neutral-400 uppercase tracking-wide mb-1">Added This Month</div>
-    <div class="text-xl font-extrabold text-neutral-900 tracking-tight">4</div>
+    <div class="text-[0.65rem] font-semibold text-neutral-400 uppercase tracking-wide mb-1">Total Paid (Lifetime)</div>
+    <div class="text-xl font-extrabold text-neutral-900 tracking-tight" id="statPaidLifetime">$0.00</div>
   </div>
 </div>
 
@@ -212,7 +212,7 @@
 <div id="detailBackdrop"
      class="fixed inset-0 bg-black/20 backdrop-blur-sm z-[60] opacity-0 pointer-events-none transition-opacity duration-300"
      onclick="closeDetail()"></div>
-<div id="detailPanel"
+  <div id="detailPanel"
      class="fixed top-0 right-0 bottom-0 w-full max-w-md bg-white z-[65] shadow-[-8px_0_30px_rgba(0,0,0,0.08)]
             translate-x-full transition-transform duration-300 ease-out flex flex-col">
 
@@ -288,11 +288,6 @@
             <div>
               <label for="supEmail" class="block text-xs font-semibold text-neutral-600 mb-1.5">Email</label>
               <input type="email" id="supEmail" placeholder="vendor@example.com"
-                     class="w-full px-4 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200" />
-            </div>
-            <div>
-              <label for="supWebsite" class="block text-xs font-semibold text-neutral-600 mb-1.5">Website</label>
-              <input type="url" id="supWebsite" placeholder="https://example.com"
                      class="w-full px-4 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200" />
             </div>
           </div>
@@ -394,14 +389,7 @@
 <!-- ══════════════════════════════════════════════════════════
      FEEDBACK TOAST
      ══════════════════════════════════════════════════════════ -->
-<div id="feedbackToast"
-     class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[90]
-            flex items-center gap-3 px-5 py-3 rounded-xl shadow-lg border
-            text-sm font-semibold pointer-events-none
-            opacity-0 translate-y-4 transition-all duration-300">
-  <svg id="toastIcon" class="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></svg>
-  <span id="toastText"></span>
-</div>
+
 
 
 <!-- ══════════════════════════════════════════════════════════
@@ -410,39 +398,33 @@
 <script>
 (function() {
 
-  /* ─── Sample Data ─── */
-  let suppliers = [
-    { id:1,  name:'Acme Industrial Supply',   contact:'Robert Chen',     phone:'+1 (555) 234-5678', email:'robert@acme-supply.com',    website:'https://acme-supply.com',    address:'450 Commerce Blvd',  city:'Chicago',      state:'IL', zip:'60601', due:3200,   status:'active',   notes:'Primary fastener supplier. Net-30 terms.', created:'2025-11-15' },
-    { id:2,  name:'GreenLeaf Organics',       contact:'Maria Santos',    phone:'+1 (555) 345-6789', email:'maria@greenleaf.co',        website:'https://greenleaf.co',       address:'88 Farm Lane',       city:'Portland',     state:'OR', zip:'97201', due:0,      status:'active',   notes:'Organic produce and packaging.',            created:'2025-12-02' },
-    { id:3,  name:'TechParts Global',         contact:'David Kim',       phone:'+1 (555) 456-7890', email:'d.kim@techparts.io',         website:'https://techparts.io',       address:'2100 Innovation Dr', city:'San Jose',     state:'CA', zip:'95112', due:8750,   status:'active',   notes:'Electronics and spare components.',         created:'2025-12-18' },
-    { id:4,  name:'Atlas Freight Co.',        contact:'Sarah Johnson',   phone:'+1 (555) 567-8901', email:'sarah@atlasfreight.com',     website:'',                           address:'75 Dock Street',     city:'Newark',       state:'NJ', zip:'07102', due:1200,   status:'active',   notes:'Freight and logistics partner.',            created:'2026-01-05' },
-    { id:5,  name:'Nordic Timber AB',         contact:'Erik Lindqvist',  phone:'+46 70 123 4567',   email:'erik@nordictimber.se',       website:'https://nordictimber.se',    address:'Storgatan 12',       city:'Stockholm',    state:'',   zip:'11123', due:0,      status:'inactive', notes:'Seasonal lumber supplier. Currently paused.', created:'2025-08-20' },
-    { id:6,  name:'Pristine Packaging Ltd',   contact:'Amy Liu',         phone:'+1 (555) 678-9012', email:'amy@pristinepkg.com',        website:'https://pristinepkg.com',    address:'320 Box Ave',        city:'Dallas',       state:'TX', zip:'75201', due:540,    status:'active',   notes:'Custom boxes, wraps, and labels.',          created:'2026-01-22' },
-    { id:7,  name:'SafeGuard Chemicals',      contact:'Tom Bradley',     phone:'+1 (555) 789-0123', email:'tom@safeguardchem.com',      website:'',                           address:'910 Industrial Pk',  city:'Houston',      state:'TX', zip:'77001', due:0,      status:'active',   notes:'Cleaning and sanitization products.',       created:'2026-02-01' },
-    { id:8,  name:'BrightBulb Electric',      contact:'Nina Patel',      phone:'+1 (555) 890-1234', email:'nina@brightbulb.com',        website:'https://brightbulb.com',     address:'55 Edison Way',      city:'Denver',       state:'CO', zip:'80201', due:2100,   status:'active',   notes:'LED lighting and electrical supplies.',     created:'2026-02-10' },
-    { id:9,  name:'Silk Road Textiles',       contact:'Hassan Ali',      phone:'+44 20 7946 0958',  email:'hassan@silkroadtex.co.uk',   website:'https://silkroadtex.co.uk',  address:'14 Fabric Row',      city:'London',       state:'',   zip:'E1 6AN',due:0,      status:'inactive', notes:'Overseas fabric importer. Lead time: 4–6 wk.', created:'2025-09-10' },
-    { id:10, name:'QuickFix Hardware',        contact:'Jenny Nguyen',    phone:'+1 (555) 901-2345', email:'jenny@quickfix.com',          website:'',                           address:'700 Tool St',        city:'Phoenix',      state:'AZ', zip:'85001', due:480,    status:'active',   notes:'Maintenance tools and small hardware.',     created:'2026-02-20' },
-    { id:11, name:'PureWater Solutions',      contact:'Mark Davis',      phone:'+1 (555) 012-3456', email:'mark@purewater.com',          website:'https://purewater.com',      address:'33 Spring Ave',      city:'Miami',        state:'FL', zip:'33101', due:0,      status:'active',   notes:'Water filtration and cooler maintenance.',  created:'2026-03-01' },
-    { id:12, name:'ColdChain Logistics',      contact:'Laura Evans',     phone:'+1 (555) 321-4567', email:'laura@coldchain.com',         website:'https://coldchain.com',      address:'8 Freezer Rd',       city:'Atlanta',      state:'GA', zip:'30301', due:1750,   status:'active',   notes:'Refrigerated transport for perishables.',   created:'2026-03-03' },
-  ];
+  /* ═══════════════════════════════════════════════
+     CONFIG & STATE
+     ═══════════════════════════════════════════════ */
+  const API = {
+    list:   '/api/suppliers/list/',
+    create: '/api/suppliers/create/',
+    update: '/api/suppliers/update/',
+    delete: '/api/suppliers/delete/',
+  };
 
+  let suppliers = [];
   let currentPage = 1;
-  const perPage = 10;
+  let perPage = 10;
+  let totalItems = 0;
+  let totalPages = 1;
   let selectedIds = new Set();
   let deleteTargetId = null;
   let isBulkDelete = false;
-  let searchQuery = '';
-  let filterStatus = '';
-  let filterBalance = '';
-  let sortField = 'created_at';
-  let sortOrder = 'desc';
   let currentView = 'table';
-  let nextId = 13;
   let statusEnabled = true;
   let detailSupplierId = null;
+  let isLoading = false;
 
 
-  /* ─── Helpers ─── */
+  /* ═══════════════════════════════════════════════
+     HELPERS
+     ═══════════════════════════════════════════════ */
   function getInitials(name) {
     return name.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase();
   }
@@ -452,7 +434,9 @@
   }
 
   function formatMoney(n) {
-    return n === 0 ? '$0' : '$' + n.toLocaleString('en-US');
+    const num = parseFloat(n) || 0;
+    if (num === 0) return '0';
+    return num.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
   }
 
   const avatarColors = [
@@ -462,45 +446,103 @@
   ];
   function avatarColor(id) { return avatarColors[id % avatarColors.length]; }
 
+  function getCsrf() {
+    const c = document.cookie.match(/csrftoken=([^;]+)/);
+    return c ? c[1] : '';
+  }
 
-  /* ─── Filtering / Sorting ─── */
-  function getFiltered() {
-    let list = [...suppliers];
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      list = list.filter(s =>
-        s.name.toLowerCase().includes(q) ||
-        s.contact.toLowerCase().includes(q) ||
-        s.phone.includes(q) ||
-        (s.email && s.email.toLowerCase().includes(q))
-      );
-    }
-    if (filterStatus) list = list.filter(s => s.status === filterStatus);
-    if (filterBalance === 'has-balance') list = list.filter(s => s.due > 0);
-    if (filterBalance === 'no-balance') list = list.filter(s => s.due === 0);
-
-    list.sort((a, b) => {
-      let va, vb;
-      if (sortField === 'due') { va = a.due; vb = b.due; }
-      else if (sortField === 'name') { va = a.name.toLowerCase(); vb = b.name.toLowerCase(); }
-      else { va = a.created; vb = b.created; }
-      if (va < vb) return sortOrder === 'asc' ? -1 : 1;
-      if (va > vb) return sortOrder === 'asc' ? 1 : -1;
-      return 0;
-    });
-    return list;
+  async function apiCall(url, method, body) {
+    const opts = { method, headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrf() } };
+    if (body) opts.body = JSON.stringify(body);
+    const res = await fetch(url, opts);
+    return await res.json();
   }
 
 
-  /* ─── Render Table ─── */
-  function renderTable() {
-    const filtered = getFiltered();
-    const total = filtered.length;
-    const totalPages = Math.max(1, Math.ceil(total / perPage));
-    if (currentPage > totalPages) currentPage = totalPages;
-    const start = (currentPage - 1) * perPage;
-    const page = filtered.slice(start, start + perPage);
+  /* ═══════════════════════════════════════════════
+     SKELETON LOADING
+     ═══════════════════════════════════════════════ */
+  function showSkeleton() {
+    const tbody = document.getElementById('suppliersTableBody');
+    const skeletonRow = `
+      <tr class="border-b border-neutral-50 animate-pulse">
+        <td class="px-4 py-3"><div class="w-4 h-4 bg-neutral-200 rounded"></div></td>
+        <td class="px-4 py-3"><div class="flex items-center gap-3"><div class="w-9 h-9 bg-neutral-200 rounded-[10px]"></div><div><div class="h-3.5 w-32 bg-neutral-200 rounded mb-1.5"></div><div class="h-2.5 w-20 bg-neutral-100 rounded"></div></div></div></td>
+        <td class="px-4 py-3"><div class="h-3 w-24 bg-neutral-200 rounded"></div></td>
+        <td class="px-4 py-3"><div class="h-3 w-28 bg-neutral-200 rounded"></div></td>
+        <td class="px-4 py-3"><div class="h-3 w-36 bg-neutral-200 rounded"></div></td>
+        <td class="px-4 py-3"><div class="h-3 w-16 bg-neutral-200 rounded"></div></td>
+        <td class="px-4 py-3"><div class="h-5 w-14 bg-neutral-200 rounded-md"></div></td>
+        <td class="px-4 py-3"><div class="h-3 w-16 bg-neutral-200 rounded ml-auto"></div></td>
+      </tr>`;
+    tbody.innerHTML = skeletonRow.repeat(6);
 
+    // Skeleton for stat cards
+    ['statTotalSuppliers', 'statActive', 'statPayable', 'statPaidLifetime'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.innerHTML = '<div class="h-6 w-12 bg-neutral-200 rounded animate-pulse"></div>';
+    });
+  }
+
+
+  /* ═══════════════════════════════════════════════
+     FETCH DATA FROM API
+     ═══════════════════════════════════════════════ */
+  async function fetchSuppliers() {
+    if (isLoading) return;
+    isLoading = true;
+    showSkeleton();
+
+    const search = document.getElementById('searchInput').value.trim();
+    const status = document.getElementById('filterStatus').value;
+    const balance = document.getElementById('filterBalance').value;
+    const sortVal = document.getElementById('filterSort').value.split('-');
+
+    let sortField = sortVal[0];
+    let sortOrder = sortVal[1] || 'desc';
+    // Map frontend sort keys to backend
+    if (sortField === 'created_at') sortField = 'created_at';
+    else if (sortField === 'due') { sortField = 'balance'; sortOrder = 'desc'; }
+
+    const params = new URLSearchParams({
+      page: currentPage,
+      per_page: perPage,
+      search, status, balance,
+      sort: sortField,
+      order: sortOrder,
+    });
+
+    try {
+      const res = await apiCall(`${API.list}?${params}`, 'GET');
+      if (!res.success) { toast.error(res.message || 'Failed to load'); isLoading = false; return; }
+
+      suppliers = res.suppliers;
+      totalItems = res.pagination.total;
+      totalPages = res.pagination.total_pages;
+      currentPage = res.pagination.page;
+
+      // Update stat cards
+      const o = res.overview;
+      document.getElementById('statTotalSuppliers').textContent = o.total_suppliers;
+      document.getElementById('statActive').textContent = o.active_suppliers;
+      document.getElementById('statPayable').textContent = formatMoney(o.total_payable);
+      document.getElementById('statPaidLifetime').textContent = formatMoney(o.total_paid_lifetime);
+
+      renderTable();
+    } catch (e) {
+      toast.error('Network error. Please try again.');
+      console.error(e);
+    } finally {
+      isLoading = false;
+    }
+  }
+
+
+  /* ═══════════════════════════════════════════════
+     RENDER TABLE (from fetched data)
+     ═══════════════════════════════════════════════ */
+  function renderTable() {
+    const total = totalItems;
     const tbody = document.getElementById('suppliersTableBody');
     const emptyState = document.getElementById('emptyState');
     const paginationBar = document.getElementById('paginationBar');
@@ -515,14 +557,14 @@
     emptyState.classList.add('hidden'); emptyState.classList.remove('flex');
     paginationBar.classList.remove('hidden');
 
-    // Table rows
-    tbody.innerHTML = page.map(s => {
+    tbody.innerHTML = suppliers.map(s => {
       const checked = selectedIds.has(s.id) ? 'checked' : '';
+      const bal = parseFloat(s.balance) || 0;
       const statusBadge = s.status === 'active'
         ? '<span class="inline-flex items-center px-2 py-0.5 rounded-md text-[0.65rem] font-bold bg-green-50 text-green-600 border border-green-200">Active</span>'
         : '<span class="inline-flex items-center px-2 py-0.5 rounded-md text-[0.65rem] font-bold bg-neutral-100 text-neutral-500 border border-neutral-200">Inactive</span>';
-      const dueDisplay = s.due > 0
-        ? `<span class="text-sm font-semibold text-amber-600">${formatMoney(s.due)}</span>`
+      const dueDisplay = bal > 0
+        ? `<span class="text-sm font-semibold text-amber-600">${formatMoney(bal)}</span>`
         : '<span class="text-sm text-neutral-400">—</span>';
       return `
         <tr class="border-b border-neutral-50 hover:bg-neutral-50/50 transition-colors duration-150 group" data-id="${s.id}">
@@ -535,11 +577,10 @@
               <div class="w-9 h-9 rounded-[10px] flex items-center justify-center text-xs font-bold shrink-0 ${avatarColor(s.id)}">${getInitials(s.name)}</div>
               <div>
                 <div class="text-sm font-semibold text-neutral-900 hover:text-green-600 transition-colors duration-200">${s.name}</div>
-                <div class="text-xs text-neutral-400">${s.city}${s.state ? ', '+s.state : ''}</div>
               </div>
             </button>
           </td>
-          <td class="px-4 py-3 text-sm text-neutral-600">${s.contact || '—'}</td>
+          <td class="px-4 py-3 text-sm text-neutral-600">${s.contact_person || '—'}</td>
           <td class="px-4 py-3 text-sm text-neutral-600">${s.phone || '—'}</td>
           <td class="px-4 py-3 text-sm text-neutral-500 max-w-[180px] truncate">${s.email || '—'}</td>
           <td class="px-4 py-3">${dueDisplay}</td>
@@ -564,7 +605,8 @@
     }).join('');
 
     // Card view
-    document.getElementById('suppliersCardGrid').innerHTML = page.map(s => {
+    document.getElementById('suppliersCardGrid').innerHTML = suppliers.map(s => {
+      const bal = parseFloat(s.balance) || 0;
       const statusDot = s.status === 'active'
         ? '<span class="w-2 h-2 rounded-full bg-green-500"></span>'
         : '<span class="w-2 h-2 rounded-full bg-neutral-400"></span>';
@@ -585,16 +627,17 @@
             </button>
           </div>
           <div class="space-y-2 text-xs">
-            ${s.contact ? `<div class="flex items-center gap-2 text-neutral-500"><svg class="w-3.5 h-3.5 text-neutral-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>${s.contact}</div>` : ''}
+            ${s.contact_person ? `<div class="flex items-center gap-2 text-neutral-500"><svg class="w-3.5 h-3.5 text-neutral-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>${s.contact_person}</div>` : ''}
             ${s.phone ? `<div class="flex items-center gap-2 text-neutral-500"><svg class="w-3.5 h-3.5 text-neutral-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>${s.phone}</div>` : ''}
             ${s.email ? `<div class="flex items-center gap-2 text-neutral-500 truncate"><svg class="w-3.5 h-3.5 text-neutral-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>${s.email}</div>` : ''}
           </div>
-          ${s.due > 0 ? `<div class="mt-4 pt-3 border-t border-neutral-100 flex items-center justify-between"><span class="text-xs text-neutral-400 font-medium">Outstanding</span><span class="text-sm font-bold text-amber-600">${formatMoney(s.due)}</span></div>` : ''}
+          ${bal > 0 ? `<div class="mt-4 pt-3 border-t border-neutral-100 flex items-center justify-between"><span class="text-xs text-neutral-400 font-medium">Outstanding</span><span class="text-sm font-bold text-amber-600">${formatMoney(bal)}</span></div>` : ''}
         </div>`;
     }).join('');
 
     // Pagination
-    document.getElementById('pagStart').textContent = start + 1;
+    const start = (currentPage - 1) * perPage;
+    document.getElementById('pagStart').textContent = total > 0 ? start + 1 : 0;
     document.getElementById('pagEnd').textContent = Math.min(start + perPage, total);
     document.getElementById('pagTotal').textContent = total;
     const pnEl = document.getElementById('pageNumbers');
@@ -613,53 +656,46 @@
     const b = document.getElementById('bulkActions');
     if (selectedIds.size > 0) { b.classList.remove('hidden'); b.classList.add('flex'); document.getElementById('selectedCount').textContent = selectedIds.size; }
     else { b.classList.add('hidden'); b.classList.remove('flex'); }
-    const filtered = getFiltered();
-    document.getElementById('selectAll').checked = filtered.length > 0 && filtered.every(s => selectedIds.has(s.id));
+    document.getElementById('selectAll').checked = suppliers.length > 0 && suppliers.every(s => selectedIds.has(s.id));
   }
 
 
-  /* ─── Expose to global ─── */
+  /* ═══════════════════════════════════════════════
+     EXPOSE TO GLOBAL
+     ═══════════════════════════════════════════════ */
   window._sup = {};
 
-  /* ─── Selection ─── */
+  /* Selection */
   window._sup.toggleSelect = function(id) {
     selectedIds.has(id) ? selectedIds.delete(id) : selectedIds.add(id);
-    updateBulkBar();
+    renderTable();
   };
   window.toggleSelectAll = function(cb) {
-    const f = getFiltered();
-    if (cb.checked) f.forEach(s => selectedIds.add(s.id)); else f.forEach(s => selectedIds.delete(s.id));
+    if (cb.checked) suppliers.forEach(s => selectedIds.add(s.id));
+    else suppliers.forEach(s => selectedIds.delete(s.id));
     renderTable();
   };
 
-  /* ─── Search & Filters ─── */
+  /* Search & Filters */
   let sTimeout;
   window.handleSearch = function(v) {
     clearTimeout(sTimeout);
-    sTimeout = setTimeout(() => { searchQuery = v.trim(); currentPage = 1; renderTable(); }, 300);
+    sTimeout = setTimeout(() => { currentPage = 1; fetchSuppliers(); }, 400);
   };
   window.toggleFilters = function() {
     const p = document.getElementById('filterPanel');
     const t = document.getElementById('filterBtnText');
     p.classList.contains('hidden') ? (p.classList.remove('hidden'), t.textContent='Close') : (p.classList.add('hidden'), t.textContent='Filter');
   };
-  window.applyFilters = function() {
-    filterStatus = document.getElementById('filterStatus').value;
-    filterBalance = document.getElementById('filterBalance').value;
-    const sv = document.getElementById('filterSort').value.split('-');
-    sortField = sv[0] === 'created_at' ? 'created_at' : sv[0];
-    sortOrder = sv[1] || 'desc';
-    currentPage = 1; renderTable();
-  };
+  window.applyFilters = function() { currentPage = 1; fetchSuppliers(); };
   window.clearFilters = function() {
     document.getElementById('filterStatus').value = '';
     document.getElementById('filterBalance').value = '';
     document.getElementById('filterSort').value = 'created_at-desc';
-    filterStatus=''; filterBalance=''; sortField='created_at'; sortOrder='desc';
-    currentPage=1; renderTable(); showToast('Filters cleared','info');
+    currentPage = 1; fetchSuppliers(); toast.info('Filters cleared');
   };
 
-  /* ─── View Toggle ─── */
+  /* View Toggle */
   window.setView = function(v) {
     currentView = v;
     const tv = document.getElementById('tableView');
@@ -677,17 +713,21 @@
     }
   };
 
-  /* ─── Pagination ─── */
-  window._sup.goToPage = function(p) { currentPage=p; renderTable(); };
-  window.goToPage = function(d) { if(d==='prev'&&currentPage>1) currentPage--; else if(d==='next') currentPage++; renderTable(); };
+  /* Pagination */
+  window._sup.goToPage = function(p) { currentPage = p; fetchSuppliers(); };
+  window.goToPage = function(d) { if (d==='prev' && currentPage > 1) currentPage--; else if (d==='next' && currentPage < totalPages) currentPage++; fetchSuppliers(); };
 
 
-  /* ─── Detail Panel ─── */
+  /* ═══════════════════════════════════════════════
+     DETAIL PANEL
+     ═══════════════════════════════════════════════ */
   window._sup.openDetail = function(id) {
     detailSupplierId = id;
     const s = suppliers.find(x => x.id === id);
     if (!s) return;
     document.getElementById('detailName').textContent = s.name;
+    const bal = parseFloat(s.balance) || 0;
+    const totalAmt = parseFloat(s.total_amount) || 0;
 
     const statusBadge = s.status === 'active'
       ? '<span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold bg-green-50 text-green-600 border border-green-200">Active</span>'
@@ -702,26 +742,28 @@
         </div>
       </div>
 
-      ${s.due > 0 ? `
-      <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6">
+      ${bal > 0 ? `
+      <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4">
         <div class="text-xs font-semibold text-amber-700 uppercase tracking-wide mb-1">Outstanding Payable</div>
-        <div class="text-2xl font-extrabold text-amber-700 tracking-tight">${formatMoney(s.due)}</div>
+        <div class="text-2xl font-extrabold text-amber-700 tracking-tight">${formatMoney(bal)}</div>
       </div>` : ''}
+      <div class="bg-neutral-50 border border-neutral-100 rounded-xl p-4 mb-6">
+        <div class="text-xs font-semibold text-neutral-500 uppercase tracking-wide mb-1">Total Paid (Lifetime)</div>
+        <div class="text-xl font-extrabold text-neutral-700 tracking-tight">${formatMoney(totalAmt)}</div>
+      </div>
 
       <div class="space-y-1 mb-6">
         <h4 class="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-3">Contact</h4>
-        ${detailRow('Contact Person', s.contact)}
+        ${detailRow('Contact Person', s.contact_person)}
         ${detailRow('Phone', s.phone ? `<a href="tel:${s.phone}" class="text-green-600 hover:underline">${s.phone}</a>` : '—')}
         ${detailRow('Email', s.email ? `<a href="mailto:${s.email}" class="text-green-600 hover:underline">${s.email}</a>` : '—')}
-        ${detailRow('Website', s.website ? `<a href="${s.website}" target="_blank" class="text-green-600 hover:underline">${s.website.replace('https://','')}</a>` : '—')}
       </div>
 
+      ${s.address ? `
       <div class="space-y-1 mb-6">
         <h4 class="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-3">Address</h4>
-        <div class="text-sm text-neutral-700 leading-relaxed">
-          ${s.address ? s.address+'<br>' : ''}${s.city}${s.state ? ', '+s.state : ''} ${s.zip}
-        </div>
-      </div>
+        <div class="text-sm text-neutral-700 leading-relaxed">${s.address}</div>
+      </div>` : ''}
 
       ${s.notes ? `
       <div class="mb-6">
@@ -729,11 +771,10 @@
         <div class="text-sm text-neutral-600 bg-neutral-50 rounded-xl p-4 border border-neutral-100 leading-relaxed">${s.notes}</div>
       </div>` : ''}
 
-      <div class="text-xs text-neutral-400 pt-4 border-t border-neutral-100">Added on ${formatDate(s.created)}</div>
+      <div class="text-xs text-neutral-400 pt-4 border-t border-neutral-100">Added on ${formatDate(s.created_at)}</div>
     `;
 
-    const bd = document.getElementById('detailBackdrop');
-    const pn = document.getElementById('detailPanel');
+    const bd = document.getElementById('detailBackdrop'); const pn = document.getElementById('detailPanel');
     bd.classList.remove('opacity-0','pointer-events-none'); bd.classList.add('opacity-100','pointer-events-auto');
     pn.classList.remove('translate-x-full'); pn.classList.add('translate-x-0');
   };
@@ -752,7 +793,9 @@
   };
 
 
-  /* ─── Form Slide-Over ─── */
+  /* ═══════════════════════════════════════════════
+     FORM SLIDE-OVER  (Add / Edit)
+     ═══════════════════════════════════════════════ */
   window._sup.openSlideOver = window.openSlideOver = function(mode, id) {
     document.getElementById('supplierForm').reset();
     document.getElementById('nameError').classList.add('hidden');
@@ -766,14 +809,10 @@
       document.getElementById('submitBtnText').textContent = 'Update Supplier';
       document.getElementById('editSupplierId').value = s.id;
       document.getElementById('supName').value = s.name;
-      document.getElementById('supContact').value = s.contact || '';
+      document.getElementById('supContact').value = s.contact_person || '';
       document.getElementById('supPhone').value = s.phone || '';
       document.getElementById('supEmail').value = s.email || '';
-      document.getElementById('supWebsite').value = s.website || '';
       document.getElementById('supAddress').value = s.address || '';
-      document.getElementById('supCity').value = s.city || '';
-      document.getElementById('supState').value = s.state || '';
-      document.getElementById('supZip').value = s.zip || '';
       document.getElementById('supNotes').value = s.notes || '';
       statusEnabled = s.status === 'active'; updateStatusUI();
     } else {
@@ -803,8 +842,8 @@
     else { t.classList.remove('bg-green-500'); t.classList.add('bg-neutral-300'); d.style.transform='translateX(0)'; t.setAttribute('aria-checked','false'); }
   }
 
-  /* Form submit */
-  window.handleFormSubmit = function(e) {
+  /* Form submit — CREATE or UPDATE via API */
+  window.handleFormSubmit = async function(e) {
     e.preventDefault();
     const name = document.getElementById('supName').value.trim();
     if (!name) { document.getElementById('nameError').classList.remove('hidden'); document.getElementById('supName').classList.add('border-red-400'); return; }
@@ -814,48 +853,58 @@
     document.getElementById('submitSpinner').classList.remove('hidden');
     document.getElementById('submitBtn').disabled = true;
 
-    setTimeout(() => {
-      const editId = parseInt(document.getElementById('editSupplierId').value);
-      const data = {
-        name, contact: document.getElementById('supContact').value.trim(),
-        phone: document.getElementById('supPhone').value.trim(), email: document.getElementById('supEmail').value.trim(),
-        website: document.getElementById('supWebsite').value.trim(), address: document.getElementById('supAddress').value.trim(),
-        city: document.getElementById('supCity').value.trim(), state: document.getElementById('supState').value.trim(),
-        zip: document.getElementById('supZip').value.trim(), notes: document.getElementById('supNotes').value.trim(),
-        status: statusEnabled ? 'active' : 'inactive', created: new Date().toISOString().slice(0,10),
-      };
+    const editId = parseInt(document.getElementById('editSupplierId').value);
+    const payload = {
+      name,
+      contact_person: document.getElementById('supContact').value.trim(),
+      phone: document.getElementById('supPhone').value.trim(),
+      email: document.getElementById('supEmail').value.trim(),
+      address: document.getElementById('supAddress').value.trim(),
+      notes: document.getElementById('supNotes').value.trim(),
+      status: statusEnabled ? 'active' : 'inactive',
+    };
 
+    try {
+      let res;
       if (editId) {
-        const idx = suppliers.findIndex(s => s.id === editId);
-        if (idx !== -1) suppliers[idx] = { ...suppliers[idx], ...data };
-        showToast(`"${name}" updated successfully`, 'success');
+        payload.id = editId;
+        res = await apiCall(API.update, 'POST', payload);
       } else {
-        data.id = nextId++; data.due = 0;
-        suppliers.unshift(data);
-        showToast(`"${name}" added to suppliers`, 'success');
+        res = await apiCall(API.create, 'POST', payload);
       }
 
+      if (res.success) {
+        toast.success(res.message);
+        closeSlideOver();
+        fetchSuppliers();
+      } else {
+        toast.error(res.message || 'Something went wrong.');
+      }
+    } catch (err) {
+      toast.error('Network error. Please try again.');
+      console.error(err);
+    } finally {
       document.getElementById('submitSpinner').classList.add('hidden');
       document.getElementById('submitBtn').disabled = false;
-      document.getElementById('statTotalSuppliers').textContent = suppliers.length;
-      document.getElementById('statActive').textContent = suppliers.filter(s => s.status==='active').length;
-      closeSlideOver(); renderTable();
-    }, 600);
+      document.getElementById('submitBtnText').textContent = editId ? 'Update Supplier' : 'Save Supplier';
+    }
   };
 
 
-  /* ─── Delete ─── */
+  /* ═══════════════════════════════════════════════
+     DELETE (soft delete via API)
+     ═══════════════════════════════════════════════ */
   window._sup.confirmDelete = window.confirmDelete = function(id) {
     deleteTargetId = id; isBulkDelete = false;
     const s = suppliers.find(x => x.id === id);
     document.getElementById('deleteTitle').textContent = 'Delete Supplier?';
-    document.getElementById('deleteMsg').textContent = s ? `"${s.name}" and all associated data will be permanently removed.` : 'This supplier will be permanently deleted.';
+    document.getElementById('deleteMsg').textContent = s ? `"${s.name}" will be removed and marked inactive.` : 'This supplier will be removed.';
     openDeleteDialog();
   };
   window.confirmBulkDelete = function() {
     isBulkDelete = true;
     document.getElementById('deleteTitle').textContent = `Delete ${selectedIds.size} suppliers?`;
-    document.getElementById('deleteMsg').textContent = 'These suppliers will be permanently removed. This cannot be undone.';
+    document.getElementById('deleteMsg').textContent = 'These suppliers will be removed and marked inactive.';
     openDeleteDialog();
   };
   function openDeleteDialog() {
@@ -868,36 +917,39 @@
     dg.classList.remove('scale-100','opacity-100'); dg.classList.add('scale-95','opacity-0');
     setTimeout(() => { bd.classList.remove('opacity-100','pointer-events-auto'); bd.classList.add('opacity-0','pointer-events-none'); }, 200);
   };
-  window.executeDelete = function() {
-    if (isBulkDelete) { const c = selectedIds.size; suppliers = suppliers.filter(s => !selectedIds.has(s.id)); selectedIds.clear(); showToast(`${c} suppliers deleted`,'success'); }
-    else if (deleteTargetId) { const s = suppliers.find(x => x.id === deleteTargetId); suppliers = suppliers.filter(x => x.id !== deleteTargetId); selectedIds.delete(deleteTargetId); showToast(`"${s?s.name:'Supplier'}" deleted`,'success'); }
-    deleteTargetId = null;
-    document.getElementById('statTotalSuppliers').textContent = suppliers.length;
-    document.getElementById('statActive').textContent = suppliers.filter(s => s.status==='active').length;
-    closeDeleteDialog(); renderTable();
+  window.executeDelete = async function() {
+    let payload;
+    if (isBulkDelete) {
+      payload = { ids: [...selectedIds] };
+    } else if (deleteTargetId) {
+      payload = { id: deleteTargetId };
+    } else return;
+
+    try {
+      const res = await apiCall(API.delete, 'POST', payload);
+      if (res.success) {
+        toast.success(res.message);
+        selectedIds.clear();
+        deleteTargetId = null;
+        closeDeleteDialog();
+        fetchSuppliers();
+      } else {
+        toast.error(res.message || 'Delete failed.');
+      }
+    } catch (err) {
+      toast.error('Network error.');
+      console.error(err);
+    }
   };
 
-  /* ─── Keyboard ─── */
+
+  /* Keyboard */
   document.addEventListener('keydown', e => { if (e.key==='Escape') { closeSlideOver(); closeDetail(); closeDeleteDialog(); } });
 
-
-  /* ─── Feedback Toast ─── */
-  window.showToast = function(message, type) {
-    const t = document.getElementById('feedbackToast');
-    const ic = document.getElementById('toastIcon');
-    const tx = document.getElementById('toastText');
-    t.className = 'fixed bottom-6 left-1/2 -translate-x-1/2 z-[90] flex items-center gap-3 px-5 py-3 rounded-xl shadow-lg border text-sm font-semibold pointer-events-none transition-all duration-300';
-    if (type==='success') { t.classList.add('bg-green-50','border-green-200','text-green-700'); ic.innerHTML='<polyline points="20 6 9 17 4 12"/>'; }
-    else if (type==='error') { t.classList.add('bg-red-50','border-red-200','text-red-700'); ic.innerHTML='<circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>'; }
-    else { t.classList.add('bg-neutral-50','border-neutral-200','text-neutral-700'); ic.innerHTML='<circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>'; }
-    tx.textContent = message;
-    requestAnimationFrame(() => { t.classList.remove('opacity-0','translate-y-4'); t.classList.add('opacity-100','translate-y-0'); });
-    setTimeout(() => { t.classList.remove('opacity-100','translate-y-0'); t.classList.add('opacity-0','translate-y-4'); }, 2500);
-  };
-
-
-  /* ─── Init ─── */
-  renderTable();
+  /* ═══════════════════════════════════════════════
+     INIT — Load data from API on page load
+     ═══════════════════════════════════════════════ */
+  fetchSuppliers();
 
 })();
 </script>

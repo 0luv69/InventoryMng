@@ -1,19 +1,16 @@
 from django.conf import settings
 from django.shortcuts import render, redirect, get_object_or_404
-from django.utils import timezone
-from django.db.models import Sum, F, Q
-from datetime import timedelta
 import json
 from django.http import JsonResponse
 from django.contrib.auth import authenticate, login
-from .models import RequestDemo, Company, UserProfile, Unit, UserSession
+from ..models import RequestDemo,  UserProfile, UserSession
 from django.contrib.auth import logout
 import uuid
 # ──────────────────────────────────────
 # DASHBOARD
 # ──────────────────────────────────────
 
-from .utils import get_client_ip, short_user_agent
+from ..utils import get_client_ip, short_user_agent
 
 def temp(request):
     context = {
@@ -152,16 +149,6 @@ def items_view(request):
     return render(request, "core/items-goods.html", context)
 
 
-
-def suppliers_view(request):
-    if not request.user.is_authenticated:
-        return redirect("login")
-    userProfile = get_object_or_404(UserProfile, user=request.user)
-    context = {
-        "title": "Suppliers",
-        "userProfile": userProfile,
-    }
-    return render(request, "core/suppliers.html", context)
 
 def customers_view(request):
     if not request.user.is_authenticated:

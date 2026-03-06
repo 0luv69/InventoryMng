@@ -1,13 +1,12 @@
-
 import json
 import uuid
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
 from django.contrib.auth import authenticate, login
-from .models import UserProfile, Company, UserSession
+from ..models import UserProfile, Company, UserSession
 from django.utils import timezone
 from django.conf import settings
-from .utils import get_client_ip, short_user_agent
+from ..utils import get_client_ip, short_user_agent
 
 
 def profile_view(request):
@@ -128,26 +127,17 @@ def update_company(request):
     country = (payload.get("country") or "").strip()
 
     currency = (payload.get("currency") or "").strip()
-    low_stock_threshold = payload.get("low_stock_threshold")
     tax_id = (payload.get("tax_id") or "").strip()
 
     if not name:
         return JsonResponse({"success": False, "message": "Company name is required."}, status=400)    
-    
+
     if not email or not city or not country:
         return JsonResponse({"success": False, "message": "Email, city, and country are required."}, status=400)
 
     if not currency or currency not in dict(Company.CURRENCY_CHOICES):
         return JsonResponse({"success": False, "message": "Valid currency is required."}, status=400)
-    
-    if low_stock_threshold is not None:
-        try:
-            low_stock_threshold = int(low_stock_threshold)
-            if low_stock_threshold <= 0:
-                return JsonResponse({"success": False, "message": "Low stock threshold must be a positive integer."}, status=400)
-        except (ValueError, TypeError):
-            return JsonResponse({"success": False, "message": "Low stock threshold must be a valid integer."}, status=400)
-        
+
     if tax_id and len(tax_id) > 50:
         return JsonResponse({"success": False, "message": "Tax ID cannot exceed 50 characters."}, status=400)
     
@@ -163,12 +153,6 @@ def update_company(request):
 
     if currency in dict(Company.CURRENCY_CHOICES):
         company.currency = currency
-    try:
-        low_stock_threshold = int(low_stock_threshold)
-        if low_stock_threshold > 0:
-            company.low_stock_threshold = low_stock_threshold
-    except (ValueError, TypeError):
-        pass
     company.tax_id = tax_id
 
     company.save()
