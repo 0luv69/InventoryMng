@@ -16,11 +16,15 @@ def profile_view(request):
     userProfile = get_object_or_404(UserProfile, user=request.user)
     userSession = UserSession.objects.filter(user=request.user).order_by("-last_activity")[:20]
 
+    # Determine which sessions are "current" vs "other active" vs "expired"
+    current_session_key = request.session.session_key
+
     context = {
         "title": "Profile",
         "userProfile": userProfile,
         "PRODUCTION_URL": settings.PRODUCTION_URL,
         "userSessions": userSession,
+        "current_session_key": current_session_key,
     }
     return render(request, "core/profile.html", context)
 
@@ -83,10 +87,8 @@ def update_pwd(request):
     if not request.user.check_password(old_password):
         return JsonResponse({"success": False, "message": "Old password is incorrect."}, status=400)
 
-    # Implement password update logic here
     request.user.set_password(new_password)
     request.user.save()
-    UserSession.objects.filter(user=request.user).update(is_active=False)  # Invalidate all existing sessions for the user
 
     s_user_agent = short_user_agent(request.META.get("HTTP_USER_AGENT", ""))
     session_key = request.session.session_key
@@ -128,6 +130,8 @@ def update_company(request):
 
     currency = (payload.get("currency") or "").strip()
     tax_id = (payload.get("tax_id") or "").strip()
+    fiscal_year_start_month = payload.get("fiscal_year_start_month")
+    default_low_stock_threshold = payload.get("default_low_stock_threshold")
 
     if not name:
         return JsonResponse({"success": False, "message": "Company name is required."}, status=400)    
@@ -140,6 +144,22 @@ def update_company(request):
 
     if tax_id and len(tax_id) > 50:
         return JsonResponse({"success": False, "message": "Tax ID cannot exceed 50 characters."}, status=400)
+
+    # Validate fiscal year
+    try:
+        fiscal_year_start_month = int(fiscal_year_start_month) if fiscal_year_start_month else None
+    except (ValueError, TypeError):
+        fiscal_year_start_month = None
+    if fiscal_year_start_month and (fiscal_year_start_month < 1 or fiscal_year_start_month > 12):
+        return JsonResponse({"success": False, "message": "Fiscal year start month must be between 1 and 12."}, status=400)
+
+    # Validate low stock threshold
+    try:
+        default_low_stock_threshold = int(default_low_stock_threshold) if default_low_stock_threshold else None
+    except (ValueError, TypeError):
+        default_low_stock_threshold = None
+    if default_low_stock_threshold is not None and default_low_stock_threshold < 1:
+        return JsonResponse({"success": False, "message": "Low stock threshold must be at least 1."}, status=400)
     
     userProfile = get_object_or_404(UserProfile, user=request.user)
     company = userProfile.company
@@ -155,8 +175,47 @@ def update_company(request):
         company.currency = currency
     company.tax_id = tax_id
 
+    if fiscal_year_start_month:
+        company.fiscal_year_start_month = fiscal_year_start_month
+    if default_low_stock_threshold is not None:
+        company.default_low_stock_threshold = default_low_stock_threshold
+
     company.save()
 
     updated_at = timezone.localtime(company.updated_at).strftime("%b %d, %Y %I:%M %p")
     return JsonResponse({"success": True, "message": "Company updated successfully.", "updated_at": updated_at}, status=200)
 
+
+def update_company_logo(request):
+    """Handle company logo upload via multipart/form-data"""
+    if not request.user.is_authenticated:
+        return JsonResponse({"success": False, "message": "Authentication required."}, status=401)
+    
+    if request.method != "POST":
+        return JsonResponse({"success": False, "message": "Method not allowed."}, status=405)
+
+    logo_file = request.FILES.get("logo")
+    if not logo_file:
+        return JsonResponse({"success": False, "message": "No logo file provided."}, status=400)
+
+    # Validate file type
+    allowed_types = ["image/jpeg", "image/png", "image/gif", "image/webp", "image/svg+xml"]
+    if logo_file.content_type not in allowed_types:
+        return JsonResponse({"success": False, "message": "Invalid file type. Allowed: JPEG, PNG, GIF, WebP, SVG."}, status=400)
+
+    # Validate file size (max 2MB)
+    if logo_file.size > 2 * 1024 * 1024:
+        return JsonResponse({"success": False, "message": "File too large. Max 2MB."}, status=400)
+
+    userProfile = get_object_or_404(UserProfile, user=request.user)
+    company = userProfile.company
+
+    # Delete old logo if exists
+    if company.logo:
+        company.logo.delete(save=False)
+
+    company.logo = logo_file
+    company.save()
+
+    logo_url = company.logo.url if company.logo else ""
+    return JsonResponse({"success": True, "message": "Logo updated successfully.", "logo_url": logo_url}, status=200)

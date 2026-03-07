@@ -539,6 +539,7 @@ class SpoilageLoss(TimeStampedModel):
         DAMAGED = "damaged", "Damaged"
         LOST = "lost", "Lost"
         SAMPLE = "sample", "Sample / Giveaway"
+        WRITEOFF = "writeoff", "Write-off / Other"
 
     company = models.ForeignKey(
         Company, on_delete=models.CASCADE, related_name="spoilage_losses"

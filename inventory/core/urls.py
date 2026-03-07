@@ -1,6 +1,6 @@
 from django.urls import path
 
-from .all_views import supplier_views, profile_views, customer_views, item_views, goodsin_views, goodsout_views, payment_views
+from .all_views import dashboard_views, supplier_views, profile_views, customer_views, item_views, goodsin_views, goodsout_views, payment_views, spoilage_views
 from .all_views import main as main_views
 
 urlpatterns = [
@@ -17,7 +17,6 @@ urlpatterns = [
     path("logout/api/", main_views.logout_api, name="logout_api"),
 
 
-    path('app/dashboard/', main_views.dashboard, name='dashboard'),
     path('app/', main_views.app_home, name='app_home'),
 
     path('app/goods-in/', main_views.goods_in_view, name='goods_in'),
@@ -27,13 +26,20 @@ urlpatterns = [
     path('app/payments/', main_views.payments_view, name='payments'),
     path('app/reports/', main_views.reports_view, name='reports'),
 
+    
+
+    path('app/dashboard/', main_views.dashboard, name='dashboard'),
+    path('api/dashboard/data/', dashboard_views.dashboard_data_api, name='dashboard_data_api'),
+    path('api/dashboard/transactions/', dashboard_views.dashboard_transactions_api, name='dashboard_transactions_api'),
+
 
         # ── Profile APIs ──
     path('app/profile/', profile_views.profile_view, name='profile'),
     path('update-profile/api/', profile_views.update_profile, name='update_profile'),
     path('update-pwd/api/', profile_views.update_pwd, name='update_pwd'),
     path('update-company/api/', profile_views.update_company, name='update_company'),
-
+    path('update-company/api/', profile_views.update_company, name='update_company'),
+    path('update-company-logo/api/', profile_views.update_company_logo, name='update_company_logo'),
 
 
         # ── Supplier APIs ──                                              
@@ -101,4 +107,13 @@ urlpatterns = [
     path('api/payments/helpers/sale-invoices/',      payment_views.payment_helpers_sale_invoices,     name='payment_helpers_sale_invoices'),
     path('api/payments/helpers/purchase-invoices/',  payment_views.payment_helpers_purchase_invoices, name='payment_helpers_purchase_invoices'),
 
+
+        # ── Spoilage & Loss APIs ──
+    path('api/spoilage/list/',              spoilage_views.spoilage_list_api,        name='spoilage_list_api'),
+    path('api/spoilage/create/',            spoilage_views.spoilage_create_api,      name='spoilage_create_api'),
+    path('api/spoilage/update/<int:pk>/',   spoilage_views.spoilage_update_api,      name='spoilage_update_api'),
+    path('api/spoilage/void/<int:pk>/',     spoilage_views.spoilage_void_api,        name='spoilage_void_api'),
+    path('api/spoilage/bulk-void/',         spoilage_views.spoilage_bulk_void_api,   name='spoilage_bulk_void_api'),
+    path('api/spoilage/helpers/items/',     spoilage_views.spoilage_helpers_items,   name='spoilage_helpers_items'),
+    path('api/spoilage/helpers/users/',     spoilage_views.spoilage_helpers_users,   name='spoilage_helpers_users'),
 ]

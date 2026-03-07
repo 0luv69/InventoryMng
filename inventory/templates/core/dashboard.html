@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block title %}Dashboard — InventoryChamps{% endblock %}
 {% block page_title %}Dashboard{% endblock %}
@@ -6,38 +7,522 @@
 
 {% block content %}
 
-    <div class="mb-7">
-        <h1 id="pageTitle" class="text-2xl font-extrabold text-neutral-900 tracking-tight max-md:text-xl">Dashboard</h1>
-        <p id="pageSub" class="text-sm text-neutral-400 mt-1">Welcome back, John. Here's your inventory overview.</p>
-    </div>
-
-    <!-- Stat cards -->
-    <div class="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-4 mb-7 max-md:grid-cols-[repeat(auto-fill,minmax(160px,1fr))] max-md:gap-3 max-[480px]:grid-cols-2">
-        <div class="group bg-white border border-neutral-100 rounded-2xl px-5 py-[22px] transition-all duration-300 hover:border-neutral-300 hover:shadow-[0_4px_20px_rgba(0,0,0,0.04)] hover:-translate-y-0.5 max-md:px-4 max-md:py-[18px]">
-        <div class="text-[0.7rem] font-semibold text-neutral-400 uppercase tracking-wide mb-2">Total Items</div>
-        <div class="text-[1.6rem] font-extrabold text-neutral-900 tracking-tight max-md:text-[1.3rem]">2,481</div>
-        <div class="inline-flex items-center gap-1 text-[0.7rem] font-semibold mt-1.5 px-2 py-0.5 rounded-md bg-green-50 text-green-600">↑ 12% this month</div>
+    <!-- Greeting + Print Toolbar -->
+    <div class="flex items-center justify-between mb-7 max-md:flex-col max-md:items-start max-md:gap-3">
+        <div>
+            <h1 id="greetingTitle" class="text-2xl font-extrabold text-neutral-900 tracking-tight max-md:text-xl">Dashboard</h1>
+            <p id="greetingSub" class="text-sm text-neutral-400 mt-1">Loading...</p>
         </div>
-        <div class="group bg-white border border-neutral-100 rounded-2xl px-5 py-[22px] transition-all duration-300 hover:border-neutral-300 hover:shadow-[0_4px_20px_rgba(0,0,0,0.04)] hover:-translate-y-0.5 max-md:px-4 max-md:py-[18px]">
-        <div class="text-[0.7rem] font-semibold text-neutral-400 uppercase tracking-wide mb-2">Goods In (Today)</div>
-        <div class="text-[1.6rem] font-extrabold text-neutral-900 tracking-tight max-md:text-[1.3rem]">148</div>
-        <div class="inline-flex items-center gap-1 text-[0.7rem] font-semibold mt-1.5 px-2 py-0.5 rounded-md bg-green-50 text-green-600">↑ 8 shipments</div>
-        </div>
-        <div class="group bg-white border border-neutral-100 rounded-2xl px-5 py-[22px] transition-all duration-300 hover:border-neutral-300 hover:shadow-[0_4px_20px_rgba(0,0,0,0.04)] hover:-translate-y-0.5 max-md:px-4 max-md:py-[18px]">
-        <div class="text-[0.7rem] font-semibold text-neutral-400 uppercase tracking-wide mb-2">Goods Out (Today)</div>
-        <div class="text-[1.6rem] font-extrabold text-neutral-900 tracking-tight max-md:text-[1.3rem]">93</div>
-        <div class="inline-flex items-center gap-1 text-[0.7rem] font-semibold mt-1.5 px-2 py-0.5 rounded-md bg-red-50 text-red-600">↓ 5% vs yesterday</div>
-        </div>
-        <div class="group bg-white border border-neutral-100 rounded-2xl px-5 py-[22px] transition-all duration-300 hover:border-neutral-300 hover:shadow-[0_4px_20px_rgba(0,0,0,0.04)] hover:-translate-y-0.5 max-md:px-4 max-md:py-[18px]">
-        <div class="text-[0.7rem] font-semibold text-neutral-400 uppercase tracking-wide mb-2">Pending Payments</div>
-        <div class="text-[1.6rem] font-extrabold text-neutral-900 tracking-tight max-md:text-[1.3rem]">$14.2k</div>
-        <div class="inline-flex items-center gap-1 text-[0.7rem] font-semibold mt-1.5 px-2 py-0.5 rounded-md bg-amber-100 text-amber-700">7 invoices due</div>
+        <div class="flex items-center gap-2">
+            <input type="date" id="printDate" class="h-9 px-3 border border-neutral-200 rounded-lg text-sm text-neutral-700 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400" />
+            <button id="btnPrintToday" onclick="printTransactions()" class="h-9 px-4 bg-green-500 text-white text-sm font-semibold rounded-lg hover:bg-green-600 transition-colors flex items-center gap-2">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+                Print
+            </button>
+            <button onclick="exportCSV()" class="h-9 px-4 bg-white border border-neutral-200 text-neutral-700 text-sm font-semibold rounded-lg hover:bg-neutral-50 transition-colors flex items-center gap-2">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                CSV
+            </button>
+            <button onclick="exportPDF()" class="h-9 px-4 bg-white border border-neutral-200 text-neutral-700 text-sm font-semibold rounded-lg hover:bg-neutral-50 transition-colors flex items-center gap-2">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                PDF
+            </button>
         </div>
     </div>
 
-    <!-- Placeholder section -->
-    <div class="bg-white border border-neutral-100 rounded-2xl p-6 min-h-[200px] flex items-center justify-center text-neutral-300 text-sm font-medium">
-        Chart &amp; recent activity will go here
+    <!-- Stat cards — horizontal scrollable -->
+    <div id="statCardsWrap" class="mb-7 overflow-x-auto scrollbar-thin pb-2">
+        <div id="statCards" class="flex gap-4 min-w-max">
+            <div class="animate-pulse bg-neutral-100 rounded-2xl w-[220px] h-[110px] shrink-0"></div>
+            <div class="animate-pulse bg-neutral-100 rounded-2xl w-[220px] h-[110px] shrink-0"></div>
+            <div class="animate-pulse bg-neutral-100 rounded-2xl w-[220px] h-[110px] shrink-0"></div>
+            <div class="animate-pulse bg-neutral-100 rounded-2xl w-[220px] h-[110px] shrink-0"></div>
+        </div>
     </div>
+
+    <!-- Charts Row 1: Trend + Payment Status -->
+    <div class="grid grid-cols-3 gap-5 mb-5 max-lg:grid-cols-1">
+        <div class="col-span-2 max-lg:col-span-1 bg-white border border-neutral-100 rounded-2xl p-5">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-sm font-bold text-neutral-700">Sales vs Purchases vs Spoilage</h3>
+                <span class="text-[0.7rem] text-neutral-400 font-medium">Last 30 days</span>
+            </div>
+            <!-- FIX: wrap canvas in a fixed-height div with position:relative -->
+            <div style="position:relative; height:260px;">
+                <canvas id="chartTrend"></canvas>
+            </div>
+        </div>
+        <div class="bg-white border border-neutral-100 rounded-2xl p-5">
+            <h3 class="text-sm font-bold text-neutral-700 mb-4">Invoice Payment Status</h3>
+            <div style="position:relative; height:260px;">
+                <canvas id="chartPayStatus"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Row 2: Top Items + Top Customers -->
+    <div class="grid grid-cols-2 gap-5 mb-5 max-lg:grid-cols-1">
+        <div class="bg-white border border-neutral-100 rounded-2xl p-5">
+            <h3 class="text-sm font-bold text-neutral-700 mb-4">Top Sold Items (This Month)</h3>
+            <div style="position:relative; height:220px;">
+                <canvas id="chartTopItems"></canvas>
+            </div>
+        </div>
+        <div class="bg-white border border-neutral-100 rounded-2xl p-5">
+            <h3 class="text-sm font-bold text-neutral-700 mb-4">Top Customers (This Month)</h3>
+            <div style="position:relative; height:220px;">
+                <canvas id="chartTopCustomers"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Row: Recent Activity + Low Stock Alerts -->
+    <div class="grid grid-cols-5 gap-5 max-lg:grid-cols-1">
+        <div class="col-span-3 max-lg:col-span-1 bg-white border border-neutral-100 rounded-2xl p-5">
+            <h3 class="text-sm font-bold text-neutral-700 mb-4">Recent Activity</h3>
+            <div id="activityList" class="space-y-2 max-h-[360px] overflow-y-auto scrollbar-thin">
+                <div class="animate-pulse h-12 bg-neutral-50 rounded-xl"></div>
+                <div class="animate-pulse h-12 bg-neutral-50 rounded-xl"></div>
+                <div class="animate-pulse h-12 bg-neutral-50 rounded-xl"></div>
+            </div>
+        </div>
+
+        <div class="col-span-2 max-lg:col-span-1 bg-white border border-neutral-100 rounded-2xl p-5">
+            <h3 class="text-sm font-bold text-neutral-700 mb-4 flex items-center gap-2">
+                <span class="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
+                Low Stock Alerts
+            </h3>
+            <div id="lowStockList" class="space-y-2 max-h-[360px] overflow-y-auto scrollbar-thin">
+                <div class="animate-pulse h-12 bg-neutral-50 rounded-xl"></div>
+                <div class="animate-pulse h-12 bg-neutral-50 rounded-xl"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden print area -->
+    <div id="printArea" class="hidden"></div>
+
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+
+    <script>
+    /* ══════════════════════════════════════
+       DASHBOARD SCRIPT
+    ══════════════════════════════════════ */
+
+    const DASH_API = '/api/dashboard/data/';
+    const TXN_API  = '/api/dashboard/transactions/';
+    let dashData   = null;
+
+    // FIX: Track chart instances so we can destroy before re-creating
+    const chartInstances = {};
+
+    document.getElementById('printDate').value = new Date().toISOString().slice(0, 10);
+
+    // ═══════════════════════════════════════
+    //  LOAD DASHBOARD
+    // ═══════════════════════════════════════
+
+    async function loadDashboard() {
+        try {
+            const res = await fetch(DASH_API, { credentials: 'same-origin' });
+            if (!res.ok) throw new Error('Failed to load dashboard');
+            dashData = await res.json();
+            if (!dashData.success) { toast.error(dashData.message || 'Error loading dashboard'); return; }
+
+            renderGreeting(dashData.greeting);
+            renderStatCards(dashData.stat_cards);
+            renderCharts(dashData.charts);
+            renderActivity(dashData.activity);
+            renderLowStock(dashData.low_stock_alerts);
+
+        } catch (err) {
+            console.error(err);
+            toast.error('Could not load dashboard data.');
+        }
+    }
+
+    // ═══════════════════════════════════════
+    //  GREETING
+    // ═══════════════════════════════════════
+
+    function renderGreeting(greeting) {
+        document.getElementById('greetingTitle').textContent = 'Dashboard';
+        document.getElementById('greetingSub').textContent = greeting + ". Here's your inventory overview.";
+    }
+
+    // ═══════════════════════════════════════
+    //  STAT CARDS
+    // ═══════════════════════════════════════
+
+    function renderStatCards(cards) {
+        const wrap = document.getElementById('statCards');
+        const badgeColors = {
+            green: 'bg-green-50 text-green-600',
+            red:   'bg-red-50 text-red-600',
+            amber: 'bg-amber-100 text-amber-700',
+            blue:  'bg-blue-50 text-blue-600',
+        };
+        wrap.innerHTML = cards.map(c => `
+            <div class="group bg-white border border-neutral-100 rounded-2xl px-5 py-[22px] min-w-[200px] shrink-0
+                        transition-all duration-300 hover:border-neutral-300 hover:shadow-[0_4px_20px_rgba(0,0,0,0.04)] hover:-translate-y-0.5">
+                <div class="text-[0.7rem] font-semibold text-neutral-400 uppercase tracking-wide mb-2">${esc(c.label)}</div>
+                <div class="text-[1.5rem] font-extrabold text-neutral-900 tracking-tight">${esc(String(c.value))}</div>
+                <div class="inline-flex items-center gap-1 text-[0.7rem] font-semibold mt-1.5 px-2 py-0.5 rounded-md ${badgeColors[c.badge_type] || badgeColors.green}">${esc(c.badge)}</div>
+            </div>
+        `).join('');
+    }
+
+    // ═══════════════════════════════════════
+    //  CHARTS  ← KEY FIX HERE
+    // ═══════════════════════════════════════
+
+    function destroyChart(id) {
+        // FIX: destroy any existing Chart instance on this canvas before making a new one
+        if (chartInstances[id]) {
+            chartInstances[id].destroy();
+            chartInstances[id] = null;
+        }
+    }
+
+    function renderCharts(charts) {
+        // 1) Trend Line
+        destroyChart('chartTrend');
+        chartInstances['chartTrend'] = new Chart(document.getElementById('chartTrend'), {
+            type: 'line',
+            data: {
+                labels: charts.trend.labels,
+                datasets: [
+                    {
+                        label: 'Sales',
+                        data: charts.trend.sales,
+                        borderColor: '#22c55e',
+                        backgroundColor: 'rgba(34,197,94,0.08)',
+                        fill: true,
+                        tension: 0.35,
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        pointHitRadius: 10,
+                    },
+                    {
+                        label: 'Purchases',
+                        data: charts.trend.purchases,
+                        borderColor: '#3b82f6',
+                        backgroundColor: 'rgba(59,130,246,0.08)',
+                        fill: true,
+                        tension: 0.35,
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        pointHitRadius: 10,
+                    },
+                    {
+                        label: 'Spoilage',
+                        data: charts.trend.spoilage,
+                        borderColor: '#ef4444',
+                        backgroundColor: 'rgba(239,68,68,0.08)',
+                        fill: true,
+                        tension: 0.35,
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        pointHitRadius: 10,
+                    },
+                ],
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,  // FIX: must be false when parent div controls height
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: { position: 'bottom', labels: { usePointStyle: true, pointStyle: 'circle', padding: 16, font: { size: 11 } } },
+                },
+                scales: {
+                    x: { grid: { display: false }, ticks: { font: { size: 10 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 10 } },
+                    y: { grid: { color: '#f5f5f5' }, ticks: { font: { size: 10 } }, beginAtZero: true },
+                },
+            },
+        });
+
+        // 2) Payment Status Doughnut
+        destroyChart('chartPayStatus');
+        chartInstances['chartPayStatus'] = new Chart(document.getElementById('chartPayStatus'), {
+            type: 'doughnut',
+            data: {
+                labels: charts.payment_status.labels,
+                datasets: [{
+                    data: charts.payment_status.data,
+                    backgroundColor: ['#22c55e', '#f59e0b', '#ef4444'],
+                    borderWidth: 0,
+                    hoverOffset: 6,
+                }],
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '65%',
+                plugins: {
+                    legend: { position: 'bottom', labels: { usePointStyle: true, pointStyle: 'circle', padding: 14, font: { size: 11 } } },
+                },
+            },
+        });
+
+        // 3) Top Items Horizontal Bar
+        destroyChart('chartTopItems');
+        chartInstances['chartTopItems'] = new Chart(document.getElementById('chartTopItems'), {
+            type: 'bar',
+            data: {
+                labels: charts.top_items.labels,
+                datasets: [{
+                    label: 'Qty Sold',
+                    data: charts.top_items.data,
+                    backgroundColor: '#3b82f6',
+                    borderRadius: 6,
+                    barThickness: 22,
+                }],
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                indexAxis: 'y',
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { grid: { color: '#f5f5f5' }, ticks: { font: { size: 10 } }, beginAtZero: true },
+                    y: { grid: { display: false }, ticks: { font: { size: 11 } } },
+                },
+            },
+        });
+
+        // 4) Top Customers Horizontal Bar
+        destroyChart('chartTopCustomers');
+        chartInstances['chartTopCustomers'] = new Chart(document.getElementById('chartTopCustomers'), {
+            type: 'bar',
+            data: {
+                labels: charts.top_customers.labels,
+                datasets: [{
+                    label: 'Revenue',
+                    data: charts.top_customers.data,
+                    backgroundColor: '#22c55e',
+                    borderRadius: 6,
+                    barThickness: 22,
+                }],
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                indexAxis: 'y',
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { grid: { color: '#f5f5f5' }, ticks: { font: { size: 10 } }, beginAtZero: true },
+                    y: { grid: { display: false }, ticks: { font: { size: 11 } } },
+                },
+            },
+        });
+    }
+
+    // ═══════════════════════════════════════
+    //  RECENT ACTIVITY
+    // ═══════════════════════════════════════
+
+    function renderActivity(activity) {
+        const el = document.getElementById('activityList');
+        if (!activity.length) {
+            el.innerHTML = '<div class="text-sm text-neutral-400 text-center py-6">No recent activity</div>';
+            return;
+        }
+        const typeColors = {
+            purchase: 'bg-blue-50 border-blue-200',
+            sale:     'bg-green-50 border-green-200',
+            payment:  'bg-amber-50 border-amber-200',
+            spoilage: 'bg-red-50 border-red-200',
+        };
+        el.innerHTML = activity.map(a => {
+            const ago = timeAgo(a.time);
+            return `
+                <div class="flex items-center gap-3 px-4 py-3 rounded-xl border ${typeColors[a.type] || 'border-neutral-100'} transition-colors hover:shadow-sm">
+                    <span class="text-lg">${a.icon}</span>
+                    <div class="flex-1 min-w-0">
+                        <div class="text-[0.8rem] font-medium text-neutral-700 truncate">${esc(a.text)}</div>
+                    </div>
+                    <span class="text-[0.7rem] text-neutral-400 font-medium whitespace-nowrap">${ago}</span>
+                </div>`;
+        }).join('');
+    }
+
+    // ═══════════════════════════════════════
+    //  LOW STOCK ALERTS
+    // ═══════════════════════════════════════
+
+    function renderLowStock(items) {
+        const el = document.getElementById('lowStockList');
+        if (!items.length) {
+            el.innerHTML = '<div class="text-sm text-green-600 text-center py-6 font-medium">✅ All items are well stocked!</div>';
+            return;
+        }
+        el.innerHTML = items.map(i => {
+            const pct = Math.min(100, Math.max(0, (parseFloat(i.quantity_in_stock) / i.threshold) * 100));
+            const barColor = pct <= 25 ? 'bg-red-500' : pct <= 50 ? 'bg-amber-400' : 'bg-green-400';
+            return `
+                <div class="flex items-center gap-3 px-4 py-3 rounded-xl border border-red-100 bg-red-50/40">
+                    <div class="flex-1 min-w-0">
+                        <div class="text-[0.8rem] font-semibold text-neutral-700 truncate">${esc(i.name)}</div>
+                        <div class="flex items-center gap-2 mt-1">
+                            <div class="flex-1 h-1.5 bg-neutral-200 rounded-full overflow-hidden">
+                                <div class="${barColor} h-full rounded-full" style="width:${pct}%"></div>
+                            </div>
+                            <span class="text-[0.65rem] text-neutral-500 font-semibold whitespace-nowrap">${i.quantity_in_stock} / ${i.threshold} ${esc(i.unit)}</span>
+                        </div>
+                    </div>
+                </div>`;
+        }).join('');
+    }
+
+    // ═══════════════════════════════════════
+    //  PRINT / EXPORT
+    // ═══════════════════════════════════════
+
+    async function fetchTransactions(date) {
+        const res = await fetch(`${TXN_API}?date=${date}`, { credentials: 'same-origin' });
+        if (!res.ok) throw new Error('Failed to fetch transactions');
+        return await res.json();
+    }
+
+    async function printTransactions() {
+        const date = document.getElementById('printDate').value;
+        if (!date) { toast.warning('Please select a date'); return; }
+        try {
+            toast.info('Fetching transactions...');
+            const data = await fetchTransactions(date);
+            if (!data.success) { toast.error(data.message); return; }
+            const html = buildPrintHTML(data);
+            const printWin = window.open('', '_blank', 'width=900,height=700');
+            printWin.document.write(html);
+            printWin.document.close();
+            printWin.onload = () => { printWin.print(); };
+        } catch (e) {
+            toast.error('Print failed: ' + e.message);
+        }
+    }
+
+    async function exportCSV() {
+        const date = document.getElementById('printDate').value;
+        if (!date) { toast.warning('Please select a date'); return; }
+        try {
+            toast.info('Generating CSV...');
+            const data = await fetchTransactions(date);
+            if (!data.success) { toast.error(data.message); return; }
+
+            let csv = `Transaction Report — ${data.company_name} — ${data.date}\n\n`;
+            csv += 'PURCHASES\nRef,Supplier,Status,Total\n';
+            data.purchases.forEach(p => csv += `${p.ref},${p.supplier},${p.status},${p.total}\n`);
+            csv += '\nSALES\nRef,Customer,Status,Total\n';
+            data.sales.forEach(s => csv += `${s.ref},${s.customer},${s.status},${s.total}\n`);
+            csv += '\nPAYMENTS\nRef,Type,Party,Method,Amount\n';
+            data.payments.forEach(p => csv += `${p.ref},${p.type},${p.party},${p.method},${p.amount}\n`);
+            csv += '\nSPOILAGE\nRef,Item,Reason,Qty,Loss\n';
+            data.spoilage.forEach(s => csv += `${s.ref},${s.item},${s.reason},${s.qty},${s.loss}\n`);
+
+            downloadFile(`transactions_${date}.csv`, csv, 'text/csv');
+            toast.success('CSV downloaded');
+        } catch (e) {
+            toast.error('CSV export failed');
+        }
+    }
+
+    async function exportPDF() {
+        const date = document.getElementById('printDate').value;
+        if (!date) { toast.warning('Please select a date'); return; }
+        try {
+            toast.info('Generating PDF...');
+            const data = await fetchTransactions(date);
+            if (!data.success) { toast.error(data.message); return; }
+            const html = buildPrintHTML(data);
+            const printWin = window.open('', '_blank', 'width=900,height=700');
+            printWin.document.write(html);
+            printWin.document.close();
+            printWin.onload = () => { printWin.print(); };
+            toast.info('Use "Save as PDF" in the print dialog');
+        } catch (e) {
+            toast.error('PDF export failed');
+        }
+    }
+
+    function buildPrintHTML(data) {
+        const c = data.currency;
+        let html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Transactions — ${data.date}</title>
+            <style>
+                body{font-family:Inter,system-ui,sans-serif;padding:30px;color:#262626;font-size:13px}
+                h1{font-size:18px;margin-bottom:4px}
+                h2{font-size:14px;margin:20px 0 8px;color:#555;border-bottom:1px solid #e5e5e5;padding-bottom:4px}
+                table{width:100%;border-collapse:collapse;margin-bottom:12px}
+                th,td{padding:6px 10px;border:1px solid #e5e5e5;text-align:left;font-size:12px}
+                th{background:#fafafa;font-weight:600}
+                .text-right{text-align:right}
+                .muted{color:#999}
+                @media print{body{padding:10px}}
+            </style></head><body>
+            <h1>${esc(data.company_name)}</h1>
+            <p class="muted">Daily Transaction Report — ${data.date}</p>`;
+
+        html += '<h2>📦 Purchases</h2>';
+        if (data.purchases.length) {
+            html += '<table><tr><th>Ref</th><th>Supplier</th><th>Status</th><th class="text-right">Total</th></tr>';
+            data.purchases.forEach(p => html += `<tr><td>${p.ref}</td><td>${p.supplier}</td><td>${p.status}</td><td class="text-right">${c} ${p.total}</td></tr>`);
+            html += '</table>';
+        } else { html += '<p class="muted">No purchases on this date.</p>'; }
+
+        html += '<h2>🚚 Sales</h2>';
+        if (data.sales.length) {
+            html += '<table><tr><th>Ref</th><th>Customer</th><th>Status</th><th class="text-right">Total</th></tr>';
+            data.sales.forEach(s => html += `<tr><td>${s.ref}</td><td>${s.customer}</td><td>${s.status}</td><td class="text-right">${c} ${s.total}</td></tr>`);
+            html += '</table>';
+        } else { html += '<p class="muted">No sales on this date.</p>'; }
+
+        html += '<h2>💰 Payments</h2>';
+        if (data.payments.length) {
+            html += '<table><tr><th>Ref</th><th>Type</th><th>Party</th><th>Method</th><th class="text-right">Amount</th></tr>';
+            data.payments.forEach(p => html += `<tr><td>${p.ref}</td><td>${p.type}</td><td>${p.party}</td><td>${p.method}</td><td class="text-right">${c} ${p.amount}</td></tr>`);
+            html += '</table>';
+        } else { html += '<p class="muted">No payments on this date.</p>'; }
+
+        html += '<h2>⚠️ Spoilage</h2>';
+        if (data.spoilage.length) {
+            html += '<table><tr><th>Ref</th><th>Item</th><th>Reason</th><th>Qty</th><th class="text-right">Loss</th></tr>';
+            data.spoilage.forEach(s => html += `<tr><td>${s.ref}</td><td>${s.item}</td><td>${s.reason}</td><td>${s.qty}</td><td class="text-right">${c} ${s.loss}</td></tr>`);
+            html += '</table>';
+        } else { html += '<p class="muted">No spoilage on this date.</p>'; }
+
+        html += '</body></html>';
+        return html;
+    }
+
+    // ═══════════════════════════════════════
+    //  UTILITIES
+    // ═══════════════════════════════════════
+
+    function esc(s) {
+        const d = document.createElement('div');
+        d.textContent = s;
+        return d.innerHTML;
+    }
+
+    function timeAgo(iso) {
+        const diff = (Date.now() - new Date(iso).getTime()) / 1000;
+        if (diff < 60) return 'just now';
+        if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
+        if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
+        return Math.floor(diff / 86400) + 'd ago';
+    }
+
+    function downloadFile(name, content, type) {
+        const blob = new Blob([content], { type });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = name;
+        a.click();
+        URL.revokeObjectURL(a.href);
+    }
+
+    // ── Init ──
+    document.addEventListener('DOMContentLoaded', loadDashboard);
+    </script>
 
 {% endblock %}
