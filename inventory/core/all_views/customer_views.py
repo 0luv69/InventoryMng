@@ -18,9 +18,8 @@ from django.db.models import Q, Sum, Count
 from django.utils import timezone
 from django.conf import settings
 
-from ..models import Party
+from ..models import Party, SaleInvoice, Payment
 from ..decorators import api_login_required, company_required
-
 
 # ═══════════════════════════════════════════════════════════════
 #  HELPERS
@@ -352,4 +351,76 @@ def customer_delete_api(request):
         "success": True,
         "message": f"{count} {label} deleted successfully.",
         "deleted_ids": list(customer_ids),
+    })
+
+
+# ═══════════════════════════════════════════════════════════════
+#  CUSTOMER TRANSACTIONS  (GET)
+#  Returns latest 5 sale invoices + latest 5 payments for a customer
+# ═══════════════════════════════════════════════════════════════
+
+@api_login_required
+def customer_transactions_api(request, pk):
+    if request.method != "GET":
+        return JsonResponse({"success": False, "message": "Method not allowed."}, status=405)
+
+    company = request.company
+    try:
+        customer = _get_customer_base_qs(company).get(id=pk)
+    except Party.DoesNotExist:
+        return JsonResponse({"success": False, "message": "Customer not found."}, status=404)
+
+    # ── Sale Invoices (latest 5, non-voided) ──
+    invoices_qs = SaleInvoice.objects.filter(
+        company=company, customer=customer, is_void=False
+    ).order_by("-date_dispatched", "-created_at")[:5]
+
+    total_invoices = SaleInvoice.objects.filter(
+        company=company, customer=customer, is_void=False
+    ).count()
+
+    invoices = []
+    for inv in invoices_qs:
+        invoices.append({
+            "id": inv.id,
+            "reference_no": inv.reference_no,
+            "date": inv.date_dispatched.strftime("%Y-%m-%d"),
+            "total": str(inv.invoice_total),
+            "paid": str(inv.total_paid),
+            "balance": str(inv.balance_due),
+            "payment_status": inv.payment_status,
+        })
+
+    # ── Payments received (latest 5, non-voided) ──
+    payments_qs = Payment.objects.filter(
+        company=company,
+        party=customer,
+        payment_type=Payment.PaymentType.RECEIVED,
+        is_void=False,
+    ).select_related("sale_invoice").order_by("-date_paid", "-created_at")[:5]
+
+    total_payments = Payment.objects.filter(
+        company=company,
+        party=customer,
+        payment_type=Payment.PaymentType.RECEIVED,
+        is_void=False,
+    ).count()
+
+    payments = []
+    for pay in payments_qs:
+        payments.append({
+            "id": pay.id,
+            "reference_no": pay.reference_no,
+            "date": pay.date_paid.strftime("%Y-%m-%d"),
+            "amount": str(pay.amount),
+            "payment_method": pay.payment_method,
+            "linked_invoice": pay.sale_invoice.reference_no if pay.sale_invoice else "",
+        })
+
+    return JsonResponse({
+        "success": True,
+        "invoices": invoices,
+        "payments": payments,
+        "total_invoices": total_invoices,
+        "total_payments": total_payments,
     })

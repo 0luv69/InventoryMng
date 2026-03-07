@@ -56,7 +56,7 @@ urlpatterns = [
     path('api/customers/create/', customer_views.customer_create_api, name='customer_create_api'),
     path('api/customers/update/', customer_views.customer_update_api, name='customer_update_api'),
     path('api/customers/delete/', customer_views.customer_delete_api, name='customer_delete_api'),
-
+    path('api/customers/<int:pk>/transactions/', customer_views.customer_transactions_api, name='customer_transactions_api'),
 
             # ── Item APIs ──
     path('app/items/', item_views.items_page, name='items'),
