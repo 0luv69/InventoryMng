@@ -18,7 +18,7 @@ from django.db.models import Q, Sum, Count, F
 from django.utils import timezone
 from django.conf import settings
 
-from ..models import Item, Unit, Party
+from ..models import Item, Unit
 from ..decorators import api_login_required, company_required
 
 
@@ -267,18 +267,6 @@ def item_create_api(request):
 
     data = _parse_multipart(request)
     name = data["name"]
-
-    # ── Validate supplier ──
-    supplier_id = data.get("supplier_id")
-    if not supplier_id:
-        return JsonResponse({"success": False, "message": "Supplier is required."}, status=400)
-    try:
-        supplier = Party.objects.get(
-            id=supplier_id, company=company,
-            party_type=Party.PartyType.SUPPLIER, is_removed=False,
-        )
-    except Party.DoesNotExist:
-        return JsonResponse({"success": False, "message": "Supplier not found."}, status=404)
 
     if not name:
         return JsonResponse({"success": False, "message": "Item name is required."}, status=400)

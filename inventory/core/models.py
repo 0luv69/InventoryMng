@@ -233,10 +233,7 @@ class Party(TimeStampedModel):
 
 class Item(TimeStampedModel):
     company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name="items")
-    supplier = models.ForeignKey(
-        Party, on_delete=models.PROTECT, related_name="purchase_invoices",
-        limit_choices_to={"party_type": Party.PartyType.SUPPLIER},
-    )
+   
     uuid = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     name = models.CharField(max_length=200)
     description = models.TextField(blank=True)
@@ -290,6 +287,10 @@ class PurchaseInvoice(TimeStampedModel):
         Company, on_delete=models.CASCADE, related_name="purchase_invoices"
     )
     reference_no = models.CharField(max_length=50)
+    supplier = models.ForeignKey(
+        Party, on_delete=models.PROTECT, related_name="purchase_invoices",
+        limit_choices_to={"party_type": Party.PartyType.SUPPLIER},
+    )
     date_received = models.DateField(default=timezone.now)
     received_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.PROTECT,
