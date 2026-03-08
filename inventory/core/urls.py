@@ -40,7 +40,7 @@ urlpatterns = [
     path('update-company/api/', profile_views.update_company, name='update_company'),
     path('update-company/api/', profile_views.update_company, name='update_company'),
     path('update-company-logo/api/', profile_views.update_company_logo, name='update_company_logo'),
-
+    path('api/company/info/', profile_views.company_info_api, name='company_info_api'),
 
         # ── Supplier APIs ──                                              
     path('app/suppliers/', supplier_views.suppliers_page, name='suppliers'),
@@ -48,7 +48,7 @@ urlpatterns = [
     path('api/suppliers/create/', supplier_views.supplier_create_api, name='supplier_create_api'),
     path('api/suppliers/update/', supplier_views.supplier_update_api, name='supplier_update_api'),
     path('api/suppliers/delete/', supplier_views.supplier_delete_api, name='supplier_delete_api'),
-
+    path('api/suppliers/<int:pk>/transactions/', supplier_views.supplier_transactions_api, name='supplier_transactions_api'),
 
         # ── Customer APIs ──
     path('app/customers/', customer_views.customers_page, name='customers'),
@@ -57,6 +57,10 @@ urlpatterns = [
     path('api/customers/update/', customer_views.customer_update_api, name='customer_update_api'),
     path('api/customers/delete/', customer_views.customer_delete_api, name='customer_delete_api'),
     path('api/customers/<int:pk>/transactions/', customer_views.customer_transactions_api, name='customer_transactions_api'),
+    path('app/customers/<int:pk>/', customer_views.customer_profile_page, name='customer_profile'),
+    path('api/customers/<int:pk>/statement/', customer_views.customer_statement_api, name='customer_statement_api'),
+
+
 
             # ── Item APIs ──
     path('app/items/', item_views.items_page, name='items'),

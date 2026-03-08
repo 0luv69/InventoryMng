@@ -16,8 +16,10 @@ from django.http import JsonResponse
 from django.db.models import Q, Sum, Count
 from django.utils import timezone
 
-from ..models import Party
+from ..models import Party, PurchaseInvoice, Payment
 from ..decorators import api_login_required,company_required
+
+
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -316,4 +318,80 @@ def supplier_delete_api(request):
         "success": True,
         "message": f"{count} {label} deleted successfully.",
         "deleted_ids": list(supplier_ids),
+    })
+
+
+
+
+
+
+# ═══════════════════════════════════════════════════════════════
+#  SUPPLIER TRANSACTIONS  (GET)
+#  Returns latest 5 purchase invoices + latest 5 payments for a supplier
+# ═══════════════════════════════════════════════════════════════
+
+@api_login_required
+def supplier_transactions_api(request, pk):
+    if request.method != "GET":
+        return JsonResponse({"success": False, "message": "Method not allowed."}, status=405)
+
+    company = request.company
+    try:
+        supplier = _get_supplier_base_qs(company).get(id=pk)
+    except Party.DoesNotExist:
+        return JsonResponse({"success": False, "message": "Supplier not found."}, status=404)
+
+    # ── Purchase Invoices (latest 5, non-voided) ──
+    invoices_qs = PurchaseInvoice.objects.filter(
+        company=company, supplier=supplier, is_void=False
+    ).order_by("-date_received", "-created_at")[:5]
+
+    total_invoices = PurchaseInvoice.objects.filter(
+        company=company, supplier=supplier, is_void=False
+    ).count()
+
+    invoices = []
+    for inv in invoices_qs:
+        invoices.append({
+            "id": inv.id,
+            "reference_no": inv.reference_no,
+            "date": inv.date_received.strftime("%Y-%m-%d"),
+            "total": str(inv.invoice_total),
+            "paid": str(inv.total_paid),
+            "balance": str(inv.balance_due),
+            "payment_status": inv.payment_status,
+        })
+
+    # ── Payments made (latest 5, non-voided) ──
+    payments_qs = Payment.objects.filter(
+        company=company,
+        party=supplier,
+        payment_type=Payment.PaymentType.SENT,
+        is_void=False,
+    ).select_related("purchase_invoice").order_by("-date_paid", "-created_at")[:5]
+
+    total_payments = Payment.objects.filter(
+        company=company,
+        party=supplier,
+        payment_type=Payment.PaymentType.SENT,
+        is_void=False,
+    ).count()
+
+    payments = []
+    for pay in payments_qs:
+        payments.append({
+            "id": pay.id,
+            "reference_no": pay.reference_no,
+            "date": pay.date_paid.strftime("%Y-%m-%d"),
+            "amount": str(pay.amount),
+            "payment_method": pay.payment_method,
+            "linked_invoice": pay.purchase_invoice.reference_no if pay.purchase_invoice else "",
+        })
+
+    return JsonResponse({
+        "success": True,
+        "invoices": invoices,
+        "payments": payments,
+        "total_invoices": total_invoices,
+        "total_payments": total_payments,
     })

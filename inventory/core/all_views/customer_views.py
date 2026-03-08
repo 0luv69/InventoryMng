@@ -424,3 +424,143 @@ def customer_transactions_api(request, pk):
         "total_invoices": total_invoices,
         "total_payments": total_payments,
     })
+
+
+
+# ═══════════════════════════════════════════════════════════════
+#  CUSTOMER PROFILE PAGE  (GET)
+#  Renders the full customer profile page
+# ═══════════════════════════════════════════════════════════════
+
+@company_required
+def customer_profile_page(request, pk):
+    """Render the full customer profile page."""
+    company = request.userProfile.company
+    try:
+        customer = _get_customer_base_qs(company).get(id=pk)
+    except Party.DoesNotExist:
+        from django.http import Http404
+        raise Http404("Customer not found.")
+
+    context = {
+        "title": f"{customer.name} — Customer Profile",
+        "userProfile": request.userProfile,
+        "customer": customer,
+    }
+    return render(request, "core/customer_profile.html", context)
+
+
+# ═══════════════════════════════════════════════════════════════
+#  CUSTOMER STATEMENT API  (GET)
+#  Full ledger: all sale invoices + all payments, sorted by date,
+#  with running balance. Supports ?from_date=&to_date= filters.
+# ═══════════════════════════════════════════════════════════════
+
+@api_login_required
+def customer_statement_api(request, pk):
+    if request.method != "GET":
+        return JsonResponse({"success": False, "message": "Method not allowed."}, status=405)
+
+    company = request.company
+    try:
+        customer = _get_customer_base_qs(company).get(id=pk)
+    except Party.DoesNotExist:
+        return JsonResponse({"success": False, "message": "Customer not found."}, status=404)
+
+    # ── Date filters ──
+    from datetime import datetime
+    from_date_str = request.GET.get("from_date", "").strip()
+    to_date_str = request.GET.get("to_date", "").strip()
+
+    from_date = None
+    to_date = None
+    try:
+        if from_date_str:
+            from_date = datetime.strptime(from_date_str, "%Y-%m-%d").date()
+        if to_date_str:
+            to_date = datetime.strptime(to_date_str, "%Y-%m-%d").date()
+    except ValueError:
+        return JsonResponse({"success": False, "message": "Invalid date format. Use YYYY-MM-DD."}, status=400)
+
+    # ── Fetch all non-voided Sale Invoices ──
+    invoices_qs = SaleInvoice.objects.filter(
+        company=company, customer=customer, is_void=False
+    )
+    if from_date:
+        invoices_qs = invoices_qs.filter(date_dispatched__gte=from_date)
+    if to_date:
+        invoices_qs = invoices_qs.filter(date_dispatched__lte=to_date)
+
+    # ── Fetch all non-voided Payments ──
+    payments_qs = Payment.objects.filter(
+        company=company,
+        party=customer,
+        payment_type=Payment.PaymentType.RECEIVED,
+        is_void=False,
+    ).select_related("sale_invoice")
+    if from_date:
+        payments_qs = payments_qs.filter(date_paid__gte=from_date)
+    if to_date:
+        payments_qs = payments_qs.filter(date_paid__lte=to_date)
+
+    # ── Build the ledger entries ──
+    entries = []
+
+    for inv in invoices_qs:
+        entries.append({
+            "date": inv.date_dispatched.strftime("%Y-%m-%d"),
+            "type": "invoice",
+            "reference_no": inv.reference_no,
+            "description": f"Sale Invoice #{inv.reference_no}",
+            "debit": str(inv.invoice_total),   # customer owes more
+            "credit": "0",
+            "id": inv.id,
+        })
+
+    for pay in payments_qs:
+        entries.append({
+            "date": pay.date_paid.strftime("%Y-%m-%d"),
+            "type": "payment",
+            "reference_no": pay.reference_no,
+            "description": f"Payment Received — {pay.get_payment_method_display()}"
+                           + (f" (Inv #{pay.sale_invoice.reference_no})" if pay.sale_invoice else ""),
+            "debit": "0",
+            "credit": str(pay.amount),         # customer paid
+            "id": pay.id,
+        })
+
+    # ── Sort by date ascending, then by type (invoice before payment on same day) ──
+    type_order = {"invoice": 0, "payment": 1}
+    entries.sort(key=lambda e: (e["date"], type_order.get(e["type"], 0)))
+
+    # ── Calculate running balance ──
+    running_balance = Decimal("0.00")
+    for entry in entries:
+        debit = Decimal(entry["debit"])
+        credit = Decimal(entry["credit"])
+        running_balance += debit - credit
+        entry["running_balance"] = str(running_balance)
+
+    # ── Summary ──
+    total_debit = sum(Decimal(e["debit"]) for e in entries)
+    total_credit = sum(Decimal(e["credit"]) for e in entries)
+    closing_balance = total_debit - total_credit
+
+    return JsonResponse({
+        "success": True,
+        "customer": {
+            "id": customer.id,
+            "name": customer.name,
+        },
+        "filters": {
+            "from_date": from_date_str,
+            "to_date": to_date_str,
+        },
+        "summary": {
+            "total_invoiced": str(total_debit),
+            "total_paid": str(total_credit),
+            "closing_balance": str(closing_balance),
+            "total_entries": len(entries),
+        },
+        "entries": entries,
+    })

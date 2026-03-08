@@ -11,19 +11,39 @@
      ══════════════════════════════════════════════════════════ -->
 
 <!-- ── Page Header ── -->
+<!-- ── Page Header ── -->
 <div class="mb-8">
   <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
     <div>
       <h1 class="text-2xl font-extrabold text-neutral-900 tracking-tight">Suppliers</h1>
       <p class="text-sm text-neutral-400 mt-1">Manage your vendor network, contacts, and purchase history.</p>
     </div>
-    <button onclick="openSlideOver('add')"
-            class="inline-flex items-center gap-2 px-5 py-2.5 bg-green-500 text-white text-sm font-semibold rounded-xl
-                   shadow-[0_1px_2px_rgba(0,0,0,0.05)] hover:bg-green-600 active:scale-[0.97]
-                   transition-all duration-200 self-start">
-      <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-      Add Supplier
-    </button>
+    <div class="flex items-center gap-2 self-start">
+      <!-- Export Excel -->
+      <button onclick="exportSupplierList('excel')"
+              class="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-neutral-600 bg-white border border-neutral-200
+                     rounded-xl hover:bg-neutral-50 hover:border-neutral-300 transition-all duration-200"
+              title="Export as Excel">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Excel
+      </button>
+      <!-- Export PDF / Print -->
+      <button onclick="exportSupplierList('pdf')"
+              class="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-neutral-600 bg-white border border-neutral-200
+                     rounded-xl hover:bg-neutral-50 hover:border-neutral-300 transition-all duration-200"
+              title="Print / PDF">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+        PDF
+      </button>
+      <!-- Add Supplier -->
+      <button onclick="openSlideOver('add')"
+              class="inline-flex items-center gap-2 px-5 py-2.5 bg-green-500 text-white text-sm font-semibold rounded-xl
+                     shadow-[0_1px_2px_rgba(0,0,0,0.05)] hover:bg-green-600 active:scale-[0.97]
+                     transition-all duration-200">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Add Supplier
+      </button>
+    </div>
   </div>
 </div>
 
@@ -216,14 +236,22 @@
      class="fixed top-0 right-0 bottom-0 w-full max-w-md bg-white z-[65] shadow-[-8px_0_30px_rgba(0,0,0,0.08)]
             translate-x-full transition-transform duration-300 ease-out flex flex-col">
 
+
   <!-- Detail header -->
   <div class="flex items-center justify-between px-6 py-5 border-b border-neutral-100">
     <h2 id="detailName" class="text-lg font-bold text-neutral-900 tracking-tight">Supplier</h2>
     <div class="flex items-center gap-2">
+      <!-- Print Statement -->
+      <button onclick="window._sup.printStatement(window._sup._detailId)" title="Print Statement"
+              class="w-8 h-8 flex items-center justify-center rounded-lg text-neutral-400 hover:text-blue-600 hover:bg-blue-50 transition-all duration-200">
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+      </button>
+      <!-- Edit -->
       <button onclick="editFromDetail()" title="Edit"
               class="w-8 h-8 flex items-center justify-center rounded-lg text-neutral-400 hover:text-green-600 hover:bg-green-50 transition-all duration-200">
         <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
       </button>
+      <!-- Close -->
       <button onclick="closeDetail()"
               class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-neutral-100 text-neutral-400 hover:text-neutral-600 transition-all duration-200">
         <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -406,6 +434,7 @@
     create: '/api/suppliers/create/',
     update: '/api/suppliers/update/',
     delete: '/api/suppliers/delete/',
+    transactions: '/api/suppliers/{id}/transactions/',
   };
 
   let suppliers = [];
@@ -723,6 +752,7 @@
      ═══════════════════════════════════════════════ */
   window._sup.openDetail = function(id) {
     detailSupplierId = id;
+    window._sup._detailId = id;
     const s = suppliers.find(x => x.id === id);
     if (!s) return;
     document.getElementById('detailName').textContent = s.name;
@@ -733,7 +763,8 @@
       ? '<span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold bg-green-50 text-green-600 border border-green-200">Active</span>'
       : '<span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold bg-neutral-100 text-neutral-500 border border-neutral-200">Inactive</span>';
 
-    document.getElementById('detailBody').innerHTML = `
+    // Build basic info first, then load transactions async
+    let html = `
       <div class="flex items-center gap-4 mb-6">
         <div class="w-14 h-14 rounded-2xl flex items-center justify-center text-lg font-bold ${avatarColor(s.id)}">${getInitials(s.name)}</div>
         <div>
@@ -771,13 +802,146 @@
         <div class="text-sm text-neutral-600 bg-neutral-50 rounded-xl p-4 border border-neutral-100 leading-relaxed">${s.notes}</div>
       </div>` : ''}
 
+      <!-- Transactions will load here -->
+      <div id="supplierTransactions">
+        <div class="mb-6">
+          <h4 class="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-3">Purchase Invoices</h4>
+          <div class="animate-pulse space-y-2">
+            <div class="h-10 bg-neutral-100 rounded-xl"></div>
+            <div class="h-10 bg-neutral-100 rounded-xl"></div>
+          </div>
+        </div>
+        <div class="mb-6">
+          <h4 class="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-3">Payments Made</h4>
+          <div class="animate-pulse space-y-2">
+            <div class="h-10 bg-neutral-100 rounded-xl"></div>
+            <div class="h-10 bg-neutral-100 rounded-xl"></div>
+          </div>
+        </div>
+      </div>
+
       <div class="text-xs text-neutral-400 pt-4 border-t border-neutral-100">Added on ${formatDate(s.created_at)}</div>
     `;
 
+    document.getElementById('detailBody').innerHTML = html;
+
+    // Open panel
     const bd = document.getElementById('detailBackdrop'); const pn = document.getElementById('detailPanel');
     bd.classList.remove('opacity-0','pointer-events-none'); bd.classList.add('opacity-100','pointer-events-auto');
     pn.classList.remove('translate-x-full'); pn.classList.add('translate-x-0');
+
+    // Load transactions async
+    loadSupplierTransactions(id);
   };
+
+  async function loadSupplierTransactions(supplierId) {
+    try {
+      const url = API.transactions.replace('{id}', supplierId);
+      const res = await apiCall(url, 'GET');
+      if (!res.success) return;
+
+      const container = document.getElementById('supplierTransactions');
+      if (!container) return;
+
+      container.innerHTML = renderInvoicesSection(res.invoices, res.total_invoices)
+                          + renderPaymentsSection(res.payments, res.total_payments);
+    } catch (e) {
+      console.error('Failed to load transactions', e);
+    }
+  }
+
+  function paymentStatusBadge(status) {
+    if (status === 'paid') return '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[0.6rem] font-bold bg-green-50 text-green-600 border border-green-200">Paid</span>';
+    if (status === 'partial') return '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[0.6rem] font-bold bg-amber-50 text-amber-600 border border-amber-200">Partial</span>';
+    return '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[0.6rem] font-bold bg-red-50 text-red-500 border border-red-200">Unpaid</span>';
+  }
+
+  function paymentMethodBadge(method) {
+    const colors = { cash: 'bg-green-50 text-green-600', online: 'bg-blue-50 text-blue-600', cheque: 'bg-purple-50 text-purple-600' };
+    const cls = colors[method] || 'bg-neutral-50 text-neutral-600';
+    return `<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[0.6rem] font-bold ${cls} border border-current/10">${method}</span>`;
+  }
+
+  function renderInvoicesSection(invoices, totalCount) {
+    if (totalCount === 0) {
+      return `
+        <div class="mb-6">
+          <h4 class="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-3">Purchase Invoices</h4>
+          <div class="text-center py-6 bg-neutral-50 rounded-xl border border-neutral-100">
+            <svg class="w-8 h-8 text-neutral-300 mx-auto mb-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            <p class="text-xs text-neutral-400">No purchase invoices yet</p>
+          </div>
+        </div>`;
+    }
+
+    const rows = invoices.map(inv => `
+      <div class="flex items-center justify-between py-2.5 border-b border-neutral-50 last:border-0 group/inv">
+        <div>
+          <div class="text-sm font-semibold text-neutral-800">${inv.reference_no}</div>
+          <div class="text-[0.65rem] text-neutral-400 mt-0.5">${formatDate(inv.date)}</div>
+        </div>
+        <div class="text-right flex items-center gap-2">
+          <div>
+            <div class="text-sm font-bold text-neutral-800">RS. ${formatMoney(inv.total)}</div>
+            ${parseFloat(inv.balance) > 0 ? `<div class="text-[0.6rem] text-amber-600 mt-0.5">Due: RS. ${formatMoney(inv.balance)}</div>` : ''}
+          </div>
+          ${paymentStatusBadge(inv.payment_status)}
+          <button onclick="event.stopPropagation(); window._sup.printInvoice(${inv.id})" title="Print Invoice"
+                  class="w-6 h-6 flex items-center justify-center rounded text-neutral-300 hover:text-blue-600 hover:bg-blue-50 opacity-0 group-hover/inv:opacity-100 transition-all duration-200">
+            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+          </button>
+        </div>
+      </div>`).join('');
+
+    const moreLabel = totalCount > 5 ? `<span class="text-[0.6rem] text-neutral-400 font-medium ml-1">(${totalCount} total)</span>` : '';
+
+    return `
+      <div class="mb-6">
+        <h4 class="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-3">
+          Purchase Invoices ${moreLabel}
+        </h4>
+        <div class="bg-white border border-neutral-100 rounded-xl overflow-hidden">
+          <div class="px-3">${rows}</div>
+        </div>
+      </div>`;
+  }
+
+  function renderPaymentsSection(payments, totalCount) {
+    if (totalCount === 0) {
+      return `
+        <div class="mb-6">
+          <h4 class="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-3">Payments Made</h4>
+          <div class="text-center py-6 bg-neutral-50 rounded-xl border border-neutral-100">
+            <svg class="w-8 h-8 text-neutral-300 mx-auto mb-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+            <p class="text-xs text-neutral-400">No payments made yet</p>
+          </div>
+        </div>`;
+    }
+
+    const rows = payments.map(pay => `
+      <div class="flex items-center justify-between py-2.5 border-b border-neutral-50 last:border-0">
+        <div>
+          <div class="text-sm font-semibold text-neutral-800">${pay.reference_no}</div>
+          <div class="text-[0.65rem] text-neutral-400 mt-0.5">${formatDate(pay.date)}${pay.linked_invoice ? ` · ${pay.linked_invoice}` : ''}</div>
+        </div>
+        <div class="text-right flex items-center gap-2">
+          <div class="text-sm font-bold text-green-600">RS. ${formatMoney(pay.amount)}</div>
+          ${paymentMethodBadge(pay.payment_method)}
+        </div>
+      </div>`).join('');
+
+    const moreLabel = totalCount > 5 ? `<span class="text-[0.6rem] text-neutral-400 font-medium ml-1">(${totalCount} total)</span>` : '';
+
+    return `
+      <div class="mb-6">
+        <h4 class="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-3">
+          Payments Made ${moreLabel}
+        </h4>
+        <div class="bg-white border border-neutral-100 rounded-xl overflow-hidden">
+          <div class="px-3">${rows}</div>
+        </div>
+      </div>`;
+  }
 
   function detailRow(label, val) {
     return `<div class="flex items-start py-2.5 border-b border-neutral-50 last:border-0"><span class="w-32 shrink-0 text-xs font-semibold text-neutral-400">${label}</span><span class="text-sm text-neutral-700 flex-1">${val || '—'}</span></div>`;
@@ -950,6 +1114,215 @@
      INIT — Load data from API on page load
      ═══════════════════════════════════════════════ */
   fetchSuppliers();
+
+
+
+
+  
+  /* ═══════════════════════════════════════════════
+     PHASE 6: PRINT / EXPORT FUNCTIONS
+     ═══════════════════════════════════════════════ */
+
+  /**
+   * 6.3 — Export current supplier list as Excel or PDF
+   */
+  window.exportSupplierList = async function(format) {
+    const search = document.getElementById('searchInput').value.trim();
+    const status = document.getElementById('filterStatus').value;
+    const balance = document.getElementById('filterBalance').value;
+    const sortVal = document.getElementById('filterSort').value.split('-');
+    let sortField = sortVal[0];
+    let sortOrder = sortVal[1] || 'desc';
+    if (sortField === 'due') { sortField = 'balance'; sortOrder = 'desc'; }
+
+    const params = new URLSearchParams({
+      page: 1, per_page: 9999,
+      search, status, balance,
+      sort: sortField, order: sortOrder,
+    });
+
+    toast.info('Preparing export…');
+    try {
+      const res = await apiCall(`${API.list}?${params}`, 'GET');
+      if (!res.success) { toast.error(res.message || 'Failed to load'); return; }
+
+      const allSuppliers = res.suppliers;
+      const columns = ['#', 'Name', 'Contact Person', 'Phone', 'Email', 'Outstanding Payable', 'Total Paid', 'Status'];
+      const rows = allSuppliers.map((s, i) => [
+        i + 1,
+        s.name,
+        s.contact_person || '—',
+        s.phone || '—',
+        s.email || '—',
+        `RS. ${formatMoney(s.balance)}`,
+        `RS. ${formatMoney(s.total_amount)}`,
+        s.status === 'active' ? 'Active' : 'Inactive',
+      ]);
+
+      const overview = res.overview;
+      const summary = {
+        'Total Suppliers': overview.total_suppliers,
+        'Active Suppliers': overview.active_suppliers,
+        'Total Payable': `RS. ${formatMoney(overview.total_payable)}`,
+        'Total Paid (Lifetime)': `RS. ${formatMoney(overview.total_paid_lifetime)}`,
+      };
+
+      const subtitle = [
+        search ? `Search: "${search}"` : '',
+        status ? `Status: ${status}` : '',
+        balance ? `Balance: ${balance}` : '',
+      ].filter(Boolean).join('  ·  ') || 'All suppliers';
+
+      const options = {
+        title: 'Supplier List',
+        subtitle: subtitle,
+        columns: columns,
+        rows: rows,
+        summary: summary,
+        filename: 'supplier-list',
+      };
+
+      if (format === 'excel') {
+        PrintExport.exportExcel(options);
+      } else {
+        PrintExport.printNow(options);
+      }
+    } catch (e) {
+      console.error(e);
+      toast.error('Export failed. Please try again.');
+    }
+  };
+
+
+  /**
+   * 6.3 — Print Supplier Statement (all purchase invoices + payments)
+   */
+  window._sup.printStatement = async function(supplierId) {
+    const s = suppliers.find(x => x.id === supplierId);
+    if (!s) { toast.error('Supplier not found'); return; }
+
+    toast.info('Generating statement…');
+    try {
+      const url = API.transactions.replace('{id}', supplierId);
+      const res = await apiCall(url, 'GET');
+      if (!res.success) { toast.error('Failed to load transactions'); return; }
+
+      const ledger = [];
+
+      res.invoices.forEach(inv => {
+        ledger.push({
+          date: inv.date,
+          type: 'Invoice',
+          ref: inv.reference_no,
+          debit: `RS. ${formatMoney(inv.total)}`,
+          credit: '—',
+          balance: `RS. ${formatMoney(inv.balance)}`,
+          status: inv.payment_status,
+        });
+      });
+
+      res.payments.forEach(pay => {
+        ledger.push({
+          date: pay.date,
+          type: 'Payment',
+          ref: pay.reference_no,
+          debit: '—',
+          credit: `RS. ${formatMoney(pay.amount)}`,
+          balance: '—',
+          status: pay.payment_method,
+        });
+      });
+
+      ledger.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+      const columns = ['Date', 'Type', 'Reference', 'Debit (Invoice)', 'Credit (Payment)', 'Due', 'Status'];
+      const rows = ledger.map(l => [
+        formatDate(l.date),
+        l.type,
+        l.ref,
+        l.debit,
+        l.credit,
+        l.balance,
+        l.status,
+      ]);
+
+      const bal = parseFloat(s.balance) || 0;
+      const totalAmt = parseFloat(s.total_amount) || 0;
+
+      PrintExport.printNow({
+        title: `Supplier Statement — ${s.name}`,
+        subtitle: `Total Invoices: ${res.total_invoices}  ·  Total Payments: ${res.total_payments}`,
+        columns: columns,
+        rows: rows,
+        summary: {
+          'Outstanding Payable': `RS. ${formatMoney(bal)}`,
+          'Total Paid (Lifetime)': `RS. ${formatMoney(totalAmt)}`,
+        },
+        filename: `statement-${s.name.replace(/\s+/g, '-').toLowerCase()}`,
+      });
+    } catch (e) {
+      console.error(e);
+      toast.error('Failed to generate statement.');
+    }
+  };
+
+
+  /**
+   * 6.3 — Print Individual Purchase Invoice
+   */
+  window._sup.printInvoice = async function(invoiceId) {
+    toast.info('Loading invoice…');
+    try {
+      const res = await fetch(`/api/goodsin/detail/${invoiceId}/`);
+      const data = await res.json();
+      if (!data.success) { toast.error(data.message || 'Failed to load invoice'); return; }
+
+      const inv = data.invoice;
+      const items = data.items || [];
+
+      const columns = ['#', 'Item', 'Qty', 'Unit Price', 'Discount', 'Total'];
+      const rows = items.map((item, i) => [
+        i + 1,
+        item.item_name || item.name || '—',
+        item.quantity,
+        `RS. ${formatMoney(item.unit_price || item.cost_price)}`,
+        item.discount ? `RS. ${formatMoney(item.discount)}` : '—',
+        `RS. ${formatMoney(item.line_total || item.total)}`,
+      ]);
+
+      const paid = parseFloat(inv.total_paid || 0);
+      const total = parseFloat(inv.invoice_total || inv.total || 0);
+      const due = parseFloat(inv.balance_due || 0);
+
+      const summary = {
+        'Subtotal': `RS. ${formatMoney(inv.subtotal || total)}`,
+      };
+      if (inv.discount_amount && parseFloat(inv.discount_amount) > 0) {
+        summary['Discount'] = `- RS. ${formatMoney(inv.discount_amount)}`;
+      }
+      summary['Invoice Total'] = `RS. ${formatMoney(total)}`;
+      summary['Paid'] = `RS. ${formatMoney(paid)}`;
+      if (due > 0) {
+        summary['Balance Due'] = `RS. ${formatMoney(due)}`;
+      }
+
+      const statusLabel = inv.payment_status === 'paid' ? '✅ Paid'
+                        : inv.payment_status === 'partial' ? `⚠️ Partial — RS. ${formatMoney(paid)} of RS. ${formatMoney(total)}`
+                        : '❌ Unpaid';
+
+      PrintExport.printNow({
+        title: `Purchase Invoice — ${inv.reference_no}`,
+        subtitle: `Supplier: ${inv.supplier_name || '—'}  ·  Date: ${formatDate(inv.date_received || inv.date)}  ·  ${statusLabel}`,
+        columns: columns,
+        rows: rows,
+        summary: summary,
+        filename: `invoice-${inv.reference_no}`,
+      });
+    } catch (e) {
+      console.error(e);
+      toast.error('Failed to print invoice.');
+    }
+  };
 
 })();
 </script>

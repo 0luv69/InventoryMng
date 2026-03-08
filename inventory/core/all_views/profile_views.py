@@ -219,3 +219,40 @@ def update_company_logo(request):
 
     logo_url = company.logo.url if company.logo else ""
     return JsonResponse({"success": True, "message": "Logo updated successfully.", "logo_url": logo_url}, status=200)
+
+
+
+
+
+# ── append this after line 221 ──
+
+def company_info_api(request):
+    """
+    GET /api/company/info/
+    Returns company details for print headers and export documents.
+    """
+    if not request.user.is_authenticated:
+        return JsonResponse({"success": False, "message": "Authentication required."}, status=401)
+
+    if request.method != "GET":
+        return JsonResponse({"success": False, "message": "Method not allowed."}, status=405)
+
+    userProfile = get_object_or_404(UserProfile, user=request.user)
+    company = userProfile.company
+
+    if not company:
+        return JsonResponse({"success": False, "message": "No company assigned."}, status=404)
+
+    data = {
+        "name":     company.name,
+        "logo_url": company.logo.url if company.logo else "",
+        "address":  company.address,
+        "city":     company.city,
+        "state":    company.state,
+        "country":  company.country,
+        "phone":    company.phone,
+        "email":    company.email,
+        "tax_id":   company.tax_id,
+        "currency": company.currency,
+    }
+    return JsonResponse(data, status=200)

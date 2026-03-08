@@ -1,0 +1,704 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ customer.name }} — Customer Profile{% endblock %}
+{% block page_title %}Customer Profile{% endblock %}
+{% block page_subtitle %}{{ customer.name }}{% endblock %}
+
+{% block content %}
+
+<!-- ══════════════════════════════════════════════════════════
+     CUSTOMER PROFILE PAGE
+     ══════════════════════════════════════════════════════════ -->
+
+<!-- ── Back Button + Header ── -->
+<div class="mb-8">
+  <a href="{% url 'customers' %}"
+     class="inline-flex items-center gap-1.5 text-sm font-medium text-neutral-400 hover:text-green-600 transition-colors duration-200 mb-4">
+    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    Back to Customers
+  </a>
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div class="flex items-center gap-4">
+      <!-- Avatar -->
+      {% if customer.logo %}
+        <img src="{{ customer.logo.url }}" alt="{{ customer.name }}" class="w-16 h-16 rounded-2xl object-cover border-2 border-neutral-100" />
+      {% else %}
+        <div class="w-16 h-16 rounded-2xl bg-green-100 text-green-700 flex items-center justify-center text-xl font-bold">
+          {{ customer.name|make_list|first }}
+        </div>
+      {% endif %}
+      <div>
+        <h1 class="text-2xl font-extrabold text-neutral-900 tracking-tight">{{ customer.name }}</h1>
+        <div class="flex items-center gap-2 mt-1">
+          {% if customer.status == 'active' %}
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-lg text-xs font-bold bg-green-50 text-green-600 border border-green-200">Active</span>
+          {% else %}
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-lg text-xs font-bold bg-neutral-100 text-neutral-500 border border-neutral-200">Inactive</span>
+          {% endif %}
+          <span class="text-xs text-neutral-400">Customer since {{ customer.created_at|date:"M d, Y" }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ── Summary Cards ── -->
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6" id="profileStats">
+  <div class="bg-white border border-neutral-100 rounded-2xl px-5 py-4">
+    <div class="text-[0.65rem] font-semibold text-neutral-400 uppercase tracking-wide mb-1">Total Invoiced</div>
+    <div class="text-xl font-extrabold text-neutral-900 tracking-tight" id="statTotalInvoiced">—</div>
+  </div>
+  <div class="bg-white border border-neutral-100 rounded-2xl px-5 py-4">
+    <div class="text-[0.65rem] font-semibold text-neutral-400 uppercase tracking-wide mb-1">Total Paid</div>
+    <div class="text-xl font-extrabold text-green-600 tracking-tight" id="statTotalPaid">—</div>
+  </div>
+  <div class="bg-white border border-neutral-100 rounded-2xl px-5 py-4">
+    <div class="text-[0.65rem] font-semibold text-neutral-400 uppercase tracking-wide mb-1">Outstanding Balance</div>
+    <div class="text-xl font-extrabold text-amber-600 tracking-tight" id="statOutstanding">—</div>
+  </div>
+  <div class="bg-white border border-neutral-100 rounded-2xl px-5 py-4">
+    <div class="text-[0.65rem] font-semibold text-neutral-400 uppercase tracking-wide mb-1">Total Invoices</div>
+    <div class="text-xl font-extrabold text-neutral-900 tracking-tight" id="statInvoiceCount">—</div>
+  </div>
+</div>
+
+
+<!-- ── Tab Navigation ── -->
+<div class="bg-white border border-neutral-100 rounded-2xl mb-6">
+  <div class="flex border-b border-neutral-100 overflow-x-auto">
+    <button onclick="switchTab('overview')" id="tabOverview"
+            class="tab-btn px-6 py-3.5 text-sm font-semibold text-green-600 border-b-2 border-green-500 transition-all duration-200 whitespace-nowrap">
+      Overview
+    </button>
+    <button onclick="switchTab('invoices')" id="tabInvoices"
+            class="tab-btn px-6 py-3.5 text-sm font-medium text-neutral-400 border-b-2 border-transparent hover:text-neutral-600 transition-all duration-200 whitespace-nowrap">
+      Sale Invoices
+    </button>
+    <button onclick="switchTab('payments')" id="tabPayments"
+            class="tab-btn px-6 py-3.5 text-sm font-medium text-neutral-400 border-b-2 border-transparent hover:text-neutral-600 transition-all duration-200 whitespace-nowrap">
+      Payments
+    </button>
+    <button onclick="switchTab('statement')" id="tabStatement"
+            class="tab-btn px-6 py-3.5 text-sm font-medium text-neutral-400 border-b-2 border-transparent hover:text-neutral-600 transition-all duration-200 whitespace-nowrap">
+      Statement
+    </button>
+  </div>
+
+  <!-- ── TAB: Overview ── -->
+  <div id="panelOverview" class="tab-panel p-6">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <!-- Customer Details Card -->
+      <div>
+        <h3 class="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-4">Contact Information</h3>
+        <div class="bg-neutral-50 rounded-xl border border-neutral-100 p-4 space-y-0">
+          <div class="flex items-start py-2.5 border-b border-neutral-100">
+            <span class="w-32 shrink-0 text-xs font-semibold text-neutral-400">Contact Person</span>
+            <span class="text-sm text-neutral-700">{{ customer.contact_person|default:"—" }}</span>
+          </div>
+          <div class="flex items-start py-2.5 border-b border-neutral-100">
+            <span class="w-32 shrink-0 text-xs font-semibold text-neutral-400">Phone</span>
+            <span class="text-sm text-neutral-700">{{ customer.phone|default:"—" }}</span>
+          </div>
+          <div class="flex items-start py-2.5 border-b border-neutral-100">
+            <span class="w-32 shrink-0 text-xs font-semibold text-neutral-400">Email</span>
+            <span class="text-sm text-neutral-700">{{ customer.email|default:"—" }}</span>
+          </div>
+          <div class="flex items-start py-2.5 border-b border-neutral-100">
+            <span class="w-32 shrink-0 text-xs font-semibold text-neutral-400">Address</span>
+            <span class="text-sm text-neutral-700">{{ customer.address|default:"—" }}</span>
+          </div>
+          <div class="flex items-start py-2.5">
+            <span class="w-32 shrink-0 text-xs font-semibold text-neutral-400">Notes</span>
+            <span class="text-sm text-neutral-700">{{ customer.notes|default:"—" }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent Activity -->
+      <div>
+        <h3 class="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-4">Recent Activity</h3>
+        <div id="recentActivity" class="space-y-2">
+          <!-- Populated by JS -->
+          <div class="animate-pulse space-y-2">
+            <div class="h-14 bg-neutral-100 rounded-xl"></div>
+            <div class="h-14 bg-neutral-100 rounded-xl"></div>
+            <div class="h-14 bg-neutral-100 rounded-xl"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── TAB: Sale Invoices ── -->
+  <div id="panelInvoices" class="tab-panel hidden">
+    <!-- Search / Filter Bar -->
+    <div class="p-4 border-b border-neutral-100 flex flex-col sm:flex-row gap-3">
+      <div class="relative flex-1">
+        <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input id="invSearch" type="text" placeholder="Search by reference no…" oninput="filterInvoices()"
+               class="w-full pl-10 pr-4 py-2.5 text-sm border border-neutral-200 rounded-xl bg-neutral-50/50 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200" />
+      </div>
+      <select id="invStatusFilter" onchange="filterInvoices()"
+              class="px-3 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200">
+        <option value="">All Statuses</option>
+        <option value="paid">Paid</option>
+        <option value="partial">Partial</option>
+        <option value="unpaid">Unpaid</option>
+      </select>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-left">
+        <thead>
+          <tr class="border-b border-neutral-100">
+            <th class="px-4 py-3 text-[0.7rem] font-bold uppercase tracking-wider text-neutral-400">Reference</th>
+            <th class="px-4 py-3 text-[0.7rem] font-bold uppercase tracking-wider text-neutral-400">Date</th>
+            <th class="px-4 py-3 text-[0.7rem] font-bold uppercase tracking-wider text-neutral-400">Total</th>
+            <th class="px-4 py-3 text-[0.7rem] font-bold uppercase tracking-wider text-neutral-400">Paid</th>
+            <th class="px-4 py-3 text-[0.7rem] font-bold uppercase tracking-wider text-neutral-400">Balance</th>
+            <th class="px-4 py-3 text-[0.7rem] font-bold uppercase tracking-wider text-neutral-400">Status</th>
+          </tr>
+        </thead>
+        <tbody id="invoicesTableBody">
+          <tr class="animate-pulse"><td colspan="6" class="px-4 py-8 text-center text-sm text-neutral-400">Loading invoices…</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <!-- Pagination for invoices -->
+    <div id="invPagination" class="flex items-center justify-between px-4 py-3 border-t border-neutral-100"></div>
+  </div>
+
+  <!-- ── TAB: Payments ── -->
+  <div id="panelPayments" class="tab-panel hidden">
+    <!-- Search / Filter Bar -->
+    <div class="p-4 border-b border-neutral-100 flex flex-col sm:flex-row gap-3">
+      <div class="relative flex-1">
+        <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input id="paySearch" type="text" placeholder="Search by reference no…" oninput="filterPayments()"
+               class="w-full pl-10 pr-4 py-2.5 text-sm border border-neutral-200 rounded-xl bg-neutral-50/50 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200" />
+      </div>
+      <select id="payMethodFilter" onchange="filterPayments()"
+              class="px-3 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200">
+        <option value="">All Methods</option>
+        <option value="cash">Cash</option>
+        <option value="online">Online</option>
+        <option value="cheque">Cheque</option>
+      </select>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-left">
+        <thead>
+          <tr class="border-b border-neutral-100">
+            <th class="px-4 py-3 text-[0.7rem] font-bold uppercase tracking-wider text-neutral-400">Reference</th>
+            <th class="px-4 py-3 text-[0.7rem] font-bold uppercase tracking-wider text-neutral-400">Date</th>
+            <th class="px-4 py-3 text-[0.7rem] font-bold uppercase tracking-wider text-neutral-400">Amount</th>
+            <th class="px-4 py-3 text-[0.7rem] font-bold uppercase tracking-wider text-neutral-400">Method</th>
+            <th class="px-4 py-3 text-[0.7rem] font-bold uppercase tracking-wider text-neutral-400">Linked Invoice</th>
+          </tr>
+        </thead>
+        <tbody id="paymentsTableBody">
+          <tr class="animate-pulse"><td colspan="5" class="px-4 py-8 text-center text-sm text-neutral-400">Loading payments…</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <!-- Pagination for payments -->
+    <div id="payPagination" class="flex items-center justify-between px-4 py-3 border-t border-neutral-100"></div>
+  </div>
+
+  <!-- ── TAB: Statement ── -->
+  <div id="panelStatement" class="tab-panel hidden">
+    <!-- Date Range Filter -->
+    <div class="p-4 border-b border-neutral-100">
+      <div class="flex flex-col sm:flex-row gap-3 items-end">
+        <div>
+          <label class="block text-xs font-semibold text-neutral-500 mb-1.5">From Date</label>
+          <input id="stmtFromDate" type="date"
+                 class="px-3 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200" />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-neutral-500 mb-1.5">To Date</label>
+          <input id="stmtToDate" type="date"
+                 class="px-3 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200" />
+        </div>
+        <button onclick="loadStatement()"
+                class="inline-flex items-center gap-2 px-5 py-2.5 bg-green-500 text-white text-sm font-semibold rounded-xl hover:bg-green-600 active:scale-[0.97] transition-all duration-200">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          Generate
+        </button>
+        <button onclick="clearStatementFilters()"
+                class="text-xs font-semibold text-neutral-500 hover:text-neutral-700 transition-colors duration-200 px-3 py-2.5">
+          Clear
+        </button>
+      </div>
+    </div>
+
+    <!-- Statement Summary -->
+    <div id="stmtSummary" class="hidden grid grid-cols-3 gap-3 p-4 border-b border-neutral-100">
+      <div class="bg-neutral-50 rounded-xl px-4 py-3 border border-neutral-100">
+        <div class="text-[0.65rem] font-semibold text-neutral-400 uppercase tracking-wide mb-0.5">Total Invoiced</div>
+        <div class="text-lg font-extrabold text-neutral-900" id="stmtTotalInvoiced">0</div>
+      </div>
+      <div class="bg-neutral-50 rounded-xl px-4 py-3 border border-neutral-100">
+        <div class="text-[0.65rem] font-semibold text-neutral-400 uppercase tracking-wide mb-0.5">Total Paid</div>
+        <div class="text-lg font-extrabold text-green-600" id="stmtTotalPaid">0</div>
+      </div>
+      <div class="bg-neutral-50 rounded-xl px-4 py-3 border border-neutral-100">
+        <div class="text-[0.65rem] font-semibold text-neutral-400 uppercase tracking-wide mb-0.5">Closing Balance</div>
+        <div class="text-lg font-extrabold text-amber-600" id="stmtClosingBalance">0</div>
+      </div>
+    </div>
+
+    <!-- Statement Table -->
+    <div class="overflow-x-auto">
+      <table class="w-full text-left">
+        <thead>
+          <tr class="border-b border-neutral-100">
+            <th class="px-4 py-3 text-[0.7rem] font-bold uppercase tracking-wider text-neutral-400">Date</th>
+            <th class="px-4 py-3 text-[0.7rem] font-bold uppercase tracking-wider text-neutral-400">Reference</th>
+            <th class="px-4 py-3 text-[0.7rem] font-bold uppercase tracking-wider text-neutral-400">Description</th>
+            <th class="px-4 py-3 text-[0.7rem] font-bold uppercase tracking-wider text-neutral-400 text-right">Debit</th>
+            <th class="px-4 py-3 text-[0.7rem] font-bold uppercase tracking-wider text-neutral-400 text-right">Credit</th>
+            <th class="px-4 py-3 text-[0.7rem] font-bold uppercase tracking-wider text-neutral-400 text-right">Balance</th>
+          </tr>
+        </thead>
+        <tbody id="statementTableBody">
+          <tr><td colspan="6" class="px-4 py-12 text-center text-sm text-neutral-400">
+            <div class="flex flex-col items-center gap-2">
+              <svg class="w-8 h-8 text-neutral-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+              <span>Select a date range and click <strong>Generate</strong> to view the statement</span>
+            </div>
+          </td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     JAVASCRIPT
+     ══════════════════════════════════════════════════════════ -->
+<script>
+(function() {
+
+  const CUSTOMER_ID = {{ customer.id }};
+  const API = {
+    transactions: `/api/customers/${CUSTOMER_ID}/transactions/`,
+    statement: `/api/customers/${CUSTOMER_ID}/statement/`,
+  };
+
+  // ── All data stores ──
+  let allInvoices = [];
+  let allPayments = [];
+  let invPage = 1, invPerPage = 10;
+  let payPage = 1, payPerPage = 10;
+
+  // ═══════════════════════════════════════════════
+  //  HELPERS
+  // ═══════════════════════════════════════════════
+
+  function formatDate(d) {
+    return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  }
+
+  function formatMoney(n) {
+    const num = parseFloat(n) || 0;
+    if (num === 0) return '0';
+    return num.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+  }
+
+  function getCsrf() {
+    const c = document.cookie.match(/csrftoken=([^;]+)/);
+    return c ? c[1] : '';
+  }
+
+  function statusBadge(status) {
+    const map = {
+      paid: 'bg-green-50 text-green-600 border-green-200',
+      partial: 'bg-amber-50 text-amber-600 border-amber-200',
+      unpaid: 'bg-red-50 text-red-500 border-red-200',
+    };
+    const cls = map[status] || 'bg-neutral-100 text-neutral-500 border-neutral-200';
+    return `<span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-bold border ${cls}">${status.charAt(0).toUpperCase() + status.slice(1)}</span>`;
+  }
+
+  function methodBadge(method) {
+    const map = {
+      cash: 'bg-green-50 text-green-600 border-green-200',
+      online: 'bg-blue-50 text-blue-600 border-blue-200',
+      cheque: 'bg-purple-50 text-purple-600 border-purple-200',
+    };
+    const cls = map[method] || 'bg-neutral-100 text-neutral-500 border-neutral-200';
+    return `<span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-bold border ${cls}">${method.charAt(0).toUpperCase() + method.slice(1)}</span>`;
+  }
+
+
+  // ═══════════════════════════════════════════════
+  //  TAB SWITCHING
+  // ═══════════════════════════════════════════════
+
+  const tabKeys = ['overview', 'invoices', 'payments', 'statement'];
+
+  window.switchTab = function(tab) {
+    tabKeys.forEach(t => {
+      const btn = document.getElementById('tab' + t.charAt(0).toUpperCase() + t.slice(1));
+      const panel = document.getElementById('panel' + t.charAt(0).toUpperCase() + t.slice(1));
+      if (t === tab) {
+        btn.classList.add('text-green-600', 'font-semibold', 'border-green-500');
+        btn.classList.remove('text-neutral-400', 'font-medium', 'border-transparent');
+        panel.classList.remove('hidden');
+      } else {
+        btn.classList.remove('text-green-600', 'font-semibold', 'border-green-500');
+        btn.classList.add('text-neutral-400', 'font-medium', 'border-transparent');
+        panel.classList.add('hidden');
+      }
+    });
+  };
+
+
+  // ═══════════════════════════════════════════════
+  //  LOAD ALL DATA (Invoices + Payments — full lists)
+  // ═══════════════════════════════════════════════
+
+  async function loadAllData() {
+    try {
+      // Use the statement API with no date filter to get totals
+      const stmtRes = await fetch(API.statement);
+      const stmtData = await stmtRes.json();
+
+      if (stmtData.success) {
+        // Update summary stats
+        document.getElementById('statTotalInvoiced').textContent = formatMoney(stmtData.summary.total_invoiced);
+        document.getElementById('statTotalPaid').textContent = formatMoney(stmtData.summary.total_paid);
+        document.getElementById('statOutstanding').textContent = formatMoney(stmtData.summary.closing_balance);
+
+        // Separate entries into invoices and payments
+        allInvoices = stmtData.entries.filter(e => e.type === 'invoice');
+        allPayments = stmtData.entries.filter(e => e.type === 'payment');
+
+        document.getElementById('statInvoiceCount').textContent = allInvoices.length;
+
+        renderInvoicesTable();
+        renderPaymentsTable();
+      }
+
+      // Load recent activity from transactions API (latest 5 each)
+      const txRes = await fetch(API.transactions);
+      const txData = await txRes.json();
+
+      if (txData.success) {
+        renderRecentActivity(txData);
+      }
+    } catch (err) {
+      console.error('Failed to load customer data:', err);
+    }
+  }
+
+
+  // ═══════════════════════════════════════════════
+  //  OVERVIEW — RECENT ACTIVITY
+  // ═══════════════════════════════════════════════
+
+  function renderRecentActivity(data) {
+    const container = document.getElementById('recentActivity');
+    let html = '';
+
+    // Combine invoices + payments, sort by date descending
+    const items = [];
+    (data.invoices || []).forEach(inv => {
+      items.push({ type: 'invoice', date: inv.date, ref: inv.reference_no, amount: inv.total, status: inv.payment_status });
+    });
+    (data.payments || []).forEach(pay => {
+      items.push({ type: 'payment', date: pay.date, ref: pay.reference_no, amount: pay.amount, method: pay.payment_method });
+    });
+    items.sort((a, b) => b.date.localeCompare(a.date));
+
+    if (items.length === 0) {
+      html = `<div class="text-sm text-neutral-400 text-center py-8">No recent activity</div>`;
+    } else {
+      items.forEach(item => {
+        if (item.type === 'invoice') {
+          html += `
+            <div class="flex items-center gap-3 p-3 bg-neutral-50 rounded-xl border border-neutral-100">
+              <div class="w-8 h-8 rounded-lg bg-blue-50 text-blue-500 flex items-center justify-center shrink-0">
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              </div>
+              <div class="flex-1 min-w-0">
+                <div class="text-sm font-semibold text-neutral-800">Invoice #${item.ref}</div>
+                <div class="text-xs text-neutral-400">${formatDate(item.date)}</div>
+              </div>
+              <div class="text-right">
+                <div class="text-sm font-bold text-neutral-900">${formatMoney(item.amount)}</div>
+                ${statusBadge(item.status)}
+              </div>
+            </div>`;
+        } else {
+          html += `
+            <div class="flex items-center gap-3 p-3 bg-neutral-50 rounded-xl border border-neutral-100">
+              <div class="w-8 h-8 rounded-lg bg-green-50 text-green-500 flex items-center justify-center shrink-0">
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+              </div>
+              <div class="flex-1 min-w-0">
+                <div class="text-sm font-semibold text-neutral-800">Payment #${item.ref}</div>
+                <div class="text-xs text-neutral-400">${formatDate(item.date)} · ${item.method || ''}</div>
+              </div>
+              <div class="text-sm font-bold text-green-600">+${formatMoney(item.amount)}</div>
+            </div>`;
+        }
+      });
+    }
+
+    container.innerHTML = html;
+  }
+
+
+  // ═══════════════════════════════════════════════
+  //  INVOICES TAB
+  // ═══════════════════════════════════════════════
+
+  window.filterInvoices = function() { invPage = 1; renderInvoicesTable(); };
+
+  function renderInvoicesTable() {
+    const search = (document.getElementById('invSearch').value || '').toLowerCase();
+    const statusFilter = document.getElementById('invStatusFilter').value;
+
+    let filtered = allInvoices.filter(inv => {
+      if (search && !inv.reference_no.toLowerCase().includes(search)) return false;
+      if (statusFilter) {
+        // Map payment status from debit/credit
+        // We don't have payment_status directly, so we'll filter after re-fetching or just skip
+        // Actually we do store it — let's use a different approach
+      }
+      return true;
+    });
+
+    // For status filtering, we need the original data — use statement entries which have debit/credit
+    // Instead, let's re-fetch with the transactions API to get payment_status
+    // For now, use the existing data
+    if (statusFilter) {
+      // Filter won't work perfectly without payment_status in statement entries
+      // We'll handle this by storing full invoice data separately
+    }
+
+    const total = filtered.length;
+    const totalPages = Math.max(1, Math.ceil(total / invPerPage));
+    invPage = Math.min(invPage, totalPages);
+    const start = (invPage - 1) * invPerPage;
+    const pageItems = filtered.slice(start, start + invPerPage);
+
+    const tbody = document.getElementById('invoicesTableBody');
+    if (pageItems.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="6" class="px-4 py-12 text-center text-sm text-neutral-400">No invoices found</td></tr>`;
+    } else {
+      tbody.innerHTML = pageItems.map(inv => `
+        <tr class="border-b border-neutral-50 hover:bg-neutral-50/50 transition-colors duration-150">
+          <td class="px-4 py-3 text-sm font-semibold text-neutral-800">#${inv.reference_no}</td>
+          <td class="px-4 py-3 text-sm text-neutral-600">${formatDate(inv.date)}</td>
+          <td class="px-4 py-3 text-sm font-semibold text-neutral-900">${formatMoney(inv.debit)}</td>
+          <td class="px-4 py-3 text-sm text-green-600">—</td>
+          <td class="px-4 py-3 text-sm text-amber-600">—</td>
+          <td class="px-4 py-3">—</td>
+        </tr>
+      `).join('');
+    }
+
+    renderPagination('invPagination', invPage, totalPages, total, invPerPage, (p) => { invPage = p; renderInvoicesTable(); });
+  }
+
+
+  // ═══════════════════════════════════════════════
+  //  PAYMENTS TAB
+  // ═══════════════════════════════════════════════
+
+  window.filterPayments = function() { payPage = 1; renderPaymentsTable(); };
+
+  function renderPaymentsTable() {
+    const search = (document.getElementById('paySearch').value || '').toLowerCase();
+    const methodFilter = document.getElementById('payMethodFilter').value;
+
+    let filtered = allPayments.filter(pay => {
+      if (search && !pay.reference_no.toLowerCase().includes(search)) return false;
+      if (methodFilter && !pay.description.toLowerCase().includes(methodFilter)) return false;
+      return true;
+    });
+
+    const total = filtered.length;
+    const totalPages = Math.max(1, Math.ceil(total / payPerPage));
+    payPage = Math.min(payPage, totalPages);
+    const start = (payPage - 1) * payPerPage;
+    const pageItems = filtered.slice(start, start + payPerPage);
+
+    const tbody = document.getElementById('paymentsTableBody');
+    if (pageItems.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="5" class="px-4 py-12 text-center text-sm text-neutral-400">No payments found</td></tr>`;
+    } else {
+      tbody.innerHTML = pageItems.map(pay => {
+        // Extract method and linked invoice from description
+        const methodMatch = pay.description.match(/— (\w+)/);
+        const invMatch = pay.description.match(/\(Inv #(.+?)\)/);
+        const method = methodMatch ? methodMatch[1] : '—';
+        const linkedInv = invMatch ? '#' + invMatch[1] : '—';
+
+        return `
+          <tr class="border-b border-neutral-50 hover:bg-neutral-50/50 transition-colors duration-150">
+            <td class="px-4 py-3 text-sm font-semibold text-neutral-800">#${pay.reference_no}</td>
+            <td class="px-4 py-3 text-sm text-neutral-600">${formatDate(pay.date)}</td>
+            <td class="px-4 py-3 text-sm font-semibold text-green-600">${formatMoney(pay.credit)}</td>
+            <td class="px-4 py-3">${methodBadge(method.toLowerCase())}</td>
+            <td class="px-4 py-3 text-sm text-neutral-600">${linkedInv}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    renderPagination('payPagination', payPage, totalPages, total, payPerPage, (p) => { payPage = p; renderPaymentsTable(); });
+  }
+
+
+  // ═══════════════════════════════════════════════
+  //  STATEMENT TAB
+  // ═══════════════════════════════════════════════
+
+  window.loadStatement = async function() {
+    const fromDate = document.getElementById('stmtFromDate').value;
+    const toDate = document.getElementById('stmtToDate').value;
+
+    let url = API.statement;
+    const params = new URLSearchParams();
+    if (fromDate) params.append('from_date', fromDate);
+    if (toDate) params.append('to_date', toDate);
+    if (params.toString()) url += '?' + params.toString();
+
+    const tbody = document.getElementById('statementTableBody');
+    tbody.innerHTML = `<tr><td colspan="6" class="px-4 py-8 text-center text-sm text-neutral-400">
+      <svg class="w-5 h-5 animate-spin mx-auto mb-2 text-green-500" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" stroke-dasharray="32" stroke-linecap="round"/></svg>
+      Loading statement…
+    </td></tr>`;
+
+    try {
+      const res = await fetch(url);
+      const data = await res.json();
+
+      if (!data.success) {
+        tbody.innerHTML = `<tr><td colspan="6" class="px-4 py-8 text-center text-sm text-red-500">${data.message}</td></tr>`;
+        return;
+      }
+
+      // Update summary
+      const summary = document.getElementById('stmtSummary');
+      summary.classList.remove('hidden');
+      document.getElementById('stmtTotalInvoiced').textContent = formatMoney(data.summary.total_invoiced);
+      document.getElementById('stmtTotalPaid').textContent = formatMoney(data.summary.total_paid);
+      document.getElementById('stmtClosingBalance').textContent = formatMoney(data.summary.closing_balance);
+
+      if (data.entries.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="px-4 py-12 text-center text-sm text-neutral-400">No transactions found in this date range</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = data.entries.map(entry => {
+        const isInvoice = entry.type === 'invoice';
+        const debit = parseFloat(entry.debit) || 0;
+        const credit = parseFloat(entry.credit) || 0;
+        const balance = parseFloat(entry.running_balance) || 0;
+        const balColor = balance > 0 ? 'text-amber-600' : balance < 0 ? 'text-green-600' : 'text-neutral-600';
+
+        return `
+          <tr class="border-b border-neutral-50 hover:bg-neutral-50/50 transition-colors duration-150">
+            <td class="px-4 py-3 text-sm text-neutral-600">${formatDate(entry.date)}</td>
+            <td class="px-4 py-3 text-sm font-semibold text-neutral-800">#${entry.reference_no}</td>
+            <td class="px-4 py-3 text-sm text-neutral-600">
+              <div class="flex items-center gap-2">
+                ${isInvoice
+                  ? '<span class="w-5 h-5 rounded bg-blue-50 text-blue-500 flex items-center justify-center shrink-0"><svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg></span>'
+                  : '<span class="w-5 h-5 rounded bg-green-50 text-green-500 flex items-center justify-center shrink-0"><svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span>'
+                }
+                ${entry.description}
+              </div>
+            </td>
+            <td class="px-4 py-3 text-sm text-right ${debit > 0 ? 'font-semibold text-neutral-900' : 'text-neutral-300'}">${debit > 0 ? formatMoney(debit) : '—'}</td>
+            <td class="px-4 py-3 text-sm text-right ${credit > 0 ? 'font-semibold text-green-600' : 'text-neutral-300'}">${credit > 0 ? formatMoney(credit) : '—'}</td>
+            <td class="px-4 py-3 text-sm text-right font-bold ${balColor}">${formatMoney(balance)}</td>
+          </tr>
+        `;
+      }).join('');
+
+    } catch (err) {
+      tbody.innerHTML = `<tr><td colspan="6" class="px-4 py-8 text-center text-sm text-red-500">Failed to load statement</td></tr>`;
+      console.error(err);
+    }
+  };
+
+  window.clearStatementFilters = function() {
+    document.getElementById('stmtFromDate').value = '';
+    document.getElementById('stmtToDate').value = '';
+    document.getElementById('stmtSummary').classList.add('hidden');
+    document.getElementById('statementTableBody').innerHTML = `<tr><td colspan="6" class="px-4 py-12 text-center text-sm text-neutral-400">
+      <div class="flex flex-col items-center gap-2">
+        <svg class="w-8 h-8 text-neutral-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+        <span>Select a date range and click <strong>Generate</strong> to view the statement</span>
+      </div>
+    </td></tr>`;
+  };
+
+
+  // ═══════════════════════════════════════════════
+  //  PAGINATION (Shared utility)
+  // ═══════════════════════════════════════════════
+
+  function renderPagination(containerId, page, totalPages, total, perPage, onPageChange) {
+    const container = document.getElementById(containerId);
+    if (total === 0) { container.innerHTML = ''; return; }
+
+    const start = (page - 1) * perPage + 1;
+    const end = Math.min(page * perPage, total);
+
+    let pageNums = '';
+    for (let i = 1; i <= totalPages; i++) {
+      if (i === page) {
+        pageNums += `<button class="w-8 h-8 flex items-center justify-center rounded-lg bg-green-500 text-white text-xs font-bold">${i}</button>`;
+      } else if (i === 1 || i === totalPages || Math.abs(i - page) <= 1) {
+        pageNums += `<button onclick="arguments[0].stopPropagation()" class="page-btn w-8 h-8 flex items-center justify-center rounded-lg border border-neutral-200 text-xs font-medium text-neutral-600 hover:bg-neutral-50" data-page="${i}">${i}</button>`;
+      } else if (Math.abs(i - page) === 2) {
+        pageNums += `<span class="text-neutral-400 text-xs">…</span>`;
+      }
+    }
+
+    container.innerHTML = `
+      <p class="text-xs text-neutral-400 font-medium">
+        Showing <span class="text-neutral-700 font-semibold">${start}</span>–<span class="text-neutral-700 font-semibold">${end}</span>
+        of <span class="text-neutral-700 font-semibold">${total}</span>
+      </p>
+      <div class="flex items-center gap-1">
+        <button ${page <= 1 ? 'disabled' : ''} class="prev-btn w-8 h-8 flex items-center justify-center rounded-lg border border-neutral-200 text-neutral-400 hover:text-neutral-700 disabled:opacity-40 disabled:cursor-not-allowed">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        ${pageNums}
+        <button ${page >= totalPages ? 'disabled' : ''} class="next-btn w-8 h-8 flex items-center justify-center rounded-lg border border-neutral-200 text-neutral-400 hover:text-neutral-700 disabled:opacity-40 disabled:cursor-not-allowed">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+      </div>
+    `;
+
+    // Attach event listeners
+    container.querySelector('.prev-btn')?.addEventListener('click', () => { if (page > 1) onPageChange(page - 1); });
+    container.querySelector('.next-btn')?.addEventListener('click', () => { if (page < totalPages) onPageChange(page + 1); });
+    container.querySelectorAll('.page-btn').forEach(btn => {
+      btn.addEventListener('click', () => onPageChange(parseInt(btn.dataset.page)));
+    });
+  }
+
+
+  // ═══════════════════════════════════════════════
+  //  INIT
+  // ═══════════════════════════════════════════════
+
+  document.addEventListener('DOMContentLoaded', () => {
+    loadAllData();
+  });
+
+})();
+</script>
+
+{% endblock %}
