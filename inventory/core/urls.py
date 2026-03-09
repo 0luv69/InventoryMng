@@ -17,6 +17,9 @@ urlpatterns = [
     path("logout/api/", main_views.logout_api, name="logout_api"),
 
 
+
+
+
     path('app/', main_views.app_home, name='app_home'),
 
     path('app/goods-in/', main_views.goods_in_view, name='goods_in'),
