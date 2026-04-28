@@ -68,6 +68,21 @@ class Company(TimeStampedModel):
     # ── Financial ──
     currency = models.CharField(max_length=3, choices=CURRENCY_CHOICES, default="NPR")
     tax_id = models.CharField("Tax / PAN Number", max_length=50, blank=True)
+    tax_enabled = models.BooleanField(default=False)
+    tax_label = models.CharField(max_length=30, default="VAT")
+    tax_rate = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+
+    FEATURE_DEFAULTS = {
+        "items": True,
+        "suppliers": True,
+        "customers": True,
+        "goods_in": True,
+        "goods_out": True,
+        "payments": True,
+        "reports": True,
+        "spoilage": True,
+    }
+    feature_flags = models.JSONField(default=dict, blank=True)
 
     # ── Settings ──
     default_low_stock_threshold = models.PositiveIntegerField(
@@ -83,6 +98,16 @@ class Company(TimeStampedModel):
         if not self.slug:
             self.slug = slugify(self.name)
         super().save(*args, **kwargs)
+
+    def get_feature_flags(self):
+        flags = self.feature_flags or {}
+        return {
+            key: bool(flags.get(key, default))
+            for key, default in self.FEATURE_DEFAULTS.items()
+        }
+
+    def feature_enabled(self, key):
+        return self.get_feature_flags().get(key, False)
 
     def __str__(self):
         return self.name
@@ -297,6 +322,8 @@ class PurchaseInvoice(TimeStampedModel):
         null=True, blank=True, related_name="purchase_invoices_received",
     )
     notes = models.TextField(blank=True)
+    tax_rate = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    tax_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
 
     # ── Payment status (auto-updated when Payment is saved) ──
     payment_status = models.CharField(
@@ -323,7 +350,7 @@ class PurchaseInvoice(TimeStampedModel):
     @property
     def invoice_total(self):
         """Sum of all line totals."""
-        return sum(line.line_total for line in self.lines.all())
+        return sum(line.line_total for line in self.lines.all()) + self.tax_amount
 
     @property
     def total_paid(self):
@@ -380,6 +407,8 @@ class PurchaseItem(TimeStampedModel):
         max_digits=10, decimal_places=2, null=True, blank=True,
         help_text="Updated selling price for this batch (optional)"
     )
+    tax_rate = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    tax_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
 
     @property
     def line_total(self):
@@ -408,6 +437,8 @@ class SaleInvoice(TimeStampedModel):
         null=True, blank=True, related_name="sale_invoices_dispatched",
     )
     notes = models.TextField(blank=True)
+    tax_rate = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    tax_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
 
     # ── Invoice-level discount ──
     discount_type = models.CharField(
@@ -451,7 +482,7 @@ class SaleInvoice(TimeStampedModel):
 
     @property
     def invoice_total(self):
-        return self.subtotal - self.invoice_discount_value
+        return self.subtotal - self.invoice_discount_value + self.tax_amount
 
     @property
     def total_paid(self):
@@ -503,6 +534,8 @@ class SaleItem(TimeStampedModel):
         max_digits=10, decimal_places=2,
         help_text="Selling price per unit for this sale"
     )
+    tax_rate = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    tax_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
 
     # ── Line-level discount ──
     discount_type = models.CharField(

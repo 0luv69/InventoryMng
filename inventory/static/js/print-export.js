@@ -70,6 +70,9 @@ const PrintExport = (() => {
                     email: '',
                     tax_id: '',
                     currency: 'NPR',
+                    tax_label: 'VAT',
+                    tax_rate: '0',
+                    tax_enabled: false,
                 };
             });
 
@@ -96,7 +99,11 @@ const PrintExport = (() => {
 
         const currText = co.currency ? currencyLabel(co.currency) : '';
         const taxText  = co.tax_id  ? `PAN/Tax: ${co.tax_id}` : '';
-        const metaLine = [currText, taxText].filter(Boolean).join('  ·  ');
+        const taxRateNum = parseFloat(co.tax_rate || 0);
+        const taxRateText = co.tax_enabled && taxRateNum > 0
+            ? `${co.tax_label || 'VAT'}: ${taxRateNum}%`
+            : '';
+        const metaLine = [currText, taxText, taxRateText].filter(Boolean).join('  ·  ');
 
         return `
         <div style="display:flex;align-items:center;gap:16px;padding-bottom:14px;border-bottom:2px solid #e5e5e5;margin-bottom:18px;">

@@ -1,5 +1,6 @@
 import json
 import uuid
+from decimal import Decimal, InvalidOperation
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
 from django.contrib.auth import authenticate, login
@@ -25,6 +26,7 @@ def profile_view(request):
         "PRODUCTION_URL": settings.PRODUCTION_URL,
         "userSessions": userSession,
         "current_session_key": current_session_key,
+        "feature_flags": userProfile.company.get_feature_flags() if userProfile.company else {},
     }
     return render(request, "core/profile.html", context)
 
@@ -130,6 +132,10 @@ def update_company(request):
 
     currency = (payload.get("currency") or "").strip()
     tax_id = (payload.get("tax_id") or "").strip()
+    tax_label = (payload.get("tax_label") or "VAT").strip()
+    tax_rate = payload.get("tax_rate")
+    tax_enabled = payload.get("tax_enabled")
+    feature_flags = payload.get("feature_flags", {})
     fiscal_year_start_month = payload.get("fiscal_year_start_month")
     default_low_stock_threshold = payload.get("default_low_stock_threshold")
 
@@ -144,6 +150,26 @@ def update_company(request):
 
     if tax_id and len(tax_id) > 50:
         return JsonResponse({"success": False, "message": "Tax ID cannot exceed 50 characters."}, status=400)
+
+    if tax_label and len(tax_label) > 30:
+        return JsonResponse({"success": False, "message": "Tax label cannot exceed 30 characters."}, status=400)
+
+    try:
+        tax_rate = Decimal(str(tax_rate)) if tax_rate not in (None, "", "null") else Decimal("0")
+    except (TypeError, InvalidOperation, ValueError):
+        return JsonResponse({"success": False, "message": "Tax rate must be a number."}, status=400)
+    if tax_rate < 0 or tax_rate > 100:
+        return JsonResponse({"success": False, "message": "Tax rate must be between 0 and 100."}, status=400)
+
+    def _parse_bool(val):
+        if isinstance(val, bool):
+            return val
+        return str(val).lower() in ("1", "true", "yes", "on")
+
+    tax_enabled = _parse_bool(tax_enabled)
+
+    if not isinstance(feature_flags, dict):
+        return JsonResponse({"success": False, "message": "Feature flags must be an object."}, status=400)
 
     # Validate fiscal year
     try:
@@ -174,6 +200,17 @@ def update_company(request):
     if currency in dict(Company.CURRENCY_CHOICES):
         company.currency = currency
     company.tax_id = tax_id
+    company.tax_label = tax_label or "VAT"
+    company.tax_rate = tax_rate
+    company.tax_enabled = tax_enabled
+
+    normalized_flags = {}
+    for key, default in Company.FEATURE_DEFAULTS.items():
+        if key in feature_flags:
+            normalized_flags[key] = _parse_bool(feature_flags.get(key))
+        else:
+            normalized_flags[key] = company.get_feature_flags().get(key, default)
+    company.feature_flags = normalized_flags
 
     if fiscal_year_start_month:
         company.fiscal_year_start_month = fiscal_year_start_month
@@ -254,5 +291,8 @@ def company_info_api(request):
         "email":    company.email,
         "tax_id":   company.tax_id,
         "currency": company.currency,
+        "tax_label": company.tax_label,
+        "tax_rate": str(company.tax_rate),
+        "tax_enabled": company.tax_enabled,
     }
     return JsonResponse(data, status=200)

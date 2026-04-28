@@ -30,7 +30,7 @@ from ..models import (
     Payment, Party, PurchaseInvoice, SaleInvoice,
     UserProfile, PaymentStatus, PaymentMethod,
 )
-from ..decorators import api_login_required
+from ..decorators import api_login_required, api_feature_required
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -148,6 +148,7 @@ def _reverse_party_balance(pay):
 # ═══════════════════════════════════════════════════════════════
 
 @api_login_required
+@api_feature_required("payments")
 def payment_helpers_customers(request):
     if request.method != "GET":
         return JsonResponse({"success": False, "message": "GET only."}, status=405)
@@ -173,6 +174,7 @@ def payment_helpers_customers(request):
 
 
 @api_login_required
+@api_feature_required("payments")
 def payment_helpers_suppliers(request):
     if request.method != "GET":
         return JsonResponse({"success": False, "message": "GET only."}, status=405)
@@ -198,6 +200,7 @@ def payment_helpers_suppliers(request):
 
 
 @api_login_required
+@api_feature_required("payments")
 def payment_helpers_users(request):
     if request.method != "GET":
         return JsonResponse({"success": False, "message": "GET only."}, status=405)
@@ -214,6 +217,7 @@ def payment_helpers_users(request):
 
 
 @api_login_required
+@api_feature_required("payments")
 def payment_helpers_sale_invoices(request):
     """Sale invoices for a customer (unpaid/partial only for new payments)."""
     if request.method != "GET":
@@ -242,6 +246,7 @@ def payment_helpers_sale_invoices(request):
 
 
 @api_login_required
+@api_feature_required("payments")
 def payment_helpers_purchase_invoices(request):
     """Purchase invoices for a supplier (unpaid/partial only)."""
     if request.method != "GET":
@@ -274,6 +279,7 @@ def payment_helpers_purchase_invoices(request):
 # ═══════════════════════════════════════════════════════════════
 
 @api_login_required
+@api_feature_required("payments")
 def payment_list_api(request):
     if request.method != "GET":
         return JsonResponse({"success": False, "message": "GET only."}, status=405)
@@ -388,6 +394,7 @@ def payment_list_api(request):
 # ═══════════════════════════════════════════════════════════════
 
 @api_login_required
+@api_feature_required("payments")
 def payment_detail_api(request, pk):
     if request.method != "GET":
         return JsonResponse({"success": False, "message": "GET only."}, status=405)
@@ -408,6 +415,7 @@ def payment_detail_api(request, pk):
 # ═══════════════════════════════════════════════════════════════
 
 @api_login_required
+@api_feature_required("payments")
 def payment_create_api(request):
     if request.method != "POST":
         return JsonResponse({"success": False, "message": "POST only."}, status=405)
@@ -521,6 +529,7 @@ def payment_create_api(request):
 # ═══════════════════════════════════════════════════════════════
 
 @api_login_required
+@api_feature_required("payments")
 def payment_update_api(request, pk):
     if request.method != "POST":
         return JsonResponse({"success": False, "message": "POST only."}, status=405)
@@ -647,6 +656,7 @@ def payment_update_api(request, pk):
 # ═══════════════════════════════════════════════════════════════
 
 @api_login_required
+@api_feature_required("payments")
 def payment_void_api(request, pk):
     if request.method != "POST":
         return JsonResponse({"success": False, "message": "POST only."}, status=405)
@@ -689,6 +699,7 @@ def payment_void_api(request, pk):
 
 
 @api_login_required
+@api_feature_required("payments")
 def payment_bulk_void_api(request):
     if request.method != "POST":
         return JsonResponse({"success": False, "message": "POST only."}, status=405)

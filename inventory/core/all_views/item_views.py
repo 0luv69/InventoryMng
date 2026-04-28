@@ -19,7 +19,7 @@ from django.utils import timezone
 from django.conf import settings
 
 from ..models import Item, Unit
-from ..decorators import api_login_required, company_required
+from ..decorators import api_login_required, api_feature_required, feature_required
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -105,7 +105,7 @@ def _safe_int(val, default=0):
 #  PAGE RENDER
 # ═══════════════════════════════════════════════════════════════
 
-@company_required
+@feature_required("items")
 def items_page(request):
     """Render the items HTML page. Pass units for the dropdown."""
     company = request.userProfile.company
@@ -115,6 +115,7 @@ def items_page(request):
         "userProfile": request.userProfile,
         "units": units,
         "default_low_stock": company.default_low_stock_threshold,
+        "feature_flags": company.get_feature_flags(),
     }
     return render(request, "core/items-goods.html", context)
 
@@ -125,6 +126,7 @@ def items_page(request):
 # ═══════════════════════════════════════════════════════════════
 
 @api_login_required
+@api_feature_required("items")
 def item_list_api(request):
     if request.method != "GET":
         return JsonResponse({"success": False, "message": "Method not allowed."}, status=405)
@@ -261,6 +263,7 @@ def item_list_api(request):
 # ═══════════════════════════════════════════════════════════════
 
 @api_login_required
+@api_feature_required("items")
 def item_create_api(request):
     if request.method != "POST":
         return JsonResponse({"success": False, "message": "Method not allowed."}, status=405)
@@ -319,6 +322,7 @@ def item_create_api(request):
 # ═══════════════════════════════════════════════════════════════
 
 @api_login_required
+@api_feature_required("items")
 def item_update_api(request):
     if request.method != "POST":
         return JsonResponse({"success": False, "message": "Method not allowed."}, status=405)
@@ -392,6 +396,7 @@ def item_update_api(request):
 # ═══════════════════════════════════════════════════════════════
 
 @api_login_required
+@api_feature_required("items")
 def item_delete_api(request):
     if request.method != "POST":
         return JsonResponse({"success": False, "message": "Method not allowed."}, status=405)

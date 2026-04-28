@@ -121,6 +121,15 @@
        MODAL CONTROLS
        ══════════════════════════════════════ */
 
+    (function(){
+      const prefersReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const lowEndDevice = (navigator.deviceMemory && navigator.deviceMemory <= 4)
+        || (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4);
+      if (prefersReducedMotion || lowEndDevice) {
+        document.body.classList.add('reduced-effects');
+      }
+    })();
+
     function openModal(name) {
       const ov = document.getElementById(name + 'Overlay');
       ov.classList.add('open');

@@ -21,7 +21,7 @@ from django.utils import timezone
 from django.contrib.auth import get_user_model
 
 from ..models import SpoilageLoss, Item, UserProfile
-from ..decorators import api_login_required
+from ..decorators import api_login_required, api_feature_required
 
 User = get_user_model()
 
@@ -104,6 +104,7 @@ def _next_ref(company):
 # ═══════════════════════════════════════════════════════════════
 
 @api_login_required
+@api_feature_required("spoilage")
 def spoilage_list_api(request):
     if request.method != "GET":
         return JsonResponse({"success": False, "message": "Method not allowed."}, status=405)
@@ -213,6 +214,7 @@ def spoilage_list_api(request):
 # ═══════════════════════════════════════════════════════════════
 
 @api_login_required
+@api_feature_required("spoilage")
 def spoilage_create_api(request):
     if request.method != "POST":
         return JsonResponse({"success": False, "message": "Method not allowed."}, status=405)
@@ -293,6 +295,7 @@ def spoilage_create_api(request):
 # ═══════════════════════════════════════════════════════════════
 
 @api_login_required
+@api_feature_required("spoilage")
 def spoilage_update_api(request, pk):
     if request.method != "POST":
         return JsonResponse({"success": False, "message": "Method not allowed."}, status=405)
@@ -374,6 +377,7 @@ def spoilage_update_api(request, pk):
 # ═══════════════════════════════════════════════════════════════
 
 @api_login_required
+@api_feature_required("spoilage")
 def spoilage_void_api(request, pk):
     if request.method != "POST":
         return JsonResponse({"success": False, "message": "Method not allowed."}, status=405)
@@ -410,6 +414,7 @@ def spoilage_void_api(request, pk):
 # ═══════════════════════════════════════════════════════════════
 
 @api_login_required
+@api_feature_required("spoilage")
 def spoilage_bulk_void_api(request):
     if request.method != "POST":
         return JsonResponse({"success": False, "message": "Method not allowed."}, status=405)
@@ -451,6 +456,7 @@ def spoilage_bulk_void_api(request):
 # ═══════════════════════════════════════════════════════════════
 
 @api_login_required
+@api_feature_required("spoilage")
 def spoilage_helpers_items(request):
     if request.method != "GET":
         return JsonResponse({"success": False, "message": "Method not allowed."}, status=405)
@@ -482,6 +488,7 @@ def spoilage_helpers_items(request):
 # ═══════════════════════════════════════════════════════════════
 
 @api_login_required
+@api_feature_required("spoilage")
 def spoilage_helpers_users(request):
     if request.method != "GET":
         return JsonResponse({"success": False, "message": "Method not allowed."}, status=405)

@@ -294,6 +294,13 @@ body { font-family: 'Inter', system-ui, sans-serif; background: #fffffc; color: 
       pointer-events: all;
     }
 
+    body.reduced-effects .overlay {
+      background: rgba(0, 0, 0, 0.28);
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+      transition: opacity 0.2s ease;
+    }
+
 
     /* ══════════════════════════════════════
        GLASS MODAL
@@ -330,6 +337,27 @@ body { font-family: 'Inter', system-ui, sans-serif; background: #fffffc; color: 
     }
     .overlay:not(.open) .glass-modal {
       transform: translateY(14px) scale(0.97);
+    }
+
+    body.reduced-effects .glass-modal {
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+      transition: transform 0.2s ease, opacity 0.2s ease;
+      box-shadow:
+        0 12px 40px rgba(0, 0, 0, 0.08),
+        0 2px 8px rgba(0, 0, 0, 0.05);
+    }
+
+    body.reduced-effects .glass-modal::before {
+      display: none;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .overlay,
+      .glass-modal,
+      .modal-close {
+        transition: none;
+      }
     }
 
     /* Shimmer top edge */

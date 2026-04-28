@@ -22,6 +22,25 @@ def company_required(view_func):
     return wrapper
 
 
+def feature_required(feature_key):
+    """
+    Decorator for page views requiring a company feature flag.
+    Sets request.userProfile like company_required.
+    """
+    def decorator(view_func):
+        @functools.wraps(view_func)
+        def wrapper(request, *args, **kwargs):
+            if not request.user.is_authenticated:
+                return redirect("login")
+            request.userProfile = get_object_or_404(UserProfile, user=request.user)
+            company = request.userProfile.company
+            if not company or not company.feature_enabled(feature_key):
+                return redirect("dashboard")
+            return view_func(request, *args, **kwargs)
+        return wrapper
+    return decorator
+
+
 def api_login_required(view_func):
     """
     Decorator for JSON API views.
@@ -41,3 +60,21 @@ def api_login_required(view_func):
             return JsonResponse({"success": False, "message": "No company assigned."}, status=403)
         return view_func(request, *args, **kwargs)
     return wrapper
+
+
+def api_feature_required(feature_key):
+    """
+    Decorator for JSON API views that require a company feature flag.
+    Expects request.company to be set by api_login_required.
+    """
+    def decorator(view_func):
+        @functools.wraps(view_func)
+        def wrapper(request, *args, **kwargs):
+            company = getattr(request, "company", None)
+            if not company:
+                return JsonResponse({"success": False, "message": "No company assigned."}, status=403)
+            if not company.feature_enabled(feature_key):
+                return JsonResponse({"success": False, "message": "Feature disabled."}, status=403)
+            return view_func(request, *args, **kwargs)
+        return wrapper
+    return decorator
