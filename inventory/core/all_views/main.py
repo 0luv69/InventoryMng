@@ -129,10 +129,13 @@ def dashboard(request):
         return redirect("login")
     
     userProfile = get_object_or_404(UserProfile, user=request.user)
+    company = userProfile.company
+    feature_flags = company.get_feature_flags() if company else {}
 
     context = {
         "title": "Dashboard",
         "userProfile": userProfile,
+        "feature_flags": feature_flags,
     }
     return render(request, "core/dashboard.html", context)
 
@@ -142,9 +145,14 @@ def items_view(request):
         return redirect("login")
     
     userProfile = get_object_or_404(UserProfile, user=request.user)
+    company = userProfile.company
+    if not company or not company.feature_enabled("items"):
+        return redirect("dashboard")
+    feature_flags = company.get_feature_flags()
     context = {
         "title": "Items & Goods",
         "userProfile": userProfile,
+        "feature_flags": feature_flags,
     }
     return render(request, "core/items-goods.html", context)
 
@@ -155,9 +163,14 @@ def customers_view(request):
         return redirect("login")
     
     userProfile = get_object_or_404(UserProfile, user=request.user)
+    company = userProfile.company
+    if not company or not company.feature_enabled("customers"):
+        return redirect("dashboard")
+    feature_flags = company.get_feature_flags()
     context = {
         "title": "Customers",
         "userProfile": userProfile,
+        "feature_flags": feature_flags,
     }
     return render(request, "core/customers.html", context)
 
@@ -166,9 +179,14 @@ def goods_in_view(request):
         return redirect("login")
     
     userProfile = get_object_or_404(UserProfile, user=request.user)
+    company = userProfile.company
+    if not company or not company.feature_enabled("goods_in"):
+        return redirect("dashboard")
+    feature_flags = company.get_feature_flags()
     context = {
         "title": "Goods In",
         "userProfile": userProfile,
+        "feature_flags": feature_flags,
     }
     return render(request, "core/goods-in.html", context)
 
@@ -176,9 +194,14 @@ def goods_out_view(request):
     if not request.user.is_authenticated:
         return redirect("login")
     userProfile = get_object_or_404(UserProfile, user=request.user)
+    company = userProfile.company
+    if not company or not company.feature_enabled("goods_out"):
+        return redirect("dashboard")
+    feature_flags = company.get_feature_flags()
     context = {
         "title": "Goods Out",
         "userProfile": userProfile,
+        "feature_flags": feature_flags,
     }
     return render(request, "core/goods-out.html", context)
 
@@ -186,9 +209,14 @@ def payments_view(request):
     if not request.user.is_authenticated:
         return redirect("login")
     userProfile = get_object_or_404(UserProfile, user=request.user)
+    company = userProfile.company
+    if not company or not company.feature_enabled("payments"):
+        return redirect("dashboard")
+    feature_flags = company.get_feature_flags()
     context = {
         "title": "Payments",
         "userProfile": userProfile,
+        "feature_flags": feature_flags,
     }
     return render(request, "core/payment.html", context)
 
@@ -196,9 +224,14 @@ def spoil_damage_view(request):
     if not request.user.is_authenticated:
         return redirect("login")
     userProfile = get_object_or_404(UserProfile, user=request.user)
+    company = userProfile.company
+    if not company or not company.feature_enabled("spoilage"):
+        return redirect("dashboard")
+    feature_flags = company.get_feature_flags()
     context = {
         "title": "Spoilage & Loss",
         "userProfile": userProfile,
+        "feature_flags": feature_flags,
     }
     return render(request, "core/spoil_damage.html", context)
 
@@ -206,10 +239,14 @@ def reports_view(request):
     if not request.user.is_authenticated:
         return redirect("login")
     userProfile = get_object_or_404(UserProfile, user=request.user)
+    company = userProfile.company
+    if not company or not company.feature_enabled("reports"):
+        return redirect("dashboard")
+    feature_flags = company.get_feature_flags()
     context = {
         "title": "Reports",
         "userProfile": userProfile,
+        "feature_flags": feature_flags,
     }
     return render(request, "core/reports.html", context)
-
 

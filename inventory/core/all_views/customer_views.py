@@ -19,7 +19,7 @@ from django.utils import timezone
 from django.conf import settings
 
 from ..models import Party, SaleInvoice, Payment
-from ..decorators import api_login_required, company_required
+from ..decorators import api_login_required, api_feature_required, feature_required
 
 # ═══════════════════════════════════════════════════════════════
 #  HELPERS
@@ -80,12 +80,13 @@ def _parse_multipart(request):
     }
 
 
-@company_required
+@feature_required("customers")
 def customers_page(request):
     """Render the customers HTML page (data loaded via JS/API)."""
     context = {
         "title": "Customers",
         "userProfile": request.userProfile,
+        "feature_flags": request.userProfile.company.get_feature_flags(),
     }
     return render(request, "core/customers.html", context)
 
@@ -96,6 +97,7 @@ def customers_page(request):
 # ═══════════════════════════════════════════════════════════════
 
 @api_login_required
+@api_feature_required("customers")
 def customer_list_api(request):
     if request.method != "GET":
         return JsonResponse({"success": False, "message": "Method not allowed."}, status=405)
@@ -198,6 +200,7 @@ def customer_list_api(request):
 # ═══════════════════════════════════════════════════════════════
 
 @api_login_required
+@api_feature_required("customers")
 def customer_create_api(request):
     if request.method != "POST":
         return JsonResponse({"success": False, "message": "Method not allowed."}, status=405)
@@ -246,6 +249,7 @@ def customer_create_api(request):
 # ═══════════════════════════════════════════════════════════════
 
 @api_login_required
+@api_feature_required("customers")
 def customer_update_api(request):
     if request.method != "POST":
         return JsonResponse({"success": False, "message": "Method not allowed."}, status=405)
@@ -315,6 +319,7 @@ def customer_update_api(request):
 # ═══════════════════════════════════════════════════════════════
 
 @api_login_required
+@api_feature_required("customers")
 def customer_delete_api(request):
     if request.method != "POST":
         return JsonResponse({"success": False, "message": "Method not allowed."}, status=405)
@@ -360,6 +365,7 @@ def customer_delete_api(request):
 # ═══════════════════════════════════════════════════════════════
 
 @api_login_required
+@api_feature_required("customers")
 def customer_transactions_api(request, pk):
     if request.method != "GET":
         return JsonResponse({"success": False, "message": "Method not allowed."}, status=405)
@@ -432,7 +438,7 @@ def customer_transactions_api(request, pk):
 #  Renders the full customer profile page
 # ═══════════════════════════════════════════════════════════════
 
-@company_required
+@feature_required("customers")
 def customer_profile_page(request, pk):
     """Render the full customer profile page."""
     company = request.userProfile.company
@@ -446,6 +452,7 @@ def customer_profile_page(request, pk):
         "title": f"{customer.name} — Customer Profile",
         "userProfile": request.userProfile,
         "customer": customer,
+        "feature_flags": company.get_feature_flags() if company else {},
     }
     return render(request, "core/customer_profile.html", context)
 
@@ -457,6 +464,7 @@ def customer_profile_page(request, pk):
 # ═══════════════════════════════════════════════════════════════
 
 @api_login_required
+@api_feature_required("customers")
 def customer_statement_api(request, pk):
     if request.method != "GET":
         return JsonResponse({"success": False, "message": "Method not allowed."}, status=405)

@@ -28,7 +28,7 @@ from ..models import (
     SaleInvoice, SaleItem, Party, Item, UserProfile,
     PaymentStatus, DiscountType,
 )
-from ..decorators import api_login_required
+from ..decorators import api_login_required, api_feature_required
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -84,6 +84,12 @@ def _calc_invoice_discount(subtotal, discount_type, discount_amount):
     return discount_amount
 
 
+def _get_tax_rate(company):
+    if not company or not company.tax_enabled:
+        return Decimal("0")
+    return _to_decimal(company.tax_rate, Decimal("0"))
+
+
 def _serialize_line(line):
     item = line.item
     return {
@@ -95,6 +101,8 @@ def _serialize_line(line):
         "selling_price": str(line.selling_price),
         "discount_type": line.discount_type,
         "discount_amount": str(line.discount_amount),
+        "tax_rate": str(line.tax_rate),
+        "tax_amount": str(line.tax_amount),
         "gross_total": str(line.gross_total),
         "discount_value": str(line.discount_value),
         "line_total": str(line.line_total),
@@ -118,6 +126,8 @@ def _serialize_invoice(inv, include_lines=False):
         "discount_amount": str(inv.discount_amount),
         "subtotal": str(inv.subtotal),
         "invoice_discount_value": str(inv.invoice_discount_value),
+        "tax_rate": str(inv.tax_rate),
+        "tax_amount": str(inv.tax_amount),
         "invoice_total": str(inv.invoice_total),
         "payment_status": inv.payment_status,
         "total_paid": str(inv.total_paid),
@@ -159,6 +169,8 @@ def _serialize_invoice_flat(inv):
             "selling_price": str(line.selling_price),
             "discount_type": line.discount_type,
             "discount_amount": str(line.discount_amount),
+            "tax_rate": str(line.tax_rate),
+            "tax_amount": str(line.tax_amount),
             "line_total": str(line.line_total),
             "invoice_total": str(inv.invoice_total),
         })
@@ -170,6 +182,7 @@ def _serialize_invoice_flat(inv):
 # ═══════════════════════════════════════════════════════════════
 
 @api_login_required
+@api_feature_required("goods_out")
 def goodsout_helpers_items(request):
     """Return active items for item search dropdown."""
     if request.method != "GET":
@@ -201,6 +214,7 @@ def goodsout_helpers_items(request):
 
 
 @api_login_required
+@api_feature_required("goods_out")
 def goodsout_helpers_customers(request):
     """Return active customers for customer dropdown."""
     if request.method != "GET":
@@ -239,6 +253,7 @@ def goodsout_helpers_customers(request):
 
 
 @api_login_required
+@api_feature_required("goods_out")
 def goodsout_helpers_users(request):
     """Return all users in the same company."""
     if request.method != "GET":
@@ -266,11 +281,13 @@ def goodsout_helpers_users(request):
 # ═══════════════════════════════════════════════════════════════
 
 @api_login_required
+@api_feature_required("goods_out")
 def goodsout_list_api(request):
     if request.method != "GET":
         return JsonResponse({"success": False, "message": "GET only."}, status=405)
 
     company = request.company
+    tax_rate = _get_tax_rate(company)
     base_qs = SaleInvoice.objects.filter(company=company).select_related(
         "customer", "dispatched_by"
     ).prefetch_related("lines", "lines__item", "lines__item__unit")
@@ -391,6 +408,7 @@ def goodsout_list_api(request):
 # ═══════════════════════════════════════════════════════════════
 
 @api_login_required
+@api_feature_required("goods_out")
 def goodsout_detail_api(request, pk):
     if request.method != "GET":
         return JsonResponse({"success": False, "message": "GET only."}, status=405)
@@ -415,6 +433,7 @@ def goodsout_detail_api(request, pk):
 # ═══════════════════════════════════════════════════════════════
 
 @api_login_required
+@api_feature_required("goods_out")
 def goodsout_create_api(request):
     if request.method != "POST":
         return JsonResponse({"success": False, "message": "POST only."}, status=405)
@@ -455,6 +474,7 @@ def goodsout_create_api(request):
         return JsonResponse({"success": False, "message": "At least one item is required."}, status=400)
 
     validated_lines = []
+    tax_total = Decimal("0")
     for idx, ld in enumerate(lines_data):
         item_id = ld.get("item_id")
         if not item_id:
@@ -487,12 +507,20 @@ def goodsout_create_api(request):
         if line_disc_amt < 0:
             line_disc_amt = Decimal("0")
 
+        gross_total = qty * sell
+        disc_val = _calc_line_discount(gross_total, line_disc_type, line_disc_amt)
+        line_total = max(Decimal("0"), gross_total - disc_val)
+        line_tax = (line_total * tax_rate / Decimal("100")) if tax_rate > 0 else Decimal("0")
+        tax_total += line_tax
+
         validated_lines.append({
             "item": item,
             "quantity": qty,
             "selling_price": sell,
             "discount_type": line_disc_type,
             "discount_amount": line_disc_amt,
+            "tax_rate": tax_rate,
+            "tax_amount": line_tax,
         })
 
     # ── Invoice-level discount ──
@@ -517,6 +545,8 @@ def goodsout_create_api(request):
             discount_type=inv_disc_type,
             discount_amount=inv_disc_amt,
             payment_status=PaymentStatus.UNPAID,
+            tax_rate=tax_rate,
+            tax_amount=tax_total,
         )
 
         for ld in validated_lines:
@@ -527,6 +557,8 @@ def goodsout_create_api(request):
                 selling_price=ld["selling_price"],
                 discount_type=ld["discount_type"],
                 discount_amount=ld["discount_amount"],
+                tax_rate=ld["tax_rate"],
+                tax_amount=ld["tax_amount"],
             )
             # Deduct stock
             ld["item"].quantity_in_stock = F("quantity_in_stock") - ld["quantity"]
@@ -549,6 +581,7 @@ def goodsout_create_api(request):
 # ═══════════════════════════════════════════════════════════════
 
 @api_login_required
+@api_feature_required("goods_out")
 def goodsout_update_api(request, pk):
     if request.method != "POST":
         return JsonResponse({"success": False, "message": "POST only."}, status=405)
@@ -558,6 +591,7 @@ def goodsout_update_api(request, pk):
         return err
 
     company = request.company
+    tax_rate = _get_tax_rate(company)
 
     try:
         invoice = SaleInvoice.objects.select_related("customer").prefetch_related(
@@ -604,6 +638,7 @@ def goodsout_update_api(request, pk):
         old_qty_map[old_line.item_id] = old_qty_map.get(old_line.item_id, Decimal("0")) + old_line.quantity
 
     validated_lines = []
+    tax_total = Decimal("0")
     new_qty_map = {}
     for idx, ld in enumerate(lines_data):
         item_id = ld.get("item_id")
@@ -632,12 +667,20 @@ def goodsout_update_api(request, pk):
         if line_disc_amt < 0:
             line_disc_amt = Decimal("0")
 
+        gross_total = qty * sell
+        disc_val = _calc_line_discount(gross_total, line_disc_type, line_disc_amt)
+        line_total = max(Decimal("0"), gross_total - disc_val)
+        line_tax = (line_total * tax_rate / Decimal("100")) if tax_rate > 0 else Decimal("0")
+        tax_total += line_tax
+
         validated_lines.append({
             "item": item,
             "quantity": qty,
             "selling_price": sell,
             "discount_type": line_disc_type,
             "discount_amount": line_disc_amt,
+            "tax_rate": tax_rate,
+            "tax_amount": line_tax,
         })
 
     # Stock availability check (considering restored old stock)
@@ -685,6 +728,8 @@ def goodsout_update_api(request, pk):
         invoice.notes = (data.get("notes") or "").strip()
         invoice.discount_type = inv_disc_type
         invoice.discount_amount = inv_disc_amt
+        invoice.tax_rate = tax_rate
+        invoice.tax_amount = tax_total
         invoice.save()
 
         # ── Create new lines + deduct stock ──
@@ -696,6 +741,8 @@ def goodsout_update_api(request, pk):
                 selling_price=ld["selling_price"],
                 discount_type=ld["discount_type"],
                 discount_amount=ld["discount_amount"],
+                tax_rate=ld["tax_rate"],
+                tax_amount=ld["tax_amount"],
             )
             ld["item"].quantity_in_stock = F("quantity_in_stock") - ld["quantity"]
             ld["item"].save(update_fields=["quantity_in_stock", "updated_at"])
@@ -718,6 +765,7 @@ def goodsout_update_api(request, pk):
 # ═══════════════════════════════════════════════════════════════
 
 @api_login_required
+@api_feature_required("goods_out")
 def goodsout_void_api(request, pk):
     if request.method != "POST":
         return JsonResponse({"success": False, "message": "POST only."}, status=405)
@@ -763,6 +811,7 @@ def goodsout_void_api(request, pk):
 
 
 @api_login_required
+@api_feature_required("goods_out")
 def goodsout_bulk_void_api(request):
     if request.method != "POST":
         return JsonResponse({"success": False, "message": "POST only."}, status=405)

@@ -29,7 +29,7 @@ from ..models import (
     PurchaseInvoice, PurchaseItem, Party, Item, UserProfile,
     PaymentStatus,
 )
-from ..decorators import api_login_required
+from ..decorators import api_login_required, api_feature_required
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -50,6 +50,12 @@ def _to_decimal(val, default=Decimal("0")):
         return Decimal(str(val))
     except (InvalidOperation, TypeError, ValueError):
         return default
+
+
+def _get_tax_rate(company):
+    if not company or not company.tax_enabled:
+        return Decimal("0")
+    return _to_decimal(company.tax_rate, Decimal("0"))
 
 
 def _next_reference_no(company):
@@ -81,6 +87,8 @@ def _serialize_line(line):
         "quantity": str(line.quantity),
         "cost_price": str(line.cost_price),
         "selling_price": str(line.selling_price) if line.selling_price is not None else "",
+        "tax_rate": str(line.tax_rate),
+        "tax_amount": str(line.tax_amount),
         "line_total": str(line.line_total),
     }
 
@@ -100,6 +108,8 @@ def _serialize_invoice(inv, include_lines=False):
         "payment_status": inv.payment_status,
         "is_void": inv.is_void,
         "void_reason": inv.void_reason,
+        "tax_rate": str(inv.tax_rate),
+        "tax_amount": str(inv.tax_amount),
         "invoice_total": str(inv.invoice_total),
         "total_paid": str(inv.total_paid),
         "balance_due": str(inv.balance_due),
@@ -134,6 +144,8 @@ def _serialize_invoice_flat(inv):
             "quantity": str(line.quantity),
             "cost_price": str(line.cost_price),
             "selling_price": str(line.selling_price) if line.selling_price is not None else "",
+            "tax_rate": str(line.tax_rate),
+            "tax_amount": str(line.tax_amount),
             "line_total": str(line.line_total),
             "invoice_total": str(inv.invoice_total),
         })
@@ -145,6 +157,7 @@ def _serialize_invoice_flat(inv):
 # ═══════════════════════════════════════════════════════════════
 
 @api_login_required
+@api_feature_required("goods_in")
 def goodsin_helpers_items(request):
     """Return active items for item search dropdown."""
     if request.method != "GET":
@@ -176,6 +189,7 @@ def goodsin_helpers_items(request):
 
 
 @api_login_required
+@api_feature_required("goods_in")
 def goodsin_helpers_suppliers(request):
     """Return active suppliers for supplier dropdown."""
     if request.method != "GET":
@@ -208,6 +222,7 @@ def goodsin_helpers_suppliers(request):
 
 
 @api_login_required
+@api_feature_required("goods_in")
 def goodsin_helpers_users(request):
     """Return all users in the same company."""
     if request.method != "GET":
@@ -235,11 +250,13 @@ def goodsin_helpers_users(request):
 # ═══════════════════════════════════════════════════════════════
 
 @api_login_required
+@api_feature_required("goods_in")
 def goodsin_list_api(request):
     if request.method != "GET":
         return JsonResponse({"success": False, "message": "GET only."}, status=405)
 
     company = request.company
+    tax_rate = _get_tax_rate(company)
     base_qs = PurchaseInvoice.objects.filter(company=company).select_related(
         "supplier", "received_by"
     ).prefetch_related("lines", "lines__item", "lines__item__unit")
@@ -255,7 +272,7 @@ def goodsin_list_api(request):
     for inv in today_qs:
         for line in inv.lines.all():
             today_units += line.quantity
-            today_cost += line.line_total
+        today_cost += inv.invoice_total
 
     unpaid_count = active_qs.filter(payment_status="unpaid").count()
 
@@ -357,6 +374,7 @@ def goodsin_list_api(request):
 # ═══════════════════════════════════════════════════════════════
 
 @api_login_required
+@api_feature_required("goods_in")
 def goodsin_detail_api(request, pk):
     if request.method != "GET":
         return JsonResponse({"success": False, "message": "GET only."}, status=405)
@@ -381,6 +399,7 @@ def goodsin_detail_api(request, pk):
 # ═══════════════════════════════════════════════════════════════
 
 @api_login_required
+@api_feature_required("goods_in")
 def goodsin_create_api(request):
     if request.method != "POST":
         return JsonResponse({"success": False, "message": "POST only."}, status=405)
@@ -390,6 +409,7 @@ def goodsin_create_api(request):
         return err
 
     company = request.company
+    tax_rate = _get_tax_rate(company)
 
     # ── Validate supplier ──
     supplier_id = data.get("supplier_id")
@@ -421,6 +441,7 @@ def goodsin_create_api(request):
         return JsonResponse({"success": False, "message": "At least one item is required."}, status=400)
 
     validated_lines = []
+    tax_total = Decimal("0")
     for idx, ld in enumerate(lines_data):
         item_id = ld.get("item_id")
         if not item_id:
@@ -446,7 +467,10 @@ def goodsin_create_api(request):
             "quantity": qty,
             "cost_price": cost,
             "selling_price": sell,
+            "tax_rate": tax_rate,
+            "tax_amount": (qty * cost * tax_rate / Decimal("100")) if tax_rate > 0 else Decimal("0"),
         })
+        tax_total += validated_lines[-1]["tax_amount"]
 
     # ── Create in a transaction ──
     with transaction.atomic():
@@ -460,6 +484,8 @@ def goodsin_create_api(request):
             received_by=received_by_user,
             notes=(data.get("notes") or "").strip(),
             payment_status=PaymentStatus.UNPAID,
+            tax_rate=tax_rate,
+            tax_amount=tax_total,
         )
 
         for ld in validated_lines:
@@ -469,6 +495,8 @@ def goodsin_create_api(request):
                 quantity=ld["quantity"],
                 cost_price=ld["cost_price"],
                 selling_price=ld["selling_price"],
+                tax_rate=ld["tax_rate"],
+                tax_amount=ld["tax_amount"],
             )
             # Update stock
             ld["item"].quantity_in_stock = F("quantity_in_stock") + ld["quantity"]
@@ -498,6 +526,7 @@ def goodsin_create_api(request):
 # ═══════════════════════════════════════════════════════════════
 
 @api_login_required
+@api_feature_required("goods_in")
 def goodsin_update_api(request, pk):
     if request.method != "POST":
         return JsonResponse({"success": False, "message": "POST only."}, status=405)
@@ -507,6 +536,7 @@ def goodsin_update_api(request, pk):
         return err
 
     company = request.company
+    tax_rate = _get_tax_rate(company)
 
     try:
         invoice = PurchaseInvoice.objects.select_related("supplier").prefetch_related(
@@ -548,6 +578,7 @@ def goodsin_update_api(request, pk):
         return JsonResponse({"success": False, "message": "At least one item is required."}, status=400)
 
     validated_lines = []
+    tax_total = Decimal("0")
     for idx, ld in enumerate(lines_data):
         item_id = ld.get("item_id")
         if not item_id:
@@ -573,7 +604,10 @@ def goodsin_update_api(request, pk):
             "quantity": qty,
             "cost_price": cost,
             "selling_price": sell,
+            "tax_rate": tax_rate,
+            "tax_amount": (qty * cost * tax_rate / Decimal("100")) if tax_rate > 0 else Decimal("0"),
         })
+        tax_total += validated_lines[-1]["tax_amount"]
 
     with transaction.atomic():
         # ── Reverse old stock ──
@@ -596,6 +630,8 @@ def goodsin_update_api(request, pk):
         invoice.date_received = data.get("date_received") or invoice.date_received
         invoice.received_by = received_by_user
         invoice.notes = (data.get("notes") or "").strip()
+        invoice.tax_rate = tax_rate
+        invoice.tax_amount = tax_total
         invoice.save()
 
         # ── Create new lines + update stock ──
@@ -606,6 +642,8 @@ def goodsin_update_api(request, pk):
                 quantity=ld["quantity"],
                 cost_price=ld["cost_price"],
                 selling_price=ld["selling_price"],
+                tax_rate=ld["tax_rate"],
+                tax_amount=ld["tax_amount"],
             )
             ld["item"].quantity_in_stock = F("quantity_in_stock") + ld["quantity"]
             ld["item"].save(update_fields=["quantity_in_stock", "updated_at"])
@@ -634,6 +672,7 @@ def goodsin_update_api(request, pk):
 # ═══════════════════════════════════════════════════════════════
 
 @api_login_required
+@api_feature_required("goods_in")
 def goodsin_void_api(request, pk):
     if request.method != "POST":
         return JsonResponse({"success": False, "message": "POST only."}, status=405)
@@ -679,6 +718,7 @@ def goodsin_void_api(request, pk):
 
 
 @api_login_required
+@api_feature_required("goods_in")
 def goodsin_bulk_void_api(request):
     if request.method != "POST":
         return JsonResponse({"success": False, "message": "POST only."}, status=405)

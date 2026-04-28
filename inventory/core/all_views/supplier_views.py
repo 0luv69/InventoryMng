@@ -17,7 +17,7 @@ from django.db.models import Q, Sum, Count
 from django.utils import timezone
 
 from ..models import Party, PurchaseInvoice, Payment
-from ..decorators import api_login_required,company_required
+from ..decorators import api_login_required, api_feature_required, feature_required
 
 
 
@@ -65,12 +65,13 @@ def _parse_json(request):
         )
 
 
-@company_required
+@feature_required("suppliers")
 def suppliers_page(request):
     """Render the suppliers HTML page (data loaded via JS/API)."""
     context = {
         "title": "Suppliers",
         "userProfile": request.userProfile,
+        "feature_flags": request.userProfile.company.get_feature_flags(),
     }
     return render(request, "core/suppliers.html", context)
 
@@ -80,6 +81,7 @@ def suppliers_page(request):
 # ══════════════════════════════════════════���════════════════════
 
 @api_login_required
+@api_feature_required("suppliers")
 def supplier_list_api(request):
     if request.method != "GET":
         return JsonResponse({"success": False, "message": "Method not allowed."}, status=405)
@@ -184,6 +186,7 @@ def supplier_list_api(request):
 # ═══════════════════════════════════════════════════════════════
 
 @api_login_required
+@api_feature_required("suppliers")
 def supplier_create_api(request):
     if request.method != "POST":
         return JsonResponse({"success": False, "message": "Method not allowed."}, status=405)
@@ -228,6 +231,7 @@ def supplier_create_api(request):
 # ═══════════════════════════════════════════════════════════════
 
 @api_login_required
+@api_feature_required("suppliers")
 def supplier_update_api(request):
     if request.method != "POST":
         return JsonResponse({"success": False, "message": "Method not allowed."}, status=405)
@@ -282,6 +286,7 @@ def supplier_update_api(request):
 # ══════════════════════════���════════════════════════════════════
 
 @api_login_required
+@api_feature_required("suppliers")
 def supplier_delete_api(request):
     if request.method != "POST":
         return JsonResponse({"success": False, "message": "Method not allowed."}, status=405)
@@ -331,6 +336,7 @@ def supplier_delete_api(request):
 # ═══════════════════════════════════════════════════════════════
 
 @api_login_required
+@api_feature_required("suppliers")
 def supplier_transactions_api(request, pk):
     if request.method != "GET":
         return JsonResponse({"success": False, "message": "Method not allowed."}, status=405)

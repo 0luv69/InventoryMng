@@ -344,6 +344,24 @@
                      class="w-full px-4 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200"/>
             </div>
             <div>
+              <label class="block text-xs font-semibold text-neutral-600 mb-1.5">Tax Label</label>
+              <input type="text" id="cTaxLabel" value="{{ userProfile.company.tax_label|default:'VAT' }}" placeholder="VAT"
+                     class="w-full px-4 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200"/>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-neutral-600 mb-1.5">Tax Rate (%)</label>
+              <input type="number" id="cTaxRate" min="0" max="100" step="0.01" value="{{ userProfile.company.tax_rate|default:0 }}"
+                     class="w-full px-4 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200"/>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-neutral-600 mb-1.5">Enable Tax</label>
+              <label class="inline-flex items-center gap-2 text-sm text-neutral-600">
+                <input type="checkbox" id="cTaxEnabled" class="w-4 h-4 rounded border-neutral-300 text-green-500 focus:ring-green-500/30"
+                       {% if userProfile.company.tax_enabled %}checked{% endif %}/>
+                Apply tax on invoices
+              </label>
+            </div>
+            <div>
               <label class="block text-xs font-semibold text-neutral-600 mb-1.5">Fiscal Year Start Month</label>
               <select id="cFiscalYear" class="w-full px-4 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200">
                 <option value="1" {% if userProfile.company.fiscal_year_start_month == 1 %}selected{% endif %}>January</option>
@@ -365,6 +383,44 @@
               <input type="number" id="cLowStock" value="{{ userProfile.company.default_low_stock_threshold }}" min="1" placeholder="e.g. 20"
                      class="w-full px-4 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-400 transition-all duration-200"/>
             </div>
+          </div>
+        </div>
+
+        <div class="bg-white border border-neutral-100 rounded-2xl p-6">
+          <h3 class="text-sm font-bold text-neutral-900 mb-5">Module Access</h3>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <label class="flex items-center gap-2 text-sm text-neutral-700">
+              <input type="checkbox" id="featureItems" class="w-4 h-4 rounded border-neutral-300 text-green-500 focus:ring-green-500/30" {% if feature_flags.items %}checked{% endif %}/>
+              Items &amp; Goods
+            </label>
+            <label class="flex items-center gap-2 text-sm text-neutral-700">
+              <input type="checkbox" id="featureSuppliers" class="w-4 h-4 rounded border-neutral-300 text-green-500 focus:ring-green-500/30" {% if feature_flags.suppliers %}checked{% endif %}/>
+              Suppliers
+            </label>
+            <label class="flex items-center gap-2 text-sm text-neutral-700">
+              <input type="checkbox" id="featureCustomers" class="w-4 h-4 rounded border-neutral-300 text-green-500 focus:ring-green-500/30" {% if feature_flags.customers %}checked{% endif %}/>
+              Customers
+            </label>
+            <label class="flex items-center gap-2 text-sm text-neutral-700">
+              <input type="checkbox" id="featureGoodsIn" class="w-4 h-4 rounded border-neutral-300 text-green-500 focus:ring-green-500/30" {% if feature_flags.goods_in %}checked{% endif %}/>
+              Goods In
+            </label>
+            <label class="flex items-center gap-2 text-sm text-neutral-700">
+              <input type="checkbox" id="featureGoodsOut" class="w-4 h-4 rounded border-neutral-300 text-green-500 focus:ring-green-500/30" {% if feature_flags.goods_out %}checked{% endif %}/>
+              Goods Out
+            </label>
+            <label class="flex items-center gap-2 text-sm text-neutral-700">
+              <input type="checkbox" id="featurePayments" class="w-4 h-4 rounded border-neutral-300 text-green-500 focus:ring-green-500/30" {% if feature_flags.payments %}checked{% endif %}/>
+              Payments
+            </label>
+            <label class="flex items-center gap-2 text-sm text-neutral-700">
+              <input type="checkbox" id="featureReports" class="w-4 h-4 rounded border-neutral-300 text-green-500 focus:ring-green-500/30" {% if feature_flags.reports %}checked{% endif %}/>
+              Reports
+            </label>
+            <label class="flex items-center gap-2 text-sm text-neutral-700">
+              <input type="checkbox" id="featureSpoilage" class="w-4 h-4 rounded border-neutral-300 text-green-500 focus:ring-green-500/30" {% if feature_flags.spoilage %}checked{% endif %}/>
+              Spoilage &amp; Loss
+            </label>
           </div>
         </div>
 
@@ -701,8 +757,21 @@
         country: document.getElementById('cCountry').value.trim(),
         currency: document.getElementById('cCurrency').value,
         tax_id: document.getElementById('cTaxId').value.trim(),
+        tax_label: document.getElementById('cTaxLabel').value.trim(),
+        tax_rate: document.getElementById('cTaxRate').value,
+        tax_enabled: document.getElementById('cTaxEnabled').checked,
         fiscal_year_start_month: document.getElementById('cFiscalYear').value,
         default_low_stock_threshold: document.getElementById('cLowStock').value.trim(),
+        feature_flags: {
+          items: document.getElementById('featureItems').checked,
+          suppliers: document.getElementById('featureSuppliers').checked,
+          customers: document.getElementById('featureCustomers').checked,
+          goods_in: document.getElementById('featureGoodsIn').checked,
+          goods_out: document.getElementById('featureGoodsOut').checked,
+          payments: document.getElementById('featurePayments').checked,
+          reports: document.getElementById('featureReports').checked,
+          spoilage: document.getElementById('featureSpoilage').checked,
+        },
       };
     }
 
@@ -727,7 +796,7 @@
     window.updateCompanyButtons = updateCompanyButtons;
 
     function attachCompanyListeners() {
-      ['cName','cEmail','cPhone','cAddress','cCity','cState','cCountry','cCurrency','cFiscalYear','cTaxId','cLowStock'].forEach(id => {
+      ['cName','cEmail','cPhone','cAddress','cCity','cState','cCountry','cCurrency','cFiscalYear','cTaxId','cTaxLabel','cTaxRate','cTaxEnabled','cLowStock','featureItems','featureSuppliers','featureCustomers','featureGoodsIn','featureGoodsOut','featurePayments','featureReports','featureSpoilage'].forEach(id => {
         const el = document.getElementById(id);
         if (el) {
           el.addEventListener('input', updateCompanyButtons);
@@ -747,7 +816,18 @@
       document.getElementById('cCurrency').value = initialCompanyData.currency;
       document.getElementById('cFiscalYear').value = initialCompanyData.fiscal_year_start_month;
       document.getElementById('cTaxId').value = initialCompanyData.tax_id;
+      document.getElementById('cTaxLabel').value = initialCompanyData.tax_label;
+      document.getElementById('cTaxRate').value = initialCompanyData.tax_rate;
+      document.getElementById('cTaxEnabled').checked = initialCompanyData.tax_enabled;
       document.getElementById('cLowStock').value = initialCompanyData.default_low_stock_threshold;
+      document.getElementById('featureItems').checked = initialCompanyData.feature_flags.items;
+      document.getElementById('featureSuppliers').checked = initialCompanyData.feature_flags.suppliers;
+      document.getElementById('featureCustomers').checked = initialCompanyData.feature_flags.customers;
+      document.getElementById('featureGoodsIn').checked = initialCompanyData.feature_flags.goods_in;
+      document.getElementById('featureGoodsOut').checked = initialCompanyData.feature_flags.goods_out;
+      document.getElementById('featurePayments').checked = initialCompanyData.feature_flags.payments;
+      document.getElementById('featureReports').checked = initialCompanyData.feature_flags.reports;
+      document.getElementById('featureSpoilage').checked = initialCompanyData.feature_flags.spoilage;
 
       updateCompanyButtons();
     }
