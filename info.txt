@@ -1,0 +1,104 @@
+timestamp: createdat, updatedat
+
+UserProfile:
+	phnum
+	USER: dajngo user model, fn, ln, email, ped
+	Company
+
+Company: model
+	name
+	slug
+	logo
+	Contact: email, ph, address, city, state/province, country
+	Financial info: currency, tax/pan id
+
+class Unit:
+    company_id              
+    name                   
+    short_name        
+
+      
+class Suppliers:
+    company_id    
+    slug/ uuid          
+    name                    
+    pic/ logo
+    contact: contact_person, phone, email, address
+    balance gave/ balance to give
+    note/ remarks, description
+    status: active, inactive
+    is_removed: bool
+
+class Customers:
+    company_id     
+    slug/ uuid         
+    name                    
+    pic/ logo
+    contact: contact_person, phone, email, address
+    balance got/ balance to get
+    note/ remarks, description
+    status: active, inactive
+    is_removed: bool
+
+Suppliers & Customers are similar i think of reusing or something
+
+
+class Items:
+	company model
+	name, logo, description
+	slug/ unique id
+	unit model
+	cost price, selling price
+	is_active
+	quantity in stock
+	low_stock_threshold
+
+class GoodsIn (the items adding in inventory)
+	Suppliers Model
+	Items model
+	cp, sp (default value from items, and could be changed)
+	Quantity of items
+	recivedby (items recived by)
+	notes
+	date_recived(this could be changed on the creation time)
+	
+	payment_status: paid, partial, unpaid
+	payment_method: online, cash, cheque
+
+
+Goods Out:
+	Customer Model
+	Items model
+	Quantity of items
+	sp (default value from items, and could be changed)
+	dis_type: percentage/ number
+	dis_amt: 
+	dispatched by (items recived by)
+	notes
+	date_recived(this could be changed on the creation time)
+	
+	payment_status: paid, partial, unpaid
+	payment_method: online, cash, cheque
+	
+
+
+class Spoilage&loss:
+	-items
+	- reason: expire, damaged, loss, sample
+	-quantity of product
+	- perprice or total price
+	- date of reported
+	-reported by
+	-notes
+
+
+
+Payment:
+	payment_tpye: recived, sent
+	customer(recived), supplier(sent)
+	amt
+	paid date
+	recived by
+	payment method: cash, cheque
+	payment status
+	notes
