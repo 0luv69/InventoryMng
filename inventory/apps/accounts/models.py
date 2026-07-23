@@ -129,3 +129,76 @@ class AuditLog(models.Model):
 
     def __str__(self):
         return f"{self.user} - {self.action_type} - {self.entity_name}"
+    
+
+# ==========================================
+# 7. COMPANY SETTINGS (PER-TENANT CONFIG)
+# ==========================================
+class CompanySetting(models.Model):
+    """ Stores configuration specific to a company's SaaS instance """
+    company = models.OneToOneField(Company, on_delete=models.CASCADE, related_name='settings')
+    
+    # Financials
+    currency = models.CharField(max_length=3, default='NPR')
+    enable_vat = models.BooleanField(default=True, help_text="Toggle 13% VAT calculations globally")
+    vat_percentage = models.DecimalField(max_digits=5, decimal_places=2, default=13.00)
+    
+    # Defaults for fast data entry
+    default_warehouse = models.ForeignKey(
+        'inventory.Warehouse', on_delete=models.SET_NULL, null=True, blank=True
+    )
+    default_price_tier = models.ForeignKey(
+        'catalog.PriceTier', on_delete=models.SET_NULL, null=True, blank=True
+    )
+    
+    # Invoice Formatting
+    sale_invoice_prefix = models.CharField(max_length=20, default='INV-')
+    purchase_invoice_prefix = models.CharField(max_length=20, default='PUR-')
+    
+    # Low Stock Alerts
+    enable_low_stock_alerts = models.BooleanField(default=True)
+
+    def __str__(self):
+        return f"Settings for {self.company.name}"
+
+
+# ==========================================
+# 8. NOTIFICATIONS (IN-APP ALERTS)
+# ==========================================
+class Notification(models.Model):
+    """ In-app notifications for users (e.g., Low Stock, Expiring Batches) """
+    class NotificationType(models.TextChoices):
+        LOW_STOCK = 'low_stock', 'Low Stock'
+        EXPIRY_ALERT = 'expiry_alert', 'Expiry Alert'
+        SUBSCRIPTION = 'subscription', 'Subscription Alert'
+        SYSTEM = 'system', 'System Notification'
+
+    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='notifications')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications', null=True, blank=True, help_text="Leave blank for all company users")
+    
+    notification_type = models.CharField(max_length=20, choices=NotificationType.choices)
+    title = models.CharField(max_length=200)
+    message = models.TextField()
+    is_read = models.BooleanField(default=False)
+    
+    # Optional links to take the user directly to the issue
+    redirect_url = models.CharField(max_length=255, blank=True)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.notification_type} - {self.title}"
+
+
+
+
+
+
+
+
+
+
+

@@ -31,6 +31,9 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework_simplejwt',
     'django_filters',
+    "tailwind",
+    "theme",
+
 
 
     # Local Apps
@@ -39,6 +42,10 @@ INSTALLED_APPS = [
     'apps.catalog',
     'apps.transactions',
     'apps.inventory',
+
+
+    # Front end
+    'apps.frontend',
 
     # Core App
     'apps.core',
@@ -55,6 +62,8 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = 'config.urls'
+TAILWIND_APP_NAME = "theme"
+
 
 TEMPLATES = [
     {
@@ -66,6 +75,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'apps.accounts.context_processors.global_user_profile',
             ],
         },
     },

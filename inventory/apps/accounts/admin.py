@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import User, Plan, Company, Subscription, UserProfile, AuditLog
+from .models import Notification, User, Plan, Company, Subscription, UserProfile, AuditLog, CompanySetting
 
 @admin.register(User)
 class UserAdmin(admin.ModelAdmin):
@@ -27,3 +27,16 @@ class UserProfileAdmin(admin.ModelAdmin):
 class AuditLogAdmin(admin.ModelAdmin):
     list_display = ('user', 'company', 'action_type', 'entity_name', 'created_at')
     readonly_fields = [field.name for field in AuditLog._meta.fields]
+
+
+
+
+
+@admin.register(CompanySetting)
+class CompanySettingAdmin(admin.ModelAdmin):
+    list_display = ('company', 'currency', 'enable_vat', 'vat_percentage', 'sale_invoice_prefix')
+
+@admin.register(Notification)
+class NotificationAdmin(admin.ModelAdmin):
+    list_display = ('company', 'notification_type', 'title', 'is_read', 'created_at')
+    list_filter = ('notification_type', 'is_read')
