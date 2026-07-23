@@ -64,6 +64,16 @@ class Item(BaseModel):
     # Reorder level
     low_stock_threshold = models.PositiveIntegerField(default=10)
 
+
+    @property
+    def total_stock(self):
+        """ Calculate live stock from all warehouses and batches """
+        from apps.inventory.models import StockBatch
+        total = StockBatch.objects.filter(item=self).aggregate(
+            total=models.Sum('quantity')
+        )['total']
+        return total or 0
+
     class Meta:
         ordering = ['name']
         constraints = [

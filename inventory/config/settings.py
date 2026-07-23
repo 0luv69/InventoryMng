@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     'apps.parties',
     'apps.catalog',
     'apps.transactions',
+    'apps.inventory',
 
     # Core App
     'apps.core',

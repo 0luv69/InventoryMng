@@ -19,7 +19,7 @@ class ItemPriceInline(admin.TabularInline):
 
 @admin.register(Item)
 class ItemAdmin(admin.ModelAdmin):
-    list_display = ('name', 'category', 'base_unit', 'barcode', 'cost_price', 'status')
+    list_display = ('name', 'category', 'base_unit', 'barcode', 'cost_price','total_stock', 'status')
     list_filter = ('status', 'category')
     search_fields = ('name', 'barcode')
     inlines = [ItemUOMInline, ItemPriceInline]
