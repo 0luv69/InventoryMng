@@ -1,0 +1,121 @@
+{% extends 'base.html' %}
+
+{% block title %}Goods In — InventoryChamps{% endblock %}
+{% block page_title %}Goods In (Purchases){% endblock %}
+
+{% block content %}
+<!-- Added fullWidth: false to x-data -->
+<div x-data="{ slideOver: false, fullWidth: false }" @open-modal.window="slideOver = true" @close-modal.window="slideOver = false" class="space-y-6">
+
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-2xl font-extrabold text-neutral-900">Goods In</h1>
+            <p class="text-sm text-neutral-400 mt-1">Track incoming stock and supplier purchases.</p>
+        </div>
+        
+        <button @click="$dispatch('open-modal')" 
+                hx-get="{% url 'frontend:goods_in_form' %}" 
+                hx-target="#formContainer" 
+                hx-swap="innerHTML"
+                class="inline-flex items-center gap-2 px-5 py-2.5 bg-green-500 text-white text-sm font-semibold rounded-xl hover:bg-green-600 transition-all">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Add Purchase
+        </button>
+    </div>
+
+    <form hx-get="{% url 'frontend:goods_in_table' %}" hx-target="#goodsin-table" class="bg-white border border-neutral-100 rounded-2xl p-4 flex items-center gap-3">
+        <input type="text" name="search" placeholder="Search by Ref No or Supplier..." 
+               hx-get="{% url 'frontend:goods_in_table' %}" 
+               hx-trigger="keyup changed delay:400ms" 
+               hx-target="#goodsin-table" 
+               class="flex-1 px-4 py-2.5 text-sm border border-neutral-200 rounded-xl bg-neutral-50/50 focus:outline-none focus:ring-2 focus:ring-green-500/20">
+    </form>
+
+    <div class="bg-white border border-neutral-100 rounded-2xl overflow-hidden">
+        <div id="goodsin-table" hx-get="{% url 'frontend:goods_in_table' %}" hx-trigger="load" class="w-full">
+            <div class="p-8 text-center text-sm text-neutral-400">Loading purchases...</div>
+        </div>
+    </div>
+
+    <!-- SLIDE-OVER MODAL -->
+    <div x-show="slideOver" x-transition.opacity class="fixed inset-0 bg-black/20 backdrop-blur-sm z-[60]" style="display: none;" @click="slideOver = false"></div>
+    
+    <!-- Added transition-all and dynamic :class for width -->
+    <div x-show="slideOver" 
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="translate-x-full"
+         x-transition:enter-end="translate-x-0"
+         x-transition:leave="transition ease-in duration-200"
+         x-transition:leave-start="translate-x-0"
+         x-transition:leave-end="translate-x-full"
+         class="fixed top-0 right-0 h-screen z-[65] bg-white shadow-2xl flex flex-col transition-all duration-300 ease-out-expo" 
+         :class="fullWidth ? 'w-full' : 'w-full max-w-2xl'"
+         style="display: none;">
+        
+        <div class="flex items-center justify-between px-6 py-5 border-b">
+            <h2 class="text-lg font-bold text-neutral-900">Purchase Invoice Details</h2>
+            <div class="flex items-center gap-2">
+                <!-- Expand/Collapse Toggle Button -->
+                <button @click="fullWidth = !fullWidth" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-neutral-100 text-neutral-400 hover:text-neutral-600 transition-colors">
+                    <template x-if="!fullWidth">
+                        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+                    </template>
+                    <template x-if="fullWidth">
+                        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="14" y1="10" x2="21" y2="3"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+                    </template>
+                </button>
+                <!-- Close Button -->
+                <button @click="slideOver = false" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-neutral-100 text-neutral-400 hover:text-neutral-600 transition-colors">
+                    <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+            </div>
+        </div>
+        
+        <div id="formContainer" class="flex-1 overflow-y-auto p-6">
+            <div class="text-sm text-neutral-400">Loading form...</div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+function invoiceForm() {
+    return {
+        lines: [],
+        
+        init() {
+            this.addLine(); // Start with one empty line
+        },
+        
+        addLine() {
+            this.lines.push({
+                item_id: null,
+                item_name: '',
+                search: '',
+                qty: 1,
+                cost_price: 0,
+                batch_no: '',
+                expiry_date: ''
+            });
+        },
+        
+        removeLine(index) {
+            this.lines.splice(index, 1);
+        },
+        
+        get subtotal() {
+            return this.lines.reduce((sum, line) => sum + (parseFloat(line.qty) * parseFloat(line.cost_price || 0)), 0);
+        },
+        
+        get vatAmount() {
+            return this.subtotal * 0.13;
+        },
+        
+        get grandTotal() {
+            return this.subtotal + this.vatAmount;
+        }
+    }
+}
+</script>
+
+{% endblock %}

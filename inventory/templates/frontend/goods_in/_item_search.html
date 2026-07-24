@@ -1,0 +1,17 @@
+{% for item in items %}
+<button type="button" 
+        @click="lines[{{ index }}].item_id = {{ item.id }}; 
+                lines[{{ index }}].item_name = '{{ item.name|escapejs }}'; 
+                lines[{{ index }}].cost_price = {{ item.cost_price|floatformat:2 }}; 
+                lines[{{ index }}].search = ''; 
+                lines[{{ index }}].isDropdownOpen = false;" 
+        class="block w-full text-left px-3 py-2 hover:bg-green-50 transition-colors border-b border-neutral-50 last:border-0">
+    <div class="text-sm font-semibold text-neutral-800">{{ item.name }}</div>
+    <div class="text-[0.65rem] text-neutral-400">
+        {% if item.category %}{{ item.category.name }} · {% endif %}
+        Cost: Rs. {{ item.cost_price|floatformat:2 }} | Stock: {{ item.total_stock|default:0 }}
+    </div>
+</button>
+{% empty %}
+<div class="px-3 py-3 text-xs text-neutral-400">No items found. Try another search.</div>
+{% endfor %}

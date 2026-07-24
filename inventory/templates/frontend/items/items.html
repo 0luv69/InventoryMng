@@ -1,0 +1,113 @@
+{% extends 'base.html' %}
+
+{% block title %}Items & Goods — InventoryChamps{% endblock %}
+{% block page_title %}Items & Goods{% endblock %}
+
+{% block content %}
+<div x-data="{ slideOver: false, filterOpen: false, deleteModal: false, deleteId: null }" @open-modal.window="slideOver = true" @close-modal.window="slideOver = false" class="space-y-6">
+
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-2xl font-extrabold text-neutral-900">Items & Goods</h1>
+            <p class="text-sm text-neutral-400 mt-1">Manage your product catalogue and stock units.</p>
+        </div>
+        
+        <button @click="$dispatch('open-modal')" 
+                hx-get="{% url 'frontend:item_form' %}" 
+                hx-target="#formContainer" 
+                hx-swap="innerHTML"
+                class="inline-flex items-center gap-2 px-5 py-2.5 bg-green-500 text-white text-sm font-semibold rounded-xl hover:bg-green-600 transition-all">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Add Item
+        </button>
+    </div>
+
+    <!-- Filter & Search Form -->
+    <form hx-get="{% url 'frontend:items_table' %}" hx-target="#items-table" hx-trigger="submit, change" class="bg-white border border-neutral-100 rounded-2xl p-4 space-y-4">
+        <div class="flex items-center gap-3">
+            <input type="text" name="search" placeholder="Search items by name..." 
+                   hx-get="{% url 'frontend:items_table' %}" 
+                   hx-trigger="keyup changed delay:400ms" 
+                   hx-target="#items-table" 
+                   class="flex-1 px-4 py-2.5 text-sm border border-neutral-200 rounded-xl bg-neutral-50/50 focus:outline-none focus:ring-2 focus:ring-green-500/20">
+            
+            <button type="button" @click="filterOpen = !filterOpen" class="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-neutral-600 bg-white border border-neutral-200 rounded-xl hover:bg-neutral-50">
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+                Filters
+            </button>
+        </div>
+
+        <div x-show="filterOpen" x-transition class="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t border-neutral-100" style="display: none;">
+            <select name="category" class="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white">
+                <option value="">All Categories</option>
+                {% for c in categories %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}
+            </select>
+            <select name="unit" class="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white">
+                <option value="">All Units</option>
+                {% for u in units %}<option value="{{ u.id }}">{{ u.name }} ({{ u.short_name }})</option>{% endfor %}
+            </select>
+            <select name="status" class="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white">
+                <option value="">All Status</option>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+            </select>
+        </div>
+    </form>
+
+    <!-- Data Table Container -->
+    <div class="bg-white border border-neutral-100 rounded-2xl overflow-hidden">
+        <div id="items-table" hx-get="{% url 'frontend:items_table' %}" hx-trigger="load" class="w-full">
+            <div class="p-8 text-center text-sm text-neutral-400">Loading items...</div>
+        </div>
+    </div>
+
+    <!-- SLIDE-OVER MODAL (Add/Edit) -->
+    <div x-show="slideOver" x-transition.opacity class="fixed inset-0 h-screen bg-black/20 backdrop-blur-sm z-[60]" style="display: none;" @click="slideOver = false"></div>
+    
+    <div x-show="slideOver" 
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="translate-x-full"
+         x-transition:enter-end="translate-x-0"
+         x-transition:leave="transition ease-in duration-200"
+         x-transition:leave-start="translate-x-0"
+         x-transition:leave-end="translate-x-full"
+         class="fixed top-0 right-0 h-screen w-full max-w-md bg-white z-[65] shadow-2xl flex flex-col" 
+         style="display: none;">
+        
+        <div class="flex items-center justify-between px-6 py-5 border-b">
+            <h2 class="text-lg font-bold text-neutral-900">Item Details</h2>
+            <button @click="slideOver = false" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-neutral-100 text-neutral-400">
+                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+        </div>
+        
+        <div id="formContainer" class="flex-1 overflow-y-auto p-6">
+            <div class="text-sm text-neutral-400">Loading form...</div>
+        </div>
+    </div>
+
+    <!-- DELETE CONFIRMATION MODAL -->
+    <div x-show="deleteModal" x-transition.opacity class="fixed inset-0 bg-black/30 backdrop-blur-sm z-[70] flex items-center justify-center" style="display: none;">
+        <div x-show="deleteModal" x-transition class="bg-white rounded-2xl shadow-xl w-full max-w-sm mx-4 p-6">
+            <div class="w-12 h-12 bg-red-50 rounded-xl flex items-center justify-center mx-auto mb-4">
+                <svg class="w-6 h-6 text-red-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            </div>
+            <h3 class="text-base font-bold text-neutral-900 text-center mb-1">Delete Item?</h3>
+            <p class="text-sm text-neutral-500 text-center mb-6">This action cannot be undone. The item will be removed from your catalogue.</p>
+            <div class="flex gap-3">
+                <button @click="deleteModal = false" class="flex-1 px-4 py-2.5 text-sm font-semibold text-neutral-600 bg-white border border-neutral-200 rounded-xl hover:bg-neutral-50 transition-all">Cancel</button>
+                <!-- The actual delete button triggers HTMX -->
+                <button :hx-delete="`{% url 'frontend:item_delete' item_id=0 %}`.replace('0', deleteId)" 
+                        hx-target="#items-table" 
+                        hx-swap="innerHTML"
+                        hx-confirm="Are you sure?"
+                        @click="deleteModal = false"
+                        class="flex-1 px-4 py-2.5 text-sm font-semibold text-white bg-red-500 rounded-xl hover:bg-red-600 transition-all">
+                    Delete
+                </button>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

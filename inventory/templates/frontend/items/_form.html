@@ -1,0 +1,69 @@
+<form x-data="{ changed: false }" 
+      @input="changed = true"
+      hx-post="{% url 'frontend:item_save' %}" 
+      hx-target="#items-table" 
+      hx-swap="innerHTML" 
+      hx-on::after-request="if(event.detail.successful) { toast.success('Item saved successfully!'); $dispatch('close-modal'); }"
+      class="space-y-5">
+      
+    {% csrf_token %}
+    <input type="hidden" name="id" value="{{ item.id|default:'' }}">
+
+    <div>
+        <label class="block text-xs font-semibold text-neutral-600 mb-1.5">Item Name *</label>
+        <input type="text" name="name" required value="{{ item.name|default:'' }}" 
+               class="w-full px-4 py-2.5 text-sm border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500/20">
+    </div>
+
+    <div>
+        <label class="block text-xs font-semibold text-neutral-600 mb-1.5">Barcode</label>
+        <input type="text" name="barcode" value="{{ item.barcode|default:'' }}" 
+               class="w-full px-4 py-2.5 text-sm border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500/20">
+    </div>
+
+    <div class="grid grid-cols-2 gap-4">
+        <div>
+            <label class="block text-xs font-semibold text-neutral-600 mb-1.5">Category</label>
+            <select name="category" class="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white">
+                <option value="">None</option>
+                {% for c in categories %}
+                <option value="{{ c.id }}" {% if item.category_id == c.id %}selected{% endif %}>{{ c.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            <label class="block text-xs font-semibold text-neutral-600 mb-1.5">Base Unit *</label>
+            <select name="base_unit" required class="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white">
+                <option value="">Select</option>
+                {% for u in units %}
+                <option value="{{ u.id }}" {% if item.base_unit_id == u.id %}selected{% endif %}>{{ u.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+
+    <div>
+        <label class="block text-xs font-semibold text-neutral-600 mb-1.5">Cost Price (Moving Avg)</label>
+        <input type="number" name="cost_price" step="0.01" value="{{ item.cost_price|default:'0' }}" 
+               class="w-full px-4 py-2.5 text-sm border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500/20">
+        <p class="text-[0.65rem] text-neutral-400 mt-1">Note: This is automatically updated when you purchase stock.</p>
+    </div>
+
+    <div class="flex items-center justify-between p-4 bg-neutral-50 rounded-xl border border-neutral-100">
+        <div class="text-sm font-semibold text-neutral-700">Active Item</div>
+        <input type="checkbox" name="is_active" class="w-5 h-5 rounded text-green-500" {% if not item or item.status == 'active' %}checked{% endif %}>
+    </div>
+
+    <div class="pt-4 border-t border-neutral-100">
+        <button type="submit" 
+                :disabled="!changed"
+                :class="!changed ? 'bg-neutral-300 cursor-not-allowed' : 'bg-green-500 hover:bg-green-600'"
+                class="w-full px-4 py-2.5 text-sm font-semibold text-white rounded-xl transition-all flex items-center justify-center gap-2">
+            <span x-show="!changed">No Changes Made</span>
+            <span x-show="changed" class="flex items-center gap-2">
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                Save Item
+            </span>
+        </button>
+    </div>
+</form>

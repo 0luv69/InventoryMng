@@ -42,10 +42,13 @@ INSTALLED_APPS = [
     'apps.catalog',
     'apps.transactions',
     'apps.inventory',
-
+    
 
     # Front end
     'apps.frontend',
+
+    #Api 
+    'apps.reports',
 
     # Core App
     'apps.core',

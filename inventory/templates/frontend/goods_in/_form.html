@@ -1,0 +1,160 @@
+<form x-data="invoiceForm()" 
+      hx-post="{% url 'frontend:goods_in_save' %}" 
+      hx-target="#goodsin-table" 
+      hx-swap="innerHTML" 
+      hx-on::after-request="if(event.detail.successful && event.detail.pathInfo.requestPath.includes('/goods-in/save/')) { toast.success('Purchase saved! Stock updated.'); $dispatch('close-modal'); }"
+      class="space-y-6">
+      
+    {% csrf_token %}
+    <input type="hidden" name="id" value="{{ invoice.id|default:'' }}">
+
+    <!-- Invoice Header -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+            <label class="block text-xs font-semibold text-neutral-600 mb-1.5">Supplier *</label>
+            <select name="supplier" required class="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white">
+                <option value="">Select Supplier</option>
+                {% for s in suppliers %}
+                <option value="{{ s.id }}" {% if invoice.supplier_id == s.id %}selected{% endif %}>{{ s.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            <label class="block text-xs font-semibold text-neutral-600 mb-1.5">Date Received *</label>
+            <input type="date" name="date_received" required value="{{ invoice.date_received|date:'Y-m-d'|default:today_str }}" class="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl">
+        </div>
+        <div>
+            <label class="block text-xs font-semibold text-neutral-600 mb-1.5">Reference No *</label>
+            <input type="text" name="reference_no" required value="{{ invoice.reference_no|default:'' }}" placeholder="e.g. PUR-001" class="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl">
+        </div>
+        <div>
+            <label class="block text-xs font-semibold text-neutral-600 mb-1.5">Warehouse *</label>
+            <select name="warehouse" required class="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white">
+                <option value="">Select Warehouse</option>
+                {% for w in warehouses %}
+                <option value="{{ w.id }}">{{ w.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+
+    <!-- Line Items Grid (Replaces Table to fix dropdown clipping) -->
+    <div class="border border-neutral-200 rounded-xl overflow-hidden">
+        <div class="flex items-center justify-between px-4 py-3 bg-neutral-50 border-b border-neutral-200">
+            <h3 class="text-xs font-bold text-neutral-600 uppercase tracking-wider">Items Received</h3>
+            <button type="button" @click="addLine()" class="text-xs font-semibold text-green-600 hover:text-green-700 flex items-center gap-1">
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Add Line
+            </button>
+        </div>
+        
+        <div class="p-3 space-y-3">
+            <template x-for="(line, index) in lines" :key="index">
+                <!-- Line Item Row (Grid) -->
+                <div class="line-item-row grid grid-cols-12 gap-2 items-start p-2 bg-neutral-50 border border-neutral-200 rounded-lg relative">
+                    
+                    <!-- Delete Button -->
+                    <button type="button" @click="removeLine(index)" class="absolute top-1 right-1 text-red-400 hover:text-red-600 z-10">
+                        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                    </button>
+
+                    <!-- Item Search (Takes 6 cols on desktop, 12 on mobile) -->
+                    <!-- Added @click.outside to close dropdown when clicking elsewhere -->
+                    <div class="col-span-12 md:col-span-6 relative" @click.outside="line.isDropdownOpen = false">
+                        <label class="block text-[0.65rem] font-semibold text-neutral-500 mb-1">Item *</label>
+                        <div x-show="!line.item_id">
+                            <input type="text" name="q" x-model="line.search" 
+                                   placeholder="Type name, barcode, or category..." 
+                                   autocomplete="off"
+                                   @focus="line.isDropdownOpen = true"
+                                   @input="line.isDropdownOpen = true"
+                                   hx-get="{% url 'frontend:goods_in_item_search' %}" 
+                                   hx-trigger="keyup changed delay:300ms" 
+                                   hx-include="closest .line-item-row" 
+                                   hx-target="next .search-dropdown" 
+                                   hx-swap="innerHTML"
+                                   class="w-full px-3 py-2 text-sm bg-white border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500/40 focus:border-green-500 transition-all">
+                            <input type="hidden" name="index" :value="index">
+                            
+                            <!-- Dropdown only shows when isDropdownOpen is true and search has text -->
+                            <div class="search-dropdown absolute z-20 bg-white border border-neutral-200 rounded-lg shadow-lg mt-1 w-full max-h-48 overflow-y-auto" 
+                                 x-show="line.isDropdownOpen && line.search.length > 0" 
+                                 style="display: none;">
+                                <div class="px-3 py-2 text-xs text-neutral-400">Searching...</div>
+                            </div>
+                        </div>
+                        
+                        <div x-show="line.item_id" class="flex items-center justify-between h-[38px]">
+                            <span class="text-sm font-medium text-neutral-800" x-text="line.item_name"></span>
+                            <button type="button" @click="line.item_id = null; line.search = ''; line.isDropdownOpen = true" class="ml-2 text-xs text-red-500 hover:text-red-600">Change</button>
+                        </div>
+                        <input type="hidden" name="item_id[]" :value="line.item_id">
+                    </div>
+
+                    <!-- Qty -->
+                    <div class="col-span-4 md:col-span-2">
+                        <label class="block text-[0.65rem] font-semibold text-neutral-500 mb-1">Qty *</label>
+                        <input type="number" x-model="line.qty" name="qty[]" min="0" step="0.01" required class="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-green-500">
+                    </div>
+
+                    <!-- Cost Price -->
+                    <div class="col-span-4 md:col-span-2">
+                        <label class="block text-[0.65rem] font-semibold text-neutral-500 mb-1">Cost *</label>
+                        <input type="number" x-model="line.cost_price" name="cost_price[]" min="0" step="0.01" required class="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-green-500">
+                    </div>
+
+                    <!-- Batch No -->
+                    <div class="col-span-4 md:col-span-2">
+                        <label class="block text-[0.65rem] font-semibold text-neutral-500 mb-1">Batch</label>
+                        <input type="text" x-model="line.batch_no" name="batch_no[]" class="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-green-500">
+                    </div>
+
+                    <!-- Expiry & Total -->
+                    <div class="col-span-12 md:col-span-6 flex items-end gap-4">
+                        <div class="flex-1">
+                            <label class="block text-[0.65rem] font-semibold text-neutral-500 mb-1">Expiry Date</label>
+                            <input type="date" x-model="line.expiry_date" name="expiry_date[]" class="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-green-500">
+                        </div>
+                        <div class="text-right pb-2">
+                            <div class="text-[0.65rem] font-semibold text-neutral-500 mb-1">Total</div>
+                            <div class="text-sm font-bold text-neutral-800">
+                                Rs. <span x-text="(parseFloat(line.qty) * parseFloat(line.cost_price || 0)).toFixed(2)"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </template>
+            
+            <div x-show="lines.length === 0" class="px-6 py-10 text-center text-sm text-neutral-400 border border-dashed border-neutral-200 rounded-lg">
+                No items added. Click "Add Line" to start receiving stock.
+            </div>
+        </div>
+    </div>
+
+    <!-- Totals & Submit -->
+    <div class="flex justify-end">
+        <div class="w-full md:w-1/3 space-y-2 bg-neutral-50 p-4 rounded-xl border border-neutral-100">
+            <div class="flex justify-between text-sm">
+                <span class="text-neutral-500">Subtotal</span>
+                <span class="font-semibold text-neutral-800">Rs. <span x-text="subtotal.toFixed(2)"></span></span>
+            </div>
+            <div class="flex justify-between text-sm">
+                <span class="text-neutral-500">VAT (13%)</span>
+                <span class="font-semibold text-neutral-800">Rs. <span x-text="vatAmount.toFixed(2)"></span></span>
+            </div>
+            <div class="flex justify-between text-base pt-2 border-t border-neutral-200">
+                <span class="font-bold text-neutral-900">Grand Total</span>
+                <span class="font-extrabold text-green-600">Rs. <span x-text="grandTotal.toFixed(2)"></span></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="pt-4 border-t border-neutral-100 flex justify-end gap-3">
+        <button type="button" @click="$dispatch('close-modal')" class="px-5 py-2.5 text-sm font-semibold text-neutral-600 bg-white border border-neutral-200 rounded-xl hover:bg-neutral-50">Cancel</button>
+        <button type="submit" class="px-5 py-2.5 text-sm font-semibold text-white bg-green-500 rounded-xl hover:bg-green-600 flex items-center gap-2">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            Save & Update Stock
+        </button>
+    </div>
+</form>

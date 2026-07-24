@@ -16,6 +16,11 @@ from apps.transactions.api_views import (
 from django.conf import settings
 from django.conf.urls.static import static
 
+
+from apps.reports.views import dashboard_data_api
+
+
+
 router = DefaultRouter()
 router.register(r'categories', CategoryViewSet)
 router.register(r'units', UnitViewSet)
@@ -36,6 +41,9 @@ urlpatterns = [
     
     # API Routes
     path('api/', include(router.urls)),
+
+
+    path('api/dashboard/data/', dashboard_data_api, name='dashboard_data_api'),
 
     path('', include('apps.frontend.urls'))
 ]

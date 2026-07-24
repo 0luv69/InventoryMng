@@ -12,8 +12,8 @@
   
   {% tailwind_css %}
   
-  <!-- HTMX for AJAX without writing JS -->
-  <script src="https://unpkg.com/htmx.org@1.9.10" integrity="sha384-D1Kt99CQMDuVetoL1lrYwg5art+2vI0/9f1aMjvX9j6j6y7/x5+7j5f5j5==" crossorigin="anonymous"></script>
+    <!-- HTMX for AJAX without writing JS -->
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
   
   <!-- Alpine.js for Modals, Dropdowns, and Sidebar state -->
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
@@ -29,11 +29,11 @@ ALPINE SCOPE FOR ENTIRE APP
     SIDEBAR
     ══════════════════════════════════════ -->
     <aside 
-        class="fixed top-0 left-0 bottom-0 bg-white border-r border-neutral-100 flex flex-col z-50 transition-all duration-300 ease-out-expo"
+        class="fixed top-0 left-0 h-screen bg-white border-r border-neutral-100 flex flex-col z-50 transition-all duration-300 ease-out-expo"
         :class="[sidebarOpen ? 'translate-x-0 w-[280px] shadow-2xl md:w-[260px]' : '-translate-x-full md:translate-x-0', sidebarCollapsed ? 'md:w-[72px]' : 'md:w-[260px]']">
         
         <!-- Logo -->
-        <div class="flex items-center gap-2.5 px-6 pt-6 pb-5 border-b border-neutral-50 h-[72px]" :class="sidebarCollapsed && 'md:justify-center md:px-0'">
+        <div class="flex items-center gap-2.5 px-6 pt-6 pb-5 border-b border-neutral-50 h-[72px] shrink-0" :class="sidebarCollapsed && 'md:justify-center md:px-0'">
             <div class="w-[34px] h-[34px] bg-green-500 rounded-[10px] flex items-center justify-center shrink-0">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
@@ -48,46 +48,56 @@ ALPINE SCOPE FOR ENTIRE APP
         <nav class="flex-1 overflow-y-auto p-3 scrollbar-thin">
             
             <div x-show="!sidebarCollapsed" class="text-[0.65rem] font-bold uppercase tracking-widest text-neutral-400 px-3 pt-1 pb-2">Overview</div>
-            <a href="{% url 'frontend:dashboard' %}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-[10px] text-[0.8125rem] font-medium text-neutral-500 hover:bg-stone-50 hover:text-neutral-700 mb-0.5" :class="sidebarCollapsed && 'md:justify-center'">
+            
+            <!-- Dashboard Active State Check -->
+            <a href="{% url 'frontend:dashboard' %}" 
+               class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-[10px] text-[0.8125rem] font-medium mb-0.5 {% if request.resolver_match.url_name == 'dashboard' %}bg-green-50 text-green-700{% else %}text-neutral-500 hover:bg-stone-50 hover:text-neutral-700{% endif %}"
+               :class="sidebarCollapsed && 'md:justify-center'">
                 <svg class="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
                 <span x-show="!sidebarCollapsed">Dashboard</span>
             </a>
 
             <div x-show="!sidebarCollapsed" class="text-[0.65rem] font-bold uppercase tracking-widest text-neutral-400 px-3 pt-5 pb-2">Inventory</div>
-            <a href="{% url 'frontend:items' %}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-[10px] text-[0.8125rem] font-medium text-neutral-500 hover:bg-stone-50 hover:text-neutral-700 mb-0.5" :class="sidebarCollapsed && 'md:justify-center'">
+            
+            <!-- Items Active State Check -->
+            <a href="{% url 'frontend:items' %}" 
+               class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-[10px] text-[0.8125rem] font-medium mb-0.5 {% if request.resolver_match.url_name == 'items' %}bg-green-50 text-green-700{% else %}text-neutral-500 hover:bg-stone-50 hover:text-neutral-700{% endif %}"
+               :class="sidebarCollapsed && 'md:justify-center'">
                 <svg class="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
                 <span x-show="!sidebarCollapsed">Items & Goods</span>
             </a>
-            <a href="{% url 'frontend:goods_in' %}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-[10px] text-[0.8125rem] font-medium text-neutral-500 hover:bg-stone-50 hover:text-neutral-700 mb-0.5" :class="sidebarCollapsed && 'md:justify-center'">
+
+            <a href="{% url 'frontend:goods_in' %}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-[10px] text-[0.8125rem] font-medium mb-0.5 {% if request.resolver_match.url_name == 'goods_in' %}bg-green-50 text-green-700{% else %}text-neutral-500 hover:bg-stone-50 hover:text-neutral-700{% endif %}" :class="sidebarCollapsed && 'md:justify-center'">
                 <svg class="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>
                 <span x-show="!sidebarCollapsed">Goods In</span>
             </a>
-            <a href="{% url 'frontend:goods_out' %}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-[10px] text-[0.8125rem] font-medium text-neutral-500 hover:bg-stone-50 hover:text-neutral-700 mb-0.5" :class="sidebarCollapsed && 'md:justify-center'">
+            <a href="{% url 'frontend:goods_out' %}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-[10px] text-[0.8125rem] font-medium mb-0.5 {% if request.resolver_match.url_name == 'goods_out' %}bg-green-50 text-green-700{% else %}text-neutral-500 hover:bg-stone-50 hover:text-neutral-700{% endif %}" :class="sidebarCollapsed && 'md:justify-center'">
                 <svg class="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 3v5a1 1 0 0 1-1 1h-1"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
                 <span x-show="!sidebarCollapsed">Goods Out</span>
             </a>
-            <a href="{% url 'frontend:spoilage' %}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-[10px] text-[0.8125rem] font-medium text-neutral-500 hover:bg-stone-50 hover:text-neutral-700 mb-0.5" :class="sidebarCollapsed && 'md:justify-center'">
+            <a href="{% url 'frontend:spoilage' %}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-[10px] text-[0.8125rem] font-medium mb-0.5 {% if request.resolver_match.url_name == 'spoilage' %}bg-green-50 text-green-700{% else %}text-neutral-500 hover:bg-stone-50 hover:text-neutral-700{% endif %}" :class="sidebarCollapsed && 'md:justify-center'">
                 <svg class="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
                 <span x-show="!sidebarCollapsed">Spoilage & Loss</span>
             </a>
 
             <div x-show="!sidebarCollapsed" class="text-[0.65rem] font-bold uppercase tracking-widest text-neutral-400 px-3 pt-5 pb-2">People & Finance</div>
-            <a href="{% url 'frontend:parties' %}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-[10px] text-[0.8125rem] font-medium text-neutral-500 hover:bg-stone-50 hover:text-neutral-700 mb-0.5" :class="sidebarCollapsed && 'md:justify-center'">
+            <a href="{% url 'frontend:parties' %}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-[10px] text-[0.8125rem] font-medium mb-0.5 {% if request.resolver_match.url_name == 'parties' %}bg-green-50 text-green-700{% else %}text-neutral-500 hover:bg-stone-50 hover:text-neutral-700{% endif %}" :class="sidebarCollapsed && 'md:justify-center'">
                 <svg class="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
                 <span x-show="!sidebarCollapsed">Parties</span>
             </a>
-            <a href="{% url 'frontend:payments' %}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-[10px] text-[0.8125rem] font-medium text-neutral-500 hover:bg-stone-50 hover:text-neutral-700 mb-0.5" :class="sidebarCollapsed && 'md:justify-center'">
+            <a href="{% url 'frontend:payments' %}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-[10px] text-[0.8125rem] font-medium mb-0.5 {% if request.resolver_match.url_name == 'payments' %}bg-green-50 text-green-700{% else %}text-neutral-500 hover:bg-stone-50 hover:text-neutral-700{% endif %}" :class="sidebarCollapsed && 'md:justify-center'">
                 <svg class="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
                 <span x-show="!sidebarCollapsed">Payments</span>
             </a>
-            <a href="{% url 'frontend:reports' %}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-[10px] text-[0.8125rem] font-medium text-neutral-500 hover:bg-stone-50 hover:text-neutral-700 mb-0.5" :class="sidebarCollapsed && 'md:justify-center'">
+            <a href="{% url 'frontend:reports' %}" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-[10px] text-[0.8125rem] font-medium mb-0.5 {% if request.resolver_match.url_name == 'reports' %}bg-green-50 text-green-700{% else %}text-neutral-500 hover:bg-stone-50 hover:text-neutral-700{% endif %}" :class="sidebarCollapsed && 'md:justify-center'">
                 <svg class="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
                 <span x-show="!sidebarCollapsed">Reports</span>
             </a>
+            
         </nav>
 
         <!-- Collapse toggle (desktop) -->
-        <div class="px-3 py-2 border-t border-neutral-50 hidden md:block">
+        <div class="px-3 py-2 border-t border-neutral-50 hidden md:block shrink-0">
             <button @click="sidebarCollapsed = !sidebarCollapsed" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-[10px] text-[0.8125rem] font-medium text-neutral-500 hover:bg-stone-50" :class="sidebarCollapsed && 'justify-center'">
                 <svg class="w-5 h-5 shrink-0 transition-transform duration-300" :class="sidebarCollapsed && 'rotate-180'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="11 17 6 12 11 7"/><polyline points="18 17 13 12 18 7"/></svg>
                 <span x-show="!sidebarCollapsed">Collapse</span>
@@ -134,15 +144,177 @@ ALPINE SCOPE FOR ENTIRE APP
         </main>
     </div>
 
-    <!-- Toast / Notification container (Alpine powered) -->
-    <div x-data="{ show: false, message: '' }" @notify.window="show = true; message = $event.detail.message; setTimeout(() => show = false, 3000)" x-show="show" x-transition class="fixed bottom-6 right-6 z-[100]">
-        <div class="bg-neutral-900 text-white px-4 py-3 rounded-xl shadow-lg flex items-center gap-2">
-            <svg class="w-4 h-4 text-green-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
-            <span x-text="message" class="text-sm font-medium"></span>
+
+    <!-- Toast Container -->
+    <div class="toast-container">
+        <div class="toast-stack" id="toastStack">
+            <div class="toast-peek p2"></div>
+            <div class="toast-peek p1"></div>
+            <div id="toastSlot"></div>
+            <div class="toast-badge" id="toastBadge"></div>
         </div>
     </div>
 
 </div>
+
+  <!-- Attach CSRF token to all HTMX requests -->
+  <script>
+    document.body.addEventListener('htmx:configRequest', (event) => {
+      event.detail.headers['X-CSRFToken'] = '{{ csrf_token }}';
+    });
+  </script>
+
+  <!-- Toast JavaScript -->
+    <script>
+        const toast = (() => {
+            const queue  = [];
+            let active   = false;
+            let activeId = null;
+            let activeDismiss = null;
+            const controllers = new Map();
+
+            const icons = {
+                success: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`,
+                error:   `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>`,
+                info:    `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>`,
+                warning: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`,
+            };
+
+            const closeIcon = `<svg class="hover:rotate-180 transition-transform" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
+
+            const slot  = document.getElementById('toastSlot');
+            const stack = document.getElementById('toastStack');
+            const badge = document.getElementById('toastBadge');
+
+            function makeId() {
+                try { if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID(); } catch (_) {}
+                return 't_' + Date.now().toString(16) + Math.random().toString(16).slice(2);
+            }
+
+            function getController(id) {
+                if (controllers.has(id)) return controllers.get(id);
+                const controller = {
+                    id,
+                    dismiss: (reason = 'exit') => {
+                        if (activeId === id && typeof activeDismiss === 'function') { activeDismiss(reason); return; }
+                        const idx = queue.findIndex((t) => t.id === id);
+                        if (idx !== -1) { queue.splice(idx, 1); updatePeek(); }
+                        controllers.delete(id);
+                    },
+                };
+                controllers.set(id, controller);
+                return controller;
+            }
+
+            function push(type, msg, duration = 2500) {
+                const id = makeId();
+                const item = { id, type, msg, duration };
+                queue.push(item);
+                updatePeek();
+                if (!active) next();
+                return getController(id);
+            }
+
+            function next() {
+                if (queue.length === 0) { active = false; activeId = null; activeDismiss = null; updatePeek(); return; }
+                active = true;
+                const item = queue.shift();
+                activeId = item.id;
+                updatePeek();
+                activeDismiss = render(item.id, item.type, item.msg, item.duration);
+            }
+
+            function updatePeek() {
+                const n = queue.length;
+                stack.classList.remove('q1', 'q2');
+                if (n === 1) stack.classList.add('q1');
+                if (n >= 2)  stack.classList.add('q2');
+                if (n > 0) { badge.textContent = '+' + n; badge.classList.add('show'); } else { badge.classList.remove('show'); }
+            }
+
+            function render(id, type, msg, duration) {
+                slot.innerHTML = '';
+                const el = document.createElement('div');
+                el.className = 'toast';
+                el.innerHTML = `
+                    <div class="toast-icon ${type}">${icons[type]}</div>
+                    <span class="toast-msg">${esc(msg)}</span>
+                    <button class="toast-close" aria-label="Dismiss">${closeIcon}</button>
+                    <div class="toast-bar ${type}"></div>
+                `;
+                slot.appendChild(el);
+                const bar = el.querySelector('.toast-bar');
+                bar.style.animation = `shrink ${duration}ms linear forwards`;
+                requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add('show')));
+
+                let remaining = duration;
+                let started   = Date.now();
+                let timeout   = null;
+                let done      = false;
+
+                function start() {
+                    started = Date.now();
+                    timeout = setTimeout(() => dismiss('manual'), remaining);
+                    bar.style.animationPlayState = 'running';
+                }
+
+                function pause() {
+                    if (timeout) { clearTimeout(timeout); timeout = null; }
+                    remaining = Math.max(0, remaining - (Date.now() - started));
+                    bar.style.animationPlayState = 'paused';
+                }
+
+                function dismiss(reason='exit') {
+                    if (done) return;
+                    done = true;
+                    if (timeout) { clearTimeout(timeout); timeout = null; }
+                    el.removeEventListener('mouseenter', pause);
+                    el.removeEventListener('mouseleave', start);
+                    el.removeEventListener('touchstart', pause);
+                    el.removeEventListener('touchend', start);
+                    el.classList.remove('show');
+                    el.classList.add(reason === 'manual' ? 'throw' : 'exit');
+                    let cleaned = false;
+                    function cleanup() {
+                        if (cleaned) return;
+                        cleaned = true;
+                        el.remove();
+                        controllers.delete(id);
+                        if (activeId === id) { activeId = null; activeDismiss = null; }
+                        next();
+                    }
+                    el.addEventListener('transitionend', cleanup, { once: true });
+                    setTimeout(cleanup, 500);
+                }
+
+                el.addEventListener('mouseenter', pause);
+                el.addEventListener('mouseleave', start);
+                el.addEventListener('touchstart', pause, { passive: true });
+                el.addEventListener('touchend', start, { passive: true });
+
+                el.querySelector('.toast-close').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    dismiss('manual');
+                });
+
+                start();
+                return dismiss;
+            }
+
+            function esc(s) {
+                const d = document.createElement('div');
+                d.textContent = s;
+                return d.innerHTML;
+            }
+
+            return {
+                success: (msg, ms) => push('success', msg, ms),
+                error:   (msg, ms) => push('error',   msg, ms),
+                info:    (msg, ms) => push('info',    msg, ms),
+                warning: (msg, ms) => push('warning', msg, ms),
+            };
+        })();
+    </script>
 
 </body>
 </html>
