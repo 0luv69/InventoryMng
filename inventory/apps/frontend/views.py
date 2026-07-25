@@ -18,6 +18,8 @@ from apps.inventory.models import Warehouse
 from apps.transactions.services import InventoryService
 from django.http import JsonResponse
 
+from django.core.exceptions import ValidationError
+
 class BaseAppView(LoginRequiredMixin, View):
     def get_company(self):
         return self.request.user.profile.company
@@ -390,6 +392,7 @@ class GoodsOutTableView(BaseAppView):
         if status:
             invoices = invoices.filter(payment_status=status)
 
+        # ADDED: Date Filtering
         date_from = request.GET.get('date_from', '')
         if date_from:
             invoices = invoices.filter(date_dispatched__gte=date_from)
@@ -416,6 +419,7 @@ class GoodsOutTableView(BaseAppView):
             'customers': Party.objects.filter(company=company, is_customer=True, is_removed=False),
         }
         return render(request, 'frontend/goods_out/_table.html', context)
+
 
 class GoodsOutFormView(BaseAppView):
     def get(self, request):
@@ -486,9 +490,13 @@ class GoodsOutSaveView(BaseAppView):
         # Check Credit Limit BEFORE saving
         customer = invoice.customer
         if customer and customer.credit_limit > 0:
-            new_total = sum(Decimal(q) * Decimal(p) for q, p in zip(request.POST.getlist('qty[]'), request.POST.getlist('selling_price[]')))
+            # Sum the gross totals from the form
+            qtys = [Decimal(q) for q in request.POST.getlist('qty[]')]
+            prices = [Decimal(p) for p in request.POST.getlist('selling_price[]')]
+            new_total = sum(q * p for q, p in zip(qtys, prices))
+            
             if customer.balance + new_total > customer.credit_limit:
-                return JsonResponse({"success": False, "message": f"Credit Limit Exceeded! Limit: Rs. {customer.credit_limit}, Balance: Rs. {customer.balance}."}, status=400)
+                return JsonResponse({"success": False, "message": f"Credit Limit Exceeded! Limit: Rs. {customer.credit_limit}, Current Balance: Rs. {customer.balance}."}, status=400)
 
         invoice.save()
 
@@ -508,27 +516,30 @@ class GoodsOutSaveView(BaseAppView):
                 try: gross_price = Decimal(prices[i])
                 except: gross_price = Decimal('0')
 
-                if invoice.is_vat_inclusive:
-                    net_price = (gross_price / Decimal('1.13')).quantize(Decimal('0.01'))
-                else:
-                    net_price = gross_price
-
-                SaleItemLine.objects.create(
-                    invoice=invoice,
-                    item=item,
-                    warehouse_id=warehouse_id,
-                    unit=item.base_unit,
-                    conversion_factor=Decimal('1.00'),
-                    quantity=qty_val,
-                    selling_price=net_price, # Save NET price
-                )
-                # Signal automatically fires here to deduct stock via FEFO!
+                try:
+                    SaleItemLine.objects.create(
+                        invoice=invoice,
+                        item=item,
+                        warehouse_id=warehouse_id,
+                        unit=item.base_unit,
+                        conversion_factor=Decimal('1.00'),
+                        quantity=qty_val,
+                        selling_price=gross_price, # Save Gross Price, signals will calculate VAT perfectly
+                    )
+                except ValidationError as e:
+                    # FIX: Catch insufficient stock error and return nicely to frontend
+                    invoice.invoice_status = 'void'
+                    invoice.void_reason = "System error: Insufficient stock"
+                    invoice.save()
+                    return JsonResponse({"success": False, "message": e.messages[0]}, status=400)
         
         invoices = SaleInvoice.objects.filter(company=company).exclude(invoice_status='void').order_by('-date_dispatched')
         paginator = Paginator(invoices, 10)
         page_obj = paginator.get_page(1)
         
         return render(request, 'frontend/goods_out/_table.html', {'invoices': page_obj.object_list, 'page_obj': page_obj, 'request': request, 'customers': Party.objects.filter(company=company, is_customer=True, is_removed=False)})
+
+
 
 class GoodsOutVoidView(BaseAppView):
     def post(self, request, invoice_id):

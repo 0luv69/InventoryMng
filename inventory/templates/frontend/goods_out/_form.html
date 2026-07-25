@@ -1,18 +1,19 @@
 <script id="items-data" type="application/json">{{ items_json|safe }}</script>
 <script id="invoice-lines-data" type="application/json">{{ lines_json|safe }}</script>
 
+<!-- ADDED hx-on::response-error to catch 400 errors like Insufficient Stock -->
 <form x-data="invoiceForm({{ invoice.id|default:'null' }}, {{ is_vat_inclusive|yesno:'true,false' }})" 
       hx-post="{% url 'frontend:goods_out_save' %}" 
       hx-target="#goodsout-table" 
       hx-swap="innerHTML" 
       hx-on::after-request="if(event.detail.successful) { toast.success('Sale saved! Stock dispatched via FEFO.'); window.dispatchEvent(new CustomEvent('close-modal')); }"
+      hx-on::response-error="if(event.detail.xhr.status === 400) { const err = JSON.parse(event.detail.xhr.responseText); toast.error(err.message); }"
       class="space-y-6">
       
     {% csrf_token %}
     <input type="hidden" name="id" value="{{ invoice.id|default:'' }}">
     <input type="hidden" name="is_vat_inclusive" :value="isVatInclusive ? 'true' : 'false'">
 
-    <!-- Invoice Header -->
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
             <label class="block text-xs font-semibold text-neutral-600 mb-1.5">Customer *</label>
@@ -23,25 +24,22 @@
                 </div>
                 <input type="hidden" name="customer" value="{{ invoice.customer_id }}">
             {% else %}
+                <!-- ADDED {% if customers|length == 1 %}selected{% endif %} -->
                 <select name="customer" required class="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-green-500/20">
                     <option value="">Select Customer</option>
                     {% for c in customers %}
-                    <option value="{{ c.id }}">{{ c.name }} (Bal: Rs. {{ c.balance|floatformat:0 }})</option>
+                    <option value="{{ c.id }}" {% if customers|length == 1 %}selected{% endif %}>{{ c.name }} (Bal: Rs. {{ c.balance|floatformat:0 }})</option>
                     {% endfor %}
                 </select>
             {% endif %}
         </div>
         <div>
             <label class="block text-xs font-semibold text-neutral-600 mb-1.5">Date Dispatched *</label>
-            <input type="date" name="date_dispatched" required value="{{ invoice.date_dispatched|date:'Y-m-d'|default:today_str }}" 
-                   class="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl {% if invoice %}bg-neutral-50 text-neutral-500 cursor-not-allowed{% else %}bg-white focus:outline-none focus:ring-2 focus:ring-green-500/20{% endif %}" 
-                   {% if invoice %}readonly{% endif %}>
+            <input type="date" name="date_dispatched" required value="{{ invoice.date_dispatched|date:'Y-m-d'|default:today_str }}" class="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl {% if invoice %}bg-neutral-50 text-neutral-500 cursor-not-allowed{% else %}bg-white focus:outline-none focus:ring-2 focus:ring-green-500/20{% endif %}" {% if invoice %}readonly{% endif %}>
         </div>
         <div>
             <label class="block text-xs font-semibold text-neutral-600 mb-1.5">Invoice Number *</label>
-            <input type="text" name="reference_no" required value="{{ invoice.reference_no|default:next_ref }}" 
-                   class="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl {% if invoice %}bg-neutral-50 text-neutral-500 cursor-not-allowed{% else %}bg-white focus:outline-none focus:ring-2 focus:ring-green-500/20{% endif %}" 
-                   {% if invoice %}readonly{% endif %}>
+            <input type="text" name="reference_no" required value="{{ invoice.reference_no|default:next_ref }}" class="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl {% if invoice %}bg-neutral-50 text-neutral-500 cursor-not-allowed{% else %}bg-white focus:outline-none focus:ring-2 focus:ring-green-500/20{% endif %}" {% if invoice %}readonly{% endif %}>
         </div>
         <div>
             <label class="block text-xs font-semibold text-neutral-600 mb-1.5">Warehouse *</label>
@@ -52,16 +50,17 @@
                 </div>
                 <input type="hidden" name="warehouse" value="{{ invoice.lines.first.warehouse_id }}">
             {% else %}
+                <!-- ADDED {% if warehouses|length == 1 %}selected{% endif %} -->
                 <select name="warehouse" required class="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-green-500/20">
                     <option value="">Select Warehouse</option>
                     {% for w in warehouses %}
-                    <option value="{{ w.id }}">{{ w.name }}</option>
+                    <option value="{{ w.id }}" {% if warehouses|length == 1 %}selected{% endif %}>{{ w.name }}</option>
                     {% endfor %}
                 </select>
             {% endif %}
         </div>
     </div>
-
+    
     <!-- Line Items Grid -->
     <div class="border border-neutral-200 rounded-xl overflow-hidden">
         <div class="flex items-center justify-between px-4 py-3 bg-neutral-50 border-b border-neutral-200">

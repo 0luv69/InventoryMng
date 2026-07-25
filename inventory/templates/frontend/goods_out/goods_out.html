@@ -26,14 +26,14 @@
         </button>
     </div>
 
-    <!-- Toolbar -->
-    <div class="bg-white border border-neutral-100 rounded-2xl p-4 flex items-center gap-3">
+    <!-- Toolbar with Date Filter -->
+    <div class="bg-white border border-neutral-100 rounded-2xl p-4 flex items-center gap-3 flex-wrap">
         <input type="text" name="search" placeholder="Search by Ref No or Customer..." 
                hx-get="{% url 'frontend:goods_out_table' %}" 
                hx-trigger="keyup changed delay:400ms" 
                hx-target="#goodsout-table" 
                hx-include="[name='customer'], [name='status'], [name='date_from'], [name='date_to']"
-               class="flex-1 px-4 py-2.5 text-sm border border-neutral-200 rounded-xl bg-neutral-50/50 focus:outline-none focus:ring-2 focus:ring-green-500/20">
+               class="flex-1 min-w-[200px] px-4 py-2.5 text-sm border border-neutral-200 rounded-xl bg-neutral-50/50 focus:outline-none focus:ring-2 focus:ring-green-500/20">
         
         <select name="customer" 
                 hx-get="{% url 'frontend:goods_out_table' %}" 
@@ -42,9 +42,7 @@
                 hx-include="[name='search'], [name='status'], [name='date_from'], [name='date_to']"
                 class="w-40 px-3 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-green-500/20">
             <option value="">All Customers</option>
-            {% for c in customers %}
-            <option value="{{ c.id }}">{{ c.name }}</option>
-            {% endfor %}
+            {% for c in customers %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}
         </select>
 
         <select name="status" 
@@ -58,6 +56,33 @@
             <option value="partial">Partial</option>
             <option value="unpaid">Unpaid</option>
         </select>
+
+        <!-- Date Range Dropdown -->
+        <div class="relative" x-data="{ open: false, date_from: '', date_to: '', activePreset: '' }">
+            <button type="button" @click="open = !open" 
+                    class="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium border rounded-xl transition-colors"
+                    :class="(date_from || date_to) ? 'bg-green-50 text-green-700 border-green-200' : 'bg-white text-neutral-600 border-neutral-200 hover:bg-neutral-50'">
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                <span x-show="!date_from && !date_to">Date Range</span>
+                <span x-show="date_from || date_to" class="flex items-center gap-1.5">Date Applied <span class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span></span>
+            </button>
+            <div x-show="open" @click.outside="open = false" x-transition class="absolute right-0 mt-2 w-72 bg-white border border-neutral-200 rounded-xl shadow-lg z-20 p-4" style="display: none;">
+                <div class="grid grid-cols-2 gap-2 mb-3">
+                    <button type="button" @click="date_from = ''; date_to = ''; activePreset = 'all'; $nextTick(() => { document.getElementById('apply-date-btn-out').click(); })" class="px-3 py-2 text-xs font-semibold border rounded-lg" :class="activePreset === 'all' ? 'bg-green-500 text-white border-green-500' : 'border-neutral-200'">All Time</button>
+                    <button type="button" @click="date_from = '{{ today_str }}'; date_to = '{{ today_str }}'; activePreset = 'today'; $nextTick(() => { document.getElementById('apply-date-btn-out').click(); })" class="px-3 py-2 text-xs font-semibold border rounded-lg" :class="activePreset === 'today' ? 'bg-green-500 text-white border-green-500' : 'border-neutral-200'">Today</button>
+                    <button type="button" @click="date_from = '{{ yesterday_str }}'; date_to = '{{ yesterday_str }}'; activePreset = 'yesterday'; $nextTick(() => { document.getElementById('apply-date-btn-out').click(); })" class="px-3 py-2 text-xs font-semibold border rounded-lg" :class="activePreset === 'yesterday' ? 'bg-green-500 text-white border-green-500' : 'border-neutral-200'">Yesterday</button>
+                    <button type="button" @click="date_from = '{{ month_start_str }}'; date_to = '{{ today_str }}'; activePreset = 'month'; $nextTick(() => { document.getElementById('apply-date-btn-out').click(); })" class="px-3 py-2 text-xs font-semibold border rounded-lg" :class="activePreset === 'month' ? 'bg-green-500 text-white border-green-500' : 'border-neutral-200'">This Month</button>
+                </div>
+                <div class="grid grid-cols-2 gap-2 mb-3">
+                    <div><label class="block text-xs font-semibold text-neutral-500 mb-1">From</label><input type="date" name="date_from" x-model="date_from" class="w-full px-2 py-2 text-xs border border-neutral-200 rounded-lg"></div>
+                    <div><label class="block text-xs font-semibold text-neutral-500 mb-1">To</label><input type="date" name="date_to" x-model="date_to" class="w-full px-2 py-2 text-xs border border-neutral-200 rounded-lg"></div>
+                </div>
+                <div class="flex gap-2">
+                    <button type="button" @click="date_from = ''; date_to = ''; activePreset = ''; $nextTick(() => { document.getElementById('apply-date-btn-out').click(); })" class="flex-1 px-4 py-2 text-xs font-semibold text-neutral-600 bg-neutral-100 rounded-lg hover:bg-neutral-200">Reset</button>
+                    <button id="apply-date-btn-out" @click="open = false" hx-get="{% url 'frontend:goods_out_table' %}" hx-trigger="click" hx-target="#goodsout-table" hx-include="[name='search'], [name='customer'], [name='status'], [name='date_from'], [name='date_to']" class="flex-1 px-4 py-2 text-xs font-semibold text-white bg-green-500 rounded-lg hover:bg-green-600">Apply</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Data Table -->
@@ -107,47 +132,27 @@
             </div>
             <h3 class="text-base font-bold text-neutral-900 text-center mb-1">Void Sale Invoice?</h3>
             <p class="text-sm text-neutral-500 text-center mb-4">Stock will be restored to the warehouse. This cannot be undone.</p>
-            
-            <div class="mb-4">
-                <label class="block text-xs font-semibold text-neutral-600 mb-1.5">Reason *</label>
-                <input type="text" x-model="voidReason" placeholder="e.g. Data entry error" class="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-red-500/20">
-            </div>
-
+            <div class="mb-4"><label class="block text-xs font-semibold text-neutral-600 mb-1.5">Reason *</label><input type="text" x-model="voidReason" placeholder="e.g. Data entry error" class="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-red-500/20"></div>
             <div class="flex flex-col gap-3">
                 <button @click="voidModal = false" class="w-full px-4 py-2.5 text-sm font-semibold text-neutral-600 bg-white border border-neutral-200 rounded-xl hover:bg-neutral-50 transition-all">Cancel</button>
-                <button @click="htmx.ajax('POST', `/goods-out/void/${voidId}/`, { target: '#goodsout-table', swap: 'innerHTML', values: { void_reason: voidReason } }); voidModal = false" 
-                        class="w-full px-4 py-2.5 text-sm font-semibold text-white bg-red-500 rounded-xl hover:bg-red-600 transition-all whitespace-nowrap">
-                    Void &amp; Restore Stock
-                </button>
+                <button @click="htmx.ajax('POST', `/goods-out/void/${voidId}/`, { target: '#goodsout-table', swap: 'innerHTML', values: { void_reason: voidReason } }); voidModal = false" class="w-full px-4 py-2.5 text-sm font-semibold text-white bg-red-500 rounded-xl hover:bg-red-600 transition-all whitespace-nowrap">Void &amp; Restore Stock</button>
             </div>
         </div>
     </div>
-
 </div>
 
 <script>
 function invoiceForm(invoiceId, initialVatInclusive) {
     return {
-        items: [],
-        lines: [],
-        isVatInclusive: initialVatInclusive || false,
+        items: [], lines: [], isVatInclusive: initialVatInclusive || false,
         itemPicker: { open: false, search: '', category: '', activeIndex: null },
-        
         init() {
-            const dataEl = document.getElementById('items-data');
-            if (dataEl) { try { this.items = JSON.parse(dataEl.textContent); } catch (e) {} }
-            
+            const dataEl = document.getElementById('items-data'); if (dataEl) { try { this.items = JSON.parse(dataEl.textContent); } catch (e) {} }
             const linesEl = document.getElementById('invoice-lines-data');
-            if (linesEl && linesEl.textContent.trim() !== '[]') {
-                try { this.lines = JSON.parse(linesEl.textContent); } catch (e) { this.addLine(); }
-            } else { this.addLine(); }
+            if (linesEl && linesEl.textContent.trim() !== '[]') { try { this.lines = JSON.parse(linesEl.textContent); } catch (e) { this.addLine(); } } else { this.addLine(); }
         },
-        
-        addLine() {
-            this.lines.push({ item_id: null, item_name: '', qty: 1, selling_price: 0 });
-        },
+        addLine() { this.lines.push({ item_id: null, item_name: '', qty: 1, selling_price: 0 }); },
         removeLine(index) { this.lines.splice(index, 1); },
-        
         get filteredItems() {
             return this.items.filter(item => {
                 const matchSearch = !this.itemPicker.search || item.name.toLowerCase().includes(this.itemPicker.search.toLowerCase());
@@ -155,18 +160,10 @@ function invoiceForm(invoiceId, initialVatInclusive) {
                 return matchSearch && matchCat;
             });
         },
-        openItemPicker(index) {
-            this.itemPicker.activeIndex = index;
-            this.itemPicker.open = true;
-            this.itemPicker.search = '';
-            this.itemPicker.category = '';
-            this.$nextTick(() => { this.$refs.pickerSearch.focus(); });
-        },
+        openItemPicker(index) { this.itemPicker.activeIndex = index; this.itemPicker.open = true; this.itemPicker.search = ''; this.itemPicker.category = ''; this.$nextTick(() => { this.$refs.pickerSearch.focus(); }); },
         selectItem(item) {
             const index = this.itemPicker.activeIndex;
-            this.lines[index].item_id = item.id;
-            this.lines[index].item_name = item.name;
-            this.lines[index].selling_price = item.selling_price;
+            this.lines[index].item_id = item.id; this.lines[index].item_name = item.name; this.lines[index].selling_price = item.selling_price;
             this.itemPicker.open = false;
             this.$nextTick(() => { if(document.getElementById('qty-input-' + index)) document.getElementById('qty-input-' + index).focus(); });
         },
