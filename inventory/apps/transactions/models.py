@@ -120,6 +120,9 @@ class SaleInvoice(BaseModel):
     # Statuses
     invoice_status = models.CharField(max_length=10, choices=InvoiceStatus.choices, default=InvoiceStatus.FINALIZED)
     payment_status = models.CharField(max_length=10, choices=PaymentStatus.choices, default=PaymentStatus.UNPAID)
+
+    is_vat_inclusive = models.BooleanField(default=False, help_text="If true, VAT is extracted from the total. If false, VAT is added on top.")
+    void_reason = models.TextField(blank=True, null=True)
     
     notes = models.TextField(blank=True)
 

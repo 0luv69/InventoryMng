@@ -67,11 +67,10 @@
                         hx-swap="innerHTML"
                         @click="$dispatch('open-modal')" 
                         class="text-xs font-semibold text-green-600 hover:text-green-700">
-                    Edit
+                    View
                 </button>
                 
-                <!-- Delete Button -->
-                <button @click="deleteModal = true; deleteId = {{ item.id }}" class="text-xs font-semibold text-red-500 hover:text-red-600">
+                <button @click="deleteId = {{ item.id }}; deleteModal = true" class="text-xs font-semibold text-red-500 hover:text-red-600">
                     Delete
                 </button>
             </td>

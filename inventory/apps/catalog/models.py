@@ -44,6 +44,7 @@ class Item(BaseModel):
     class Status(models.TextChoices):
         ACTIVE = 'active', 'Active'
         INACTIVE = 'inactive', 'Inactive'
+        DELETED = 'deleted', 'Deleted' # NEW
 
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     name = models.CharField(max_length=200)
@@ -59,11 +60,12 @@ class Item(BaseModel):
     cost_price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.ACTIVE)
-    is_removed = models.BooleanField(default=False) # Soft delete
+    
+    # delete_reason
+    delete_reason = models.TextField(blank=True, null=True, help_text="Reason for deleting/discontinuing the item")
     
     # Reorder level
     low_stock_threshold = models.PositiveIntegerField(default=10)
-
 
     @property
     def total_stock(self):
@@ -82,7 +84,6 @@ class Item(BaseModel):
 
     def __str__(self):
         return self.name
-
 
 # ==========================================
 # 4. ITEM UOM CONVERSIONS

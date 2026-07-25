@@ -24,8 +24,16 @@ urlpatterns = [
     path('goods-in/void/<int:invoice_id>/', views.GoodsInVoidView.as_view(), name='goods_in_void'),
 
 
-    path('parties/', views.PartiesView.as_view(), name='parties'),
+
+    # Goods Out
     path('goods-out/', views.GoodsOutView.as_view(), name='goods_out'),
+    path('goods-out/table/', views.GoodsOutTableView.as_view(), name='goods_out_table'),
+    path('goods-out/form/', views.GoodsOutFormView.as_view(), name='goods_out_form'),
+    path('goods-out/save/', views.GoodsOutSaveView.as_view(), name='goods_out_save'),
+    path('goods-out/void/<int:invoice_id>/', views.GoodsOutVoidView.as_view(), name='goods_out_void'),
+
+
+    path('parties/', views.PartiesView.as_view(), name='parties'),
     path('spoilage/', views.SpoilageView.as_view(), name='spoilage'),
     path('payments/', views.PaymentsView.as_view(), name='payments'),
     path('reports/', views.ReportsView.as_view(), name='reports'),
