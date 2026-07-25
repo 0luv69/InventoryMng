@@ -35,6 +35,12 @@ class PurchaseInvoice(BaseModel):
     discount_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     tax_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0, help_text="VAT 13%")
     grand_total = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+
+    # VAT Inclusive Toggle
+    is_vat_inclusive = models.BooleanField(default=False, help_text="If true, VAT is extracted from the total. If false, VAT is added on top.")
+    
+    # Void Reason
+    void_reason = models.TextField(blank=True, null=True)
     
     # Statuses
     invoice_status = models.CharField(max_length=10, choices=InvoiceStatus.choices, default=InvoiceStatus.FINALIZED)

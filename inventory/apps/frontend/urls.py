@@ -21,6 +21,7 @@ urlpatterns = [
     path('goods-in/table/', views.GoodsInTableView.as_view(), name='goods_in_table'),
     path('goods-in/form/', views.GoodsInFormView.as_view(), name='goods_in_form'),
     path('goods-in/save/', views.GoodsInSaveView.as_view(), name='goods_in_save'),
+    path('goods-in/void/<int:invoice_id>/', views.GoodsInVoidView.as_view(), name='goods_in_void'),
 
 
     path('parties/', views.PartiesView.as_view(), name='parties'),

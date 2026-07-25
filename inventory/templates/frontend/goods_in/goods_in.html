@@ -4,8 +4,11 @@
 {% block page_title %}Goods In (Purchases){% endblock %}
 
 {% block content %}
-<!-- Added fullWidth: false to x-data -->
-<div x-data="{ slideOver: false, fullWidth: false }" @open-modal.window="slideOver = true" @close-modal.window="slideOver = false" class="space-y-6">
+<div x-data="{ 
+        slideOver: false, fullWidth: false, 
+        voidModal: false, voidId: null, voidReason: '',
+        filterOpen: false
+    }" @open-modal.window="slideOver = true" @close-modal.window="slideOver = false" @void-invoice.window="voidModal = true; voidId = $event.detail.id" class="space-y-6">
 
     <div class="flex items-center justify-between">
         <div>
@@ -23,14 +26,119 @@
         </button>
     </div>
 
-    <form hx-get="{% url 'frontend:goods_in_table' %}" hx-target="#goodsin-table" class="bg-white border border-neutral-100 rounded-2xl p-4 flex items-center gap-3">
+    <!-- Toolbar (Search & Filter Dropdown) -->
+    <div class="bg-white border border-neutral-100 rounded-2xl p-4 flex items-center gap-3">
         <input type="text" name="search" placeholder="Search by Ref No or Supplier..." 
                hx-get="{% url 'frontend:goods_in_table' %}" 
                hx-trigger="keyup changed delay:400ms" 
                hx-target="#goodsin-table" 
+               hx-include="[name='supplier'], [name='status'], [name='date_from'], [name='date_to']"
                class="flex-1 px-4 py-2.5 text-sm border border-neutral-200 rounded-xl bg-neutral-50/50 focus:outline-none focus:ring-2 focus:ring-green-500/20">
-    </form>
+        
+        <!-- Supplier Filter -->
+        <select name="supplier" 
+                hx-get="{% url 'frontend:goods_in_table' %}" 
+                hx-trigger="change" 
+                hx-target="#goodsin-table" 
+                hx-include="[name='search'], [name='status'], [name='date_from'], [name='date_to']"
+                class="w-40 px-3 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-green-500/20">
+            <option value="">All Suppliers</option>
+            {% for s in suppliers %}
+            <option value="{{ s.id }}">{{ s.name }}</option>
+            {% endfor %}
+        </select>
 
+        <!-- Status Filter -->
+        <select name="status" 
+                hx-get="{% url 'frontend:goods_in_table' %}" 
+                hx-trigger="change" 
+                hx-target="#goodsin-table" 
+                hx-include="[name='search'], [name='supplier'], [name='date_from'], [name='date_to']"
+                class="w-36 px-3 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-green-500/20">
+            <option value="">All Status</option>
+            <option value="paid">Paid</option>
+            <option value="partial">Partial</option>
+            <option value="unpaid">Unpaid</option>
+        </select>
+
+        <!-- Date Range Dropdown -->
+        <div class="relative" x-data="{ open: false, date_from: '', date_to: '', activePreset: '' }">
+            <!-- Main Button (Changes text and color when active) -->
+            <button type="button" @click="open = !open" 
+                    class="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium border rounded-xl transition-colors"
+                    :class="(date_from || date_to) ? 'bg-green-50 text-green-700 border-green-200' : 'bg-white text-neutral-600 border-neutral-200 hover:bg-neutral-50'">
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                
+                <span x-show="!date_from && !date_to">Date Range</span>
+                <span x-show="date_from || date_to" class="flex items-center gap-1.5">
+                    Date Applied
+                    <span class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
+                </span>
+            </button>
+            
+            <div x-show="open" @click.outside="open = false" x-transition class="absolute right-0 mt-2 w-72 bg-white border border-neutral-200 rounded-xl shadow-lg z-20 p-4" style="display: none;">
+                <div class="space-y-3">
+                    <!-- Presets -->
+                    <div class="grid grid-cols-2 gap-2">
+                        <button type="button" @click="date_from = ''; date_to = ''; activePreset = 'all'; $nextTick(() => { document.getElementById('apply-date-btn').click(); })" 
+                                class="px-3 py-2 text-xs font-semibold border rounded-lg transition-colors"
+                                :class="activePreset === 'all' ? 'bg-green-500 text-white border-green-500' : 'border-neutral-200 text-neutral-600 hover:bg-neutral-50'">
+                            All Time
+                        </button>
+                        <button type="button" @click="date_from = '{{ today_str }}'; date_to = '{{ today_str }}'; activePreset = 'today'; $nextTick(() => { document.getElementById('apply-date-btn').click(); })" 
+                                class="px-3 py-2 text-xs font-semibold border rounded-lg transition-colors"
+                                :class="activePreset === 'today' ? 'bg-green-500 text-white border-green-500' : 'border-neutral-200 text-neutral-600 hover:bg-neutral-50'">
+                            Today
+                        </button>
+                        <button type="button" @click="date_from = '{{ yesterday_str }}'; date_to = '{{ yesterday_str }}'; activePreset = 'yesterday'; $nextTick(() => { document.getElementById('apply-date-btn').click(); })" 
+                                class="px-3 py-2 text-xs font-semibold border rounded-lg transition-colors"
+                                :class="activePreset === 'yesterday' ? 'bg-green-500 text-white border-green-500' : 'border-neutral-200 text-neutral-600 hover:bg-neutral-50'">
+                            Yesterday
+                        </button>
+                        <button type="button" @click="date_from = '{{ month_start_str }}'; date_to = '{{ today_str }}'; activePreset = 'month'; $nextTick(() => { document.getElementById('apply-date-btn').click(); })" 
+                                class="px-3 py-2 text-xs font-semibold border rounded-lg transition-colors"
+                                :class="activePreset === 'month' ? 'bg-green-500 text-white border-green-500' : 'border-neutral-200 text-neutral-600 hover:bg-neutral-50'">
+                            This Month
+                        </button>
+                    </div>
+                    <hr class="border-neutral-100">
+                    
+                    <!-- Custom Date Inputs -->
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-xs font-semibold text-neutral-500 mb-1">From</label>
+                            <input type="date" name="date_from" x-model="date_from" @change="activePreset = ''" class="w-full px-2 py-2 text-xs border border-neutral-200 rounded-lg">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-neutral-500 mb-1">To</label>
+                            <input type="date" name="date_to" x-model="date_to" @change="activePreset = ''" class="w-full px-2 py-2 text-xs border border-neutral-200 rounded-lg">
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="flex gap-2 pt-2">
+                        <!-- Reset Button -->
+                        <button type="button" @click="date_from = ''; date_to = ''; activePreset = ''; $nextTick(() => { document.getElementById('apply-date-btn').click(); })" 
+                                class="flex-1 px-4 py-2 text-xs font-semibold text-neutral-600 bg-neutral-100 rounded-lg hover:bg-neutral-200 transition-colors">
+                            Reset
+                        </button>
+                        <!-- Apply Button -->
+                        <button id="apply-date-btn" 
+                                @click="open = false" 
+                                hx-get="{% url 'frontend:goods_in_table' %}" 
+                                hx-trigger="click" 
+                                hx-target="#goodsin-table" 
+                                hx-include="[name='search'], [name='supplier'], [name='status'], [name='date_from'], [name='date_to']"
+                                class="flex-1 px-4 py-2 text-xs font-semibold text-white bg-green-500 rounded-lg hover:bg-green-600">
+                            Apply Filter
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Data Table Container -->
     <div class="bg-white border border-neutral-100 rounded-2xl overflow-hidden">
         <div id="goodsin-table" hx-get="{% url 'frontend:goods_in_table' %}" hx-trigger="load" class="w-full">
             <div class="p-8 text-center text-sm text-neutral-400">Loading purchases...</div>
@@ -40,7 +148,6 @@
     <!-- SLIDE-OVER MODAL -->
     <div x-show="slideOver" x-transition.opacity class="fixed inset-0 bg-black/20 backdrop-blur-sm z-[60]" style="display: none;" @click="slideOver = false"></div>
     
-    <!-- Added transition-all and dynamic :class for width -->
     <div x-show="slideOver" 
          x-transition:enter="transition ease-out duration-300"
          x-transition:enter-start="translate-x-full"
@@ -55,16 +162,10 @@
         <div class="flex items-center justify-between px-6 py-5 border-b">
             <h2 class="text-lg font-bold text-neutral-900">Purchase Invoice Details</h2>
             <div class="flex items-center gap-2">
-                <!-- Expand/Collapse Toggle Button -->
                 <button @click="fullWidth = !fullWidth" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-neutral-100 text-neutral-400 hover:text-neutral-600 transition-colors">
-                    <template x-if="!fullWidth">
-                        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
-                    </template>
-                    <template x-if="fullWidth">
-                        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="14" y1="10" x2="21" y2="3"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
-                    </template>
+                    <template x-if="!fullWidth"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg></template>
+                    <template x-if="fullWidth"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="14" y1="10" x2="21" y2="3"/><line x1="3" y1="21" x2="10" y2="14"/></svg></template>
                 </button>
-                <!-- Close Button -->
                 <button @click="slideOver = false" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-neutral-100 text-neutral-400 hover:text-neutral-600 transition-colors">
                     <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                 </button>
@@ -76,22 +177,71 @@
         </div>
     </div>
 
+    <!-- VOID CONFIRMATION MODAL -->
+    <div x-show="voidModal" x-transition.opacity @click="voidModal = false" class="fixed inset-0 bg-black/30 backdrop-blur-sm z-[70] flex items-center justify-center" style="display: none;">
+        <!-- Added @click.stop so clicking inside the white box doesn't close the modal -->
+        <div x-show="voidModal" x-transition @click.stop class="bg-white rounded-2xl shadow-xl w-full max-w-sm mx-4 p-6">
+            <div class="w-12 h-12 bg-red-50 rounded-xl flex items-center justify-center mx-auto mb-4">
+                <svg class="w-6 h-6 text-red-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            </div>
+            <h3 class="text-base font-bold text-neutral-900 text-center mb-1">Void Invoice?</h3>
+            <p class="text-sm text-neutral-500 text-center mb-4">Stock will be reversed for all items. This cannot be undone.</p>
+            
+            <div class="mb-4">
+                <label class="block text-xs font-semibold text-neutral-600 mb-1.5">Reason *</label>
+                <input type="text" x-model="voidReason" placeholder="e.g. Data entry error" class="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-red-500/20">
+            </div>
+
+            <!-- Changed to flex-col so buttons stack and never overlap -->
+            <div class="flex flex-col gap-3">
+                <button @click="voidModal = false" class="w-full px-4 py-2.5 text-sm font-semibold text-neutral-600 bg-white border border-neutral-200 rounded-xl hover:bg-neutral-50 transition-all">Cancel</button>
+<button @click="htmx.ajax('POST', `/goods-in/void/${voidId}/`, { target: '#goodsin-table', swap: 'innerHTML', values: { void_reason: voidReason } }); voidModal = false" 
+        class="w-full px-4 py-2.5 text-sm font-semibold text-white bg-red-500 rounded-xl hover:bg-red-600 transition-all whitespace-nowrap">
+    Void &amp; Reverse Stock
+</button>
+            </div>
+        </div>
+    </div>
+
 </div>
 
+<!-- MOVE THE SCRIPT HERE SO ALPINE ALWAYS SEES IT -->
 <script>
-function invoiceForm() {
+function invoiceForm(invoiceId, initialVatInclusive) {
     return {
+        items: [],
         lines: [],
+        isVatInclusive: initialVatInclusive || false, // Initialize from DB
+        itemPicker: {
+            open: false,
+            search: '',
+            category: '',
+            activeIndex: null
+        },
         
         init() {
-            this.addLine(); // Start with one empty line
+            const dataEl = document.getElementById('items-data');
+            if (dataEl) {
+                try { this.items = JSON.parse(dataEl.textContent); } catch (e) { console.error("Error parsing items JSON:", e); }
+            }
+            
+            const linesEl = document.getElementById('invoice-lines-data');
+            if (linesEl && linesEl.textContent.trim() !== '[]') {
+                try {
+                    this.lines = JSON.parse(linesEl.textContent);
+                } catch (e) {
+                    console.error("Error parsing lines JSON:", e);
+                    this.addLine();
+                }
+            } else {
+                this.addLine();
+            }
         },
         
         addLine() {
             this.lines.push({
                 item_id: null,
                 item_name: '',
-                search: '',
                 qty: 1,
                 cost_price: 0,
                 batch_no: '',
@@ -103,109 +253,58 @@ function invoiceForm() {
             this.lines.splice(index, 1);
         },
         
+        get filteredItems() {
+            return this.items.filter(item => {
+                const matchSearch = !this.itemPicker.search || item.name.toLowerCase().includes(this.itemPicker.search.toLowerCase());
+                const matchCat = !this.itemPicker.category || item.category_id == this.itemPicker.category;
+                return matchSearch && matchCat;
+            });
+        },
+        
+        openItemPicker(index) {
+            this.itemPicker.activeIndex = index;
+            this.itemPicker.open = true;
+            this.itemPicker.search = '';
+            this.itemPicker.category = '';
+            this.$nextTick(() => { this.$refs.pickerSearch.focus(); });
+        },
+        
+        selectItem(item) {
+            const index = this.itemPicker.activeIndex;
+            this.lines[index].item_id = item.id;
+            this.lines[index].item_name = item.name;
+            this.lines[index].cost_price = item.cost_price;
+            this.itemPicker.open = false;
+            this.$nextTick(() => {
+                const qtyInput = document.getElementById('qty-input-' + index);
+                if(qtyInput) qtyInput.focus();
+            });
+        },
+        
+        lineTotal(line) {
+            return parseFloat(line.qty) * parseFloat(line.cost_price || 0);
+        },
+        
         get subtotal() {
-            return this.lines.reduce((sum, line) => sum + (parseFloat(line.qty) * parseFloat(line.cost_price || 0)), 0);
+            return this.lines.reduce((sum, line) => sum + this.lineTotal(line), 0);
         },
         
         get vatAmount() {
-            return this.subtotal * 0.13;
+            if (this.isVatInclusive) {
+                return this.subtotal * (13 / 113);
+            } else {
+                return this.subtotal * 0.13;
+            }
         },
         
         get grandTotal() {
-            return this.subtotal + this.vatAmount;
-        }
-    }
-}
-</script>
-
-
-    <script>
-    function invoiceForm() {
-        return {
-            items: [], // Will be loaded from script tag
-            lines: [],
-            itemPicker: {
-                open: false,
-                search: '',
-                category: '',
-                activeIndex: null
-            },
-            
-            init() {
-                // Safely parse the JSON data from the script tag
-                const dataEl = document.getElementById('items-data');
-                if (dataEl) {
-                    try {
-                        this.items = JSON.parse(dataEl.textContent);
-                    } catch (e) {
-                        console.error("Error parsing items JSON:", e);
-                    }
-                }
-                this.addLine();
-            },
-            
-            addLine() {
-                this.lines.push({
-                    item_id: null,
-                    item_name: '',
-                    qty: 1,
-                    cost_price: 0,
-                    batch_no: '',
-                    expiry_date: ''
-                });
-            },
-            
-            removeLine(index) {
-                this.lines.splice(index, 1);
-            },
-            
-            get filteredItems() {
-                return this.items.filter(item => {
-                    const matchSearch = !this.itemPicker.search || item.name.toLowerCase().includes(this.itemPicker.search.toLowerCase());
-                    const matchCat = !this.itemPicker.category || item.category_id == this.itemPicker.category;
-                    return matchSearch && matchCat;
-                });
-            },
-            
-            openItemPicker(index) {
-                this.itemPicker.activeIndex = index;
-                this.itemPicker.open = true;
-                this.itemPicker.search = '';
-                this.itemPicker.category = '';
-                
-                this.$nextTick(() => {
-                    this.$refs.pickerSearch.focus();
-                });
-            },
-            
-            selectItem(item) {
-                const index = this.itemPicker.activeIndex;
-                this.lines[index].item_id = item.id;
-                this.lines[index].item_name = item.name;
-                this.lines[index].cost_price = item.cost_price;
-                
-                this.itemPicker.open = false;
-                
-                this.$nextTick(() => {
-                    const qtyInput = document.getElementById('qty-input-' + index);
-                    if(qtyInput) qtyInput.focus();
-                });
-            },
-            
-            get subtotal() {
-                return this.lines.reduce((sum, line) => sum + (parseFloat(line.qty) * parseFloat(line.cost_price || 0)), 0);
-            },
-            
-            get vatAmount() {
-                return this.subtotal * 0.13;
-            },
-            
-            get grandTotal() {
+            if (this.isVatInclusive) {
+                return this.subtotal;
+            } else {
                 return this.subtotal + this.vatAmount;
             }
         }
     }
-    </script>
-
-
+}
+</script>
 {% endblock %}

@@ -1,9 +1,12 @@
-<!-- 1. Pass JSON safely via a script tag -->
+<!-- Pass JSON safely via script tags -->
 <script id="items-data" type="application/json">
 {{ items_json|safe }}
 </script>
+<script id="invoice-lines-data" type="application/json">
+{{ lines_json|safe }}
+</script>
 
-<form x-data="invoiceForm()" 
+<form x-data="invoiceForm({{ invoice.id|default:'null' }}, {{ is_vat_inclusive|yesno:'true,false' }})" 
       hx-post="{% url 'frontend:goods_in_save' %}" 
       hx-target="#goodsin-table" 
       hx-swap="innerHTML" 
@@ -12,34 +15,55 @@
       
     {% csrf_token %}
     <input type="hidden" name="id" value="{{ invoice.id|default:'' }}">
+    <input type="hidden" name="is_vat_inclusive" :value="isVatInclusive ? 'true' : 'false'">
 
     <!-- Invoice Header -->
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
             <label class="block text-xs font-semibold text-neutral-600 mb-1.5">Supplier *</label>
-            <select name="supplier" required class="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white">
-                <option value="">Select Supplier</option>
-                {% for s in suppliers %}
-                <option value="{{ s.id }}" {% if invoice.supplier_id == s.id %}selected{% endif %}>{{ s.name }}</option>
-                {% endfor %}
-            </select>
+            {% if invoice %}
+                <div class="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl bg-neutral-50 flex items-center justify-between">
+                    <span class="font-medium text-neutral-800">{{ invoice.supplier.name }}</span>
+                    <svg class="w-4 h-4 text-neutral-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                </div>
+                <input type="hidden" name="supplier" value="{{ invoice.supplier_id }}">
+            {% else %}
+                <select name="supplier" required class="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-green-500/20">
+                    <option value="">Select Supplier</option>
+                    {% for s in suppliers %}
+                    <option value="{{ s.id }}" {% if suppliers|length == 1 %}selected{% endif %}>{{ s.name }}</option>
+                    {% endfor %}
+                </select>
+            {% endif %}
         </div>
         <div>
             <label class="block text-xs font-semibold text-neutral-600 mb-1.5">Date Received *</label>
-            <input type="date" name="date_received" required value="{{ invoice.date_received|date:'Y-m-d'|default:today_str }}" class="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl">
+            <input type="date" name="date_received" required value="{{ invoice.date_received|date:'Y-m-d'|default:today_str }}" 
+                   class="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl {% if invoice %}bg-neutral-50 text-neutral-500 cursor-not-allowed{% else %}bg-white focus:outline-none focus:ring-2 focus:ring-green-500/20{% endif %}" 
+                   {% if invoice %}readonly{% endif %}>
         </div>
         <div>
-            <label class="block text-xs font-semibold text-neutral-600 mb-1.5">Reference No *</label>
-            <input type="text" name="reference_no" required value="{{ invoice.reference_no|default:'' }}" placeholder="e.g. PUR-001" class="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl">
+            <label class="block text-xs font-semibold text-neutral-600 mb-1.5">Invoice Number *</label>
+            <input type="text" name="reference_no" required value="{{ invoice.reference_no|default:next_ref }}" 
+                   class="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl {% if invoice %}bg-neutral-50 text-neutral-500 cursor-not-allowed{% else %}bg-white focus:outline-none focus:ring-2 focus:ring-green-500/20{% endif %}" 
+                   {% if invoice %}readonly{% endif %}>
         </div>
         <div>
             <label class="block text-xs font-semibold text-neutral-600 mb-1.5">Warehouse *</label>
-            <select name="warehouse" required class="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white">
-                <option value="">Select Warehouse</option>
-                {% for w in warehouses %}
-                <option value="{{ w.id }}">{{ w.name }}</option>
-                {% endfor %}
-            </select>
+            {% if invoice %}
+                <div class="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl bg-neutral-50 flex items-center justify-between">
+                    <span class="font-medium text-neutral-800">{{ invoice.lines.first.warehouse.name }}</span>
+                    <svg class="w-4 h-4 text-neutral-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                </div>
+                <input type="hidden" name="warehouse" value="{{ invoice.lines.first.warehouse_id }}">
+            {% else %}
+                <select name="warehouse" required class="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-green-500/20">
+                    <option value="">Select Warehouse</option>
+                    {% for w in warehouses %}
+                    <option value="{{ w.id }}" {% if warehouses|length == 1 %}selected{% endif %}>{{ w.name }}</option>
+                    {% endfor %}
+                </select>
+            {% endif %}
         </div>
     </div>
 
@@ -47,66 +71,71 @@
     <div class="border border-neutral-200 rounded-xl overflow-hidden">
         <div class="flex items-center justify-between px-4 py-3 bg-neutral-50 border-b border-neutral-200">
             <h3 class="text-xs font-bold text-neutral-600 uppercase tracking-wider">Items Received</h3>
+            {% if not invoice %}
             <button type="button" @click="addLine()" class="text-xs font-semibold text-green-600 hover:text-green-700 flex items-center gap-1">
                 <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                 Add Line
             </button>
+            {% endif %}
         </div>
         
         <div class="p-3 space-y-3">
             <template x-for="(line, index) in lines" :key="index">
                 <div class="line-item-row grid grid-cols-12 gap-2 items-start p-2 bg-neutral-50 border border-neutral-200 rounded-lg relative">
                     
+                    {% if not invoice %}
                     <button type="button" @click="removeLine(index)" class="absolute top-1 right-1 text-red-400 hover:text-red-600 z-10">
                         <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                     </button>
+                    {% endif %}
 
-                    <!-- Item Selection Button -->
                     <div class="col-span-12 md:col-span-6 relative">
                         <label class="block text-[0.65rem] font-semibold text-neutral-500 mb-1">Item *</label>
-                        
                         <div x-show="!line.item_id" @click="openItemPicker(index)">
                             <div class="w-full px-3 py-2 text-sm text-neutral-400 bg-white border border-dashed border-neutral-300 rounded-lg cursor-pointer hover:border-green-500 hover:text-green-600 flex items-center gap-2">
                                 <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                                 Click to select item...
                             </div>
                         </div>
-                        
                         <div x-show="line.item_id" class="flex items-center justify-between h-[38px] px-3 bg-white border border-neutral-200 rounded-lg">
                             <span class="text-sm font-medium text-neutral-800" x-text="line.item_name"></span>
-                            <button type="button" @click="openItemPicker(index)" class="ml-2 text-xs text-blue-500 hover:text-blue-600">Change</button>
+                            {% if not invoice %}<button type="button" @click="openItemPicker(index)" class="ml-2 text-xs text-blue-500 hover:text-blue-600">Change</button>{% endif %}
                         </div>
                         <input type="hidden" name="item_id[]" :value="line.item_id">
                     </div>
 
-                    <!-- Qty (Auto-focused) -->
                     <div class="col-span-4 md:col-span-2">
                         <label class="block text-[0.65rem] font-semibold text-neutral-500 mb-1">Qty *</label>
-                        <input type="number" x-model="line.qty" :id="'qty-input-' + index" name="qty[]" min="0" step="0.01" required class="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-green-500">
+                        <input type="number" x-model="line.qty" :id="'qty-input-' + index" name="qty[]" min="0" step="0.01" required 
+                               class="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-green-500 {% if invoice %}bg-neutral-50 text-neutral-500 cursor-not-allowed{% endif %}" 
+                               {% if invoice %}readonly{% endif %}>
                     </div>
 
-                    <!-- Cost Price -->
                     <div class="col-span-4 md:col-span-2">
                         <label class="block text-[0.65rem] font-semibold text-neutral-500 mb-1">Cost *</label>
-                        <input type="number" x-model="line.cost_price" name="cost_price[]" min="0" step="0.01" required class="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-green-500">
+                        <input type="number" x-model="line.cost_price" name="cost_price[]" min="0" step="0.01" required 
+                               class="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-green-500 {% if invoice %}bg-neutral-50 text-neutral-500 cursor-not-allowed{% endif %}" 
+                               {% if invoice %}readonly{% endif %}>
                     </div>
 
-                    <!-- Batch No -->
                     <div class="col-span-4 md:col-span-2">
                         <label class="block text-[0.65rem] font-semibold text-neutral-500 mb-1">Batch</label>
-                        <input type="text" x-model="line.batch_no" name="batch_no[]" class="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-green-500">
+                        <input type="text" x-model="line.batch_no" name="batch_no[]" 
+                               class="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-green-500 {% if invoice %}bg-neutral-50 text-neutral-500 cursor-not-allowed{% endif %}" 
+                               {% if invoice %}readonly{% endif %}>
                     </div>
 
-                    <!-- Expiry & Total -->
                     <div class="col-span-12 md:col-span-6 flex items-end gap-4">
                         <div class="flex-1">
                             <label class="block text-[0.65rem] font-semibold text-neutral-500 mb-1">Expiry Date</label>
-                            <input type="date" x-model="line.expiry_date" name="expiry_date[]" class="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-green-500">
+                            <input type="date" x-model="line.expiry_date" name="expiry_date[]" 
+                                   class="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-green-500 {% if invoice %}bg-neutral-50 text-neutral-500 cursor-not-allowed{% endif %}" 
+                                   {% if invoice %}readonly{% endif %}>
                         </div>
                         <div class="text-right pb-2">
                             <div class="text-[0.65rem] font-semibold text-neutral-500 mb-1">Total</div>
                             <div class="text-sm font-bold text-neutral-800">
-                                Rs. <span x-text="(parseFloat(line.qty) * parseFloat(line.cost_price || 0)).toFixed(2)"></span>
+                                Rs. <span x-text="lineTotal(line).toFixed(2)"></span>
                             </div>
                         </div>
                     </div>
@@ -121,7 +150,33 @@
 
     <!-- Totals & Submit -->
     <div class="flex justify-end">
-        <div class="w-full md:w-1/3 space-y-2 bg-neutral-50 p-4 rounded-xl border border-neutral-100">
+        <div class="w-full md:w-1/2 space-y-3 bg-neutral-50 p-4 rounded-xl border border-neutral-100">
+            
+            {% if not invoice %}
+            <!-- VAT Segmented Control (Hidden in View Mode) -->
+            <div class="flex items-center justify-between pb-2 border-b border-neutral-200">
+                <span class="text-sm font-semibold text-neutral-700">VAT Calculation</span>
+                <div class="flex gap-1 p-1 bg-neutral-200 rounded-lg">
+                    <button type="button" @click="isVatInclusive = false" 
+                            class="px-3 py-1 text-xs font-semibold rounded-md transition-all"
+                            :class="!isVatInclusive ? 'bg-white shadow text-green-600' : 'text-neutral-500 hover:text-neutral-700'">
+                        Exclusive
+                    </button>
+                    <button type="button" @click="isVatInclusive = true" 
+                            class="px-3 py-1 text-xs font-semibold rounded-md transition-all"
+                            :class="isVatInclusive ? 'bg-white shadow text-green-600' : 'text-neutral-500 hover:text-neutral-700'">
+                        Inclusive
+                    </button>
+                </div>
+            </div>
+            {% else %}
+             <!-- In View Mode, Just show the status -->
+             <div class="flex items-center justify-between pb-2 border-b border-neutral-200">
+                <span class="text-sm font-semibold text-neutral-700">VAT Calculation</span>
+                <span class="px-2 py-1 text-[0.65rem] font-bold bg-neutral-200 text-neutral-600 border border-neutral-300 rounded-md" x-text="isVatInclusive ? 'Inclusive' : 'Exclusive'"></span>
+            </div>
+            {% endif %}
+
             <div class="flex justify-between text-sm">
                 <span class="text-neutral-500">Subtotal</span>
                 <span class="font-semibold text-neutral-800">Rs. <span x-text="subtotal.toFixed(2)"></span></span>
@@ -137,26 +192,39 @@
         </div>
     </div>
 
+    <!-- Sticky Action Bar -->
     <div class="pt-4 border-t border-neutral-100 flex justify-end gap-3">
         <button type="button" @click="$dispatch('close-modal')" class="px-5 py-2.5 text-sm font-semibold text-neutral-600 bg-white border border-neutral-200 rounded-xl hover:bg-neutral-50">Cancel</button>
-        <button type="submit" class="px-5 py-2.5 text-sm font-semibold text-white bg-green-500 rounded-xl hover:bg-green-600 flex items-center gap-2">
-            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-            Save & Update Stock
+        
+        {% if not invoice %}
+        <!-- Save Button (Disabled if no items) -->
+        <button type="submit" 
+                :disabled="lines.length === 0 || !lines.some(l => l.item_id)"
+                :class="lines.length === 0 || !lines.some(l => l.item_id) ? 'bg-neutral-300 cursor-not-allowed' : 'bg-green-500 hover:bg-green-600'"
+                class="px-5 py-2.5 text-sm font-semibold text-white rounded-xl flex items-center gap-2 transition-all">
+            <span x-show="lines.length === 0 || !lines.some(l => l.item_id)" class="flex items-center gap-2">
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                Add Items to Save
+            </span>
+            <span x-show="lines.length > 0 && lines.some(l => l.item_id)" class="flex items-center gap-2">
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                Save &amp; Update Stock
+            </span>
         </button>
+        {% else %}
+        <!-- Close Button for View Mode -->
+        <button type="button" @click="$dispatch('close-modal')" class="px-5 py-2.5 text-sm font-semibold text-white bg-green-500 rounded-xl hover:bg-green-600 flex items-center gap-2">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            Done
+        </button>
+        {% endif %}
     </div>
 
-    <!-- ══════════════════════════════════════
-         ITEM PICKER MODAL (Local Cache Search)
-    ══════════════════════════════════════ -->
+    <!-- ITEM PICKER MODAL -->
     <template x-if="itemPicker.open">
         <div class="fixed inset-0 z-[100] flex items-center justify-center p-4" @keydown.escape.window="itemPicker.open = false">
-            <!-- Backdrop -->
             <div class="absolute inset-0 bg-black/30 backdrop-blur-sm" @click="itemPicker.open = false"></div>
-            
-            <!-- Modal Panel -->
             <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-4xl h-[80vh] flex flex-col overflow-hidden">
-                
-                <!-- Header / Search -->
                 <div class="p-4 border-b border-neutral-100 space-y-3">
                     <div class="flex items-center justify-between">
                         <h3 class="text-lg font-bold text-neutral-900">Select Item</h3>
@@ -164,12 +232,8 @@
                             <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                         </button>
                     </div>
-                    
                     <div class="flex gap-3">
-                        <!-- Search Input (Autofocused) -->
                         <input type="text" x-model="itemPicker.search" x-ref="pickerSearch" placeholder="Type item name to search..." class="flex-1 px-4 py-2.5 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500/40">
-                        
-                        <!-- Category Filter -->
                         <select x-model="itemPicker.category" class="w-48 px-3 py-2.5 border border-neutral-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-green-500/40">
                             <option value="">All Categories</option>
                             {% for c in categories %}
@@ -178,8 +242,6 @@
                         </select>
                     </div>
                 </div>
-                
-                <!-- Items Table -->
                 <div class="flex-1 overflow-y-auto">
                     <table class="w-full text-left">
                         <thead class="sticky top-0 bg-neutral-50 border-b border-neutral-100">
@@ -199,12 +261,8 @@
                                     <td class="px-6 py-3 text-sm text-neutral-600 text-right" x-text="item.stock + ' units'"></td>
                                 </tr>
                             </template>
-                            
-                            <!-- Empty State -->
                             <tr x-show="filteredItems.length === 0">
-                                <td colspan="4" class="px-6 py-12 text-center text-sm text-neutral-400">
-                                    No items found matching your search.
-                                </td>
+                                <td colspan="4" class="px-6 py-12 text-center text-sm text-neutral-400">No items found matching your search.</td>
                             </tr>
                         </tbody>
                     </table>
@@ -214,94 +272,3 @@
     </template>
 
 </form>
-
-<script>
-function invoiceForm() {
-    return {
-        items: [], // Will be loaded from script tag
-        lines: [],
-        itemPicker: {
-            open: false,
-            search: '',
-            category: '',
-            activeIndex: null
-        },
-        
-        init() {
-            // 2. Safely parse the JSON data from the script tag
-            const dataEl = document.getElementById('items-data');
-            if (dataEl) {
-                try {
-                    this.items = JSON.parse(dataEl.textContent);
-                } catch (e) {
-                    console.error("Error parsing items JSON:", e);
-                }
-            }
-            this.addLine();
-        },
-        
-        addLine() {
-            this.lines.push({
-                item_id: null,
-                item_name: '',
-                qty: 1,
-                cost_price: 0,
-                batch_no: '',
-                expiry_date: ''
-            });
-        },
-        
-        removeLine(index) {
-            this.lines.splice(index, 1);
-        },
-        
-        // Computed property for filtering items locally (Zero Server Hits!)
-        get filteredItems() {
-            return this.items.filter(item => {
-                const matchSearch = !this.itemPicker.search || item.name.toLowerCase().includes(this.itemPicker.search.toLowerCase());
-                const matchCat = !this.itemPicker.category || item.category_id == this.itemPicker.category;
-                return matchSearch && matchCat;
-            });
-        },
-        
-        openItemPicker(index) {
-            this.itemPicker.activeIndex = index;
-            this.itemPicker.open = true;
-            this.itemPicker.search = '';
-            this.itemPicker.category = '';
-            
-            // Focus the search input after modal renders
-            this.$nextTick(() => {
-                this.$refs.pickerSearch.focus();
-            });
-        },
-        
-        selectItem(item) {
-            const index = this.itemPicker.activeIndex;
-            this.lines[index].item_id = item.id;
-            this.lines[index].item_name = item.name;
-            this.lines[index].cost_price = item.cost_price;
-            
-            this.itemPicker.open = false;
-            
-            // Auto-focus the Quantity input for this specific row (Idea D!)
-            this.$nextTick(() => {
-                const qtyInput = document.getElementById('qty-input-' + index);
-                if(qtyInput) qtyInput.focus();
-            });
-        },
-        
-        get subtotal() {
-            return this.lines.reduce((sum, line) => sum + (parseFloat(line.qty) * parseFloat(line.cost_price || 0)), 0);
-        },
-        
-        get vatAmount() {
-            return this.subtotal * 0.13;
-        },
-        
-        get grandTotal() {
-            return this.subtotal + this.vatAmount;
-        }
-    }
-}
-</script>
