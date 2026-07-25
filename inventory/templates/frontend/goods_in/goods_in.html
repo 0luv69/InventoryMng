@@ -118,4 +118,94 @@ function invoiceForm() {
 }
 </script>
 
+
+    <script>
+    function invoiceForm() {
+        return {
+            items: [], // Will be loaded from script tag
+            lines: [],
+            itemPicker: {
+                open: false,
+                search: '',
+                category: '',
+                activeIndex: null
+            },
+            
+            init() {
+                // Safely parse the JSON data from the script tag
+                const dataEl = document.getElementById('items-data');
+                if (dataEl) {
+                    try {
+                        this.items = JSON.parse(dataEl.textContent);
+                    } catch (e) {
+                        console.error("Error parsing items JSON:", e);
+                    }
+                }
+                this.addLine();
+            },
+            
+            addLine() {
+                this.lines.push({
+                    item_id: null,
+                    item_name: '',
+                    qty: 1,
+                    cost_price: 0,
+                    batch_no: '',
+                    expiry_date: ''
+                });
+            },
+            
+            removeLine(index) {
+                this.lines.splice(index, 1);
+            },
+            
+            get filteredItems() {
+                return this.items.filter(item => {
+                    const matchSearch = !this.itemPicker.search || item.name.toLowerCase().includes(this.itemPicker.search.toLowerCase());
+                    const matchCat = !this.itemPicker.category || item.category_id == this.itemPicker.category;
+                    return matchSearch && matchCat;
+                });
+            },
+            
+            openItemPicker(index) {
+                this.itemPicker.activeIndex = index;
+                this.itemPicker.open = true;
+                this.itemPicker.search = '';
+                this.itemPicker.category = '';
+                
+                this.$nextTick(() => {
+                    this.$refs.pickerSearch.focus();
+                });
+            },
+            
+            selectItem(item) {
+                const index = this.itemPicker.activeIndex;
+                this.lines[index].item_id = item.id;
+                this.lines[index].item_name = item.name;
+                this.lines[index].cost_price = item.cost_price;
+                
+                this.itemPicker.open = false;
+                
+                this.$nextTick(() => {
+                    const qtyInput = document.getElementById('qty-input-' + index);
+                    if(qtyInput) qtyInput.focus();
+                });
+            },
+            
+            get subtotal() {
+                return this.lines.reduce((sum, line) => sum + (parseFloat(line.qty) * parseFloat(line.cost_price || 0)), 0);
+            },
+            
+            get vatAmount() {
+                return this.subtotal * 0.13;
+            },
+            
+            get grandTotal() {
+                return this.subtotal + this.vatAmount;
+            }
+        }
+    }
+    </script>
+
+
 {% endblock %}

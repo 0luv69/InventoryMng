@@ -1,8 +1,13 @@
+<!-- 1. Pass JSON safely via a script tag -->
+<script id="items-data" type="application/json">
+{{ items_json|safe }}
+</script>
+
 <form x-data="invoiceForm()" 
       hx-post="{% url 'frontend:goods_in_save' %}" 
       hx-target="#goodsin-table" 
       hx-swap="innerHTML" 
-      hx-on::after-request="if(event.detail.successful && event.detail.pathInfo.requestPath.includes('/goods-in/save/')) { toast.success('Purchase saved! Stock updated.'); $dispatch('close-modal'); }"
+      hx-on::after-request="if(event.detail.successful) { toast.success('Purchase saved! Stock updated.'); $dispatch('close-modal'); }"
       class="space-y-6">
       
     {% csrf_token %}
@@ -38,7 +43,7 @@
         </div>
     </div>
 
-    <!-- Line Items Grid (Replaces Table to fix dropdown clipping) -->
+    <!-- Line Items Grid -->
     <div class="border border-neutral-200 rounded-xl overflow-hidden">
         <div class="flex items-center justify-between px-4 py-3 bg-neutral-50 border-b border-neutral-200">
             <h3 class="text-xs font-bold text-neutral-600 uppercase tracking-wider">Items Received</h3>
@@ -50,51 +55,34 @@
         
         <div class="p-3 space-y-3">
             <template x-for="(line, index) in lines" :key="index">
-                <!-- Line Item Row (Grid) -->
                 <div class="line-item-row grid grid-cols-12 gap-2 items-start p-2 bg-neutral-50 border border-neutral-200 rounded-lg relative">
                     
-                    <!-- Delete Button -->
                     <button type="button" @click="removeLine(index)" class="absolute top-1 right-1 text-red-400 hover:text-red-600 z-10">
                         <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                     </button>
 
-                    <!-- Item Search (Takes 6 cols on desktop, 12 on mobile) -->
-                    <!-- Added @click.outside to close dropdown when clicking elsewhere -->
-                    <div class="col-span-12 md:col-span-6 relative" @click.outside="line.isDropdownOpen = false">
+                    <!-- Item Selection Button -->
+                    <div class="col-span-12 md:col-span-6 relative">
                         <label class="block text-[0.65rem] font-semibold text-neutral-500 mb-1">Item *</label>
-                        <div x-show="!line.item_id">
-                            <input type="text" name="q" x-model="line.search" 
-                                   placeholder="Type name, barcode, or category..." 
-                                   autocomplete="off"
-                                   @focus="line.isDropdownOpen = true"
-                                   @input="line.isDropdownOpen = true"
-                                   hx-get="{% url 'frontend:goods_in_item_search' %}" 
-                                   hx-trigger="keyup changed delay:300ms" 
-                                   hx-include="closest .line-item-row" 
-                                   hx-target="next .search-dropdown" 
-                                   hx-swap="innerHTML"
-                                   class="w-full px-3 py-2 text-sm bg-white border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500/40 focus:border-green-500 transition-all">
-                            <input type="hidden" name="index" :value="index">
-                            
-                            <!-- Dropdown only shows when isDropdownOpen is true and search has text -->
-                            <div class="search-dropdown absolute z-20 bg-white border border-neutral-200 rounded-lg shadow-lg mt-1 w-full max-h-48 overflow-y-auto" 
-                                 x-show="line.isDropdownOpen && line.search.length > 0" 
-                                 style="display: none;">
-                                <div class="px-3 py-2 text-xs text-neutral-400">Searching...</div>
+                        
+                        <div x-show="!line.item_id" @click="openItemPicker(index)">
+                            <div class="w-full px-3 py-2 text-sm text-neutral-400 bg-white border border-dashed border-neutral-300 rounded-lg cursor-pointer hover:border-green-500 hover:text-green-600 flex items-center gap-2">
+                                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                                Click to select item...
                             </div>
                         </div>
                         
-                        <div x-show="line.item_id" class="flex items-center justify-between h-[38px]">
+                        <div x-show="line.item_id" class="flex items-center justify-between h-[38px] px-3 bg-white border border-neutral-200 rounded-lg">
                             <span class="text-sm font-medium text-neutral-800" x-text="line.item_name"></span>
-                            <button type="button" @click="line.item_id = null; line.search = ''; line.isDropdownOpen = true" class="ml-2 text-xs text-red-500 hover:text-red-600">Change</button>
+                            <button type="button" @click="openItemPicker(index)" class="ml-2 text-xs text-blue-500 hover:text-blue-600">Change</button>
                         </div>
                         <input type="hidden" name="item_id[]" :value="line.item_id">
                     </div>
 
-                    <!-- Qty -->
+                    <!-- Qty (Auto-focused) -->
                     <div class="col-span-4 md:col-span-2">
                         <label class="block text-[0.65rem] font-semibold text-neutral-500 mb-1">Qty *</label>
-                        <input type="number" x-model="line.qty" name="qty[]" min="0" step="0.01" required class="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-green-500">
+                        <input type="number" x-model="line.qty" :id="'qty-input-' + index" name="qty[]" min="0" step="0.01" required class="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-green-500">
                     </div>
 
                     <!-- Cost Price -->
@@ -122,7 +110,6 @@
                             </div>
                         </div>
                     </div>
-
                 </div>
             </template>
             
@@ -157,4 +144,164 @@
             Save & Update Stock
         </button>
     </div>
+
+    <!-- ══════════════════════════════════════
+         ITEM PICKER MODAL (Local Cache Search)
+    ══════════════════════════════════════ -->
+    <template x-if="itemPicker.open">
+        <div class="fixed inset-0 z-[100] flex items-center justify-center p-4" @keydown.escape.window="itemPicker.open = false">
+            <!-- Backdrop -->
+            <div class="absolute inset-0 bg-black/30 backdrop-blur-sm" @click="itemPicker.open = false"></div>
+            
+            <!-- Modal Panel -->
+            <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-4xl h-[80vh] flex flex-col overflow-hidden">
+                
+                <!-- Header / Search -->
+                <div class="p-4 border-b border-neutral-100 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-lg font-bold text-neutral-900">Select Item</h3>
+                        <button type="button" @click="itemPicker.open = false" class="text-neutral-400 hover:text-neutral-600">
+                            <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                        </button>
+                    </div>
+                    
+                    <div class="flex gap-3">
+                        <!-- Search Input (Autofocused) -->
+                        <input type="text" x-model="itemPicker.search" x-ref="pickerSearch" placeholder="Type item name to search..." class="flex-1 px-4 py-2.5 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500/40">
+                        
+                        <!-- Category Filter -->
+                        <select x-model="itemPicker.category" class="w-48 px-3 py-2.5 border border-neutral-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-green-500/40">
+                            <option value="">All Categories</option>
+                            {% for c in categories %}
+                            <option value="{{ c.id }}">{{ c.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- Items Table -->
+                <div class="flex-1 overflow-y-auto">
+                    <table class="w-full text-left">
+                        <thead class="sticky top-0 bg-neutral-50 border-b border-neutral-100">
+                            <tr>
+                                <th class="px-6 py-3 text-xs font-bold uppercase tracking-wider text-neutral-400">Item Name</th>
+                                <th class="px-6 py-3 text-xs font-bold uppercase tracking-wider text-neutral-400">Category</th>
+                                <th class="px-6 py-3 text-xs font-bold uppercase tracking-wider text-neutral-400 text-right">Cost Price</th>
+                                <th class="px-6 py-3 text-xs font-bold uppercase tracking-wider text-neutral-400 text-right">In Stock</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template x-for="item in filteredItems" :key="item.id">
+                                <tr @click="selectItem(item)" class="border-b border-neutral-50 hover:bg-green-50 cursor-pointer transition-colors">
+                                    <td class="px-6 py-3 text-sm font-semibold text-neutral-800" x-text="item.name"></td>
+                                    <td class="px-6 py-3 text-sm text-neutral-500" x-text="item.category_name"></td>
+                                    <td class="px-6 py-3 text-sm text-neutral-600 text-right" x-text="'Rs. ' + item.cost_price"></td>
+                                    <td class="px-6 py-3 text-sm text-neutral-600 text-right" x-text="item.stock + ' units'"></td>
+                                </tr>
+                            </template>
+                            
+                            <!-- Empty State -->
+                            <tr x-show="filteredItems.length === 0">
+                                <td colspan="4" class="px-6 py-12 text-center text-sm text-neutral-400">
+                                    No items found matching your search.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </template>
+
 </form>
+
+<script>
+function invoiceForm() {
+    return {
+        items: [], // Will be loaded from script tag
+        lines: [],
+        itemPicker: {
+            open: false,
+            search: '',
+            category: '',
+            activeIndex: null
+        },
+        
+        init() {
+            // 2. Safely parse the JSON data from the script tag
+            const dataEl = document.getElementById('items-data');
+            if (dataEl) {
+                try {
+                    this.items = JSON.parse(dataEl.textContent);
+                } catch (e) {
+                    console.error("Error parsing items JSON:", e);
+                }
+            }
+            this.addLine();
+        },
+        
+        addLine() {
+            this.lines.push({
+                item_id: null,
+                item_name: '',
+                qty: 1,
+                cost_price: 0,
+                batch_no: '',
+                expiry_date: ''
+            });
+        },
+        
+        removeLine(index) {
+            this.lines.splice(index, 1);
+        },
+        
+        // Computed property for filtering items locally (Zero Server Hits!)
+        get filteredItems() {
+            return this.items.filter(item => {
+                const matchSearch = !this.itemPicker.search || item.name.toLowerCase().includes(this.itemPicker.search.toLowerCase());
+                const matchCat = !this.itemPicker.category || item.category_id == this.itemPicker.category;
+                return matchSearch && matchCat;
+            });
+        },
+        
+        openItemPicker(index) {
+            this.itemPicker.activeIndex = index;
+            this.itemPicker.open = true;
+            this.itemPicker.search = '';
+            this.itemPicker.category = '';
+            
+            // Focus the search input after modal renders
+            this.$nextTick(() => {
+                this.$refs.pickerSearch.focus();
+            });
+        },
+        
+        selectItem(item) {
+            const index = this.itemPicker.activeIndex;
+            this.lines[index].item_id = item.id;
+            this.lines[index].item_name = item.name;
+            this.lines[index].cost_price = item.cost_price;
+            
+            this.itemPicker.open = false;
+            
+            // Auto-focus the Quantity input for this specific row (Idea D!)
+            this.$nextTick(() => {
+                const qtyInput = document.getElementById('qty-input-' + index);
+                if(qtyInput) qtyInput.focus();
+            });
+        },
+        
+        get subtotal() {
+            return this.lines.reduce((sum, line) => sum + (parseFloat(line.qty) * parseFloat(line.cost_price || 0)), 0);
+        },
+        
+        get vatAmount() {
+            return this.subtotal * 0.13;
+        },
+        
+        get grandTotal() {
+            return this.subtotal + this.vatAmount;
+        }
+    }
+}
+</script>

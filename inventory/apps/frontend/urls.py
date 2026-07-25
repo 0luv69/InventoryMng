@@ -21,7 +21,6 @@ urlpatterns = [
     path('goods-in/table/', views.GoodsInTableView.as_view(), name='goods_in_table'),
     path('goods-in/form/', views.GoodsInFormView.as_view(), name='goods_in_form'),
     path('goods-in/save/', views.GoodsInSaveView.as_view(), name='goods_in_save'),
-    path('goods-in/search-items/', views.GoodsInItemSearchView.as_view(), name='goods_in_item_search'), # NEW
 
 
     path('parties/', views.PartiesView.as_view(), name='parties'),

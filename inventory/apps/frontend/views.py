@@ -15,6 +15,8 @@ import json
 from django.db.models import Q
 from django.utils import timezone
 
+from decimal import Decimal, InvalidOperation
+
 class BaseAppView(LoginRequiredMixin, View):
     def get_company(self):
         return self.request.user.profile.company
@@ -184,34 +186,27 @@ class GoodsInFormView(BaseAppView):
         if invoice_id:
             invoice = get_object_or_404(PurchaseInvoice, id=invoice_id, company=company)
 
+        # Fetch items and categories for the Local Cache Modal
+        items_qs = Item.objects.filter(company=company, status='active').select_related('category', 'base_unit')
+        items_list = [{
+            'id': i.id,
+            'name': i.name,
+            'category_id': i.category_id,
+            'category_name': i.category.name if i.category else 'Uncategorized',
+            'cost_price': str(i.cost_price),
+            'stock': str(i.total_stock)
+        } for i in items_qs]
+
         context = {
             'invoice': invoice,
             'suppliers': Party.objects.filter(company=company, is_supplier=True, is_removed=False),
             'warehouses': Warehouse.objects.filter(company=company, is_active=True),
             'today_str': timezone.now().date().strftime('%Y-%m-%d'),
+            'categories': Category.objects.filter(company=company),
+            'items_json': json.dumps(items_list, cls=DjangoJSONEncoder), # Pass as JSON string
         }
         return render(request, 'frontend/goods_in/_form.html', context)
 
-#  HTMX Item Search Endpoint
-class GoodsInItemSearchView(BaseAppView):
-    def get(self, request):
-        company = self.get_company()
-        q = request.GET.get('q', '')
-        index = request.GET.get('index', 0)
-        
-        # Search by Name, Barcode, or Category
-        items = Item.objects.filter(
-            company=company, 
-            status='active'
-        ).filter(
-            Q(name__icontains=q) | 
-            Q(barcode__icontains=q) | 
-            Q(category__name__icontains=q)
-        )[:10]
-        
-        return render(request, 'frontend/goods_in/_item_search.html', {'items': items, 'index': index})
-
-# Updated Save View to handle Line Items
 class GoodsInSaveView(BaseAppView):
     def post(self, request):
         company = self.get_company()
@@ -219,43 +214,65 @@ class GoodsInSaveView(BaseAppView):
         
         if invoice_id:
             invoice = get_object_or_404(PurchaseInvoice, id=invoice_id, company=company)
-            # Clear old lines if editing (Signals will reverse stock automatically)
             invoice.lines.all().delete()
         else:
             invoice = PurchaseInvoice(company=company)
             
         invoice.supplier_id = request.POST.get('supplier')
         invoice.date_received = request.POST.get('date_received')
-        invoice.reference_no = request.POST.get('reference_no')
+        
+        # Auto-generate Reference No if blank to prevent UNIQUE constraint errors
+        ref_no = request.POST.get('reference_no', '').strip()
+        if not ref_no:
+            last_inv = PurchaseInvoice.objects.filter(company=company).order_by('-id').first()
+            next_num = (last_inv.id + 1) if last_inv else 1
+            ref_no = f"PUR-{next_num:04d}"
+        invoice.reference_no = ref_no
+        
         invoice.invoice_status = 'finalized'
         invoice.payment_status = 'unpaid'
-        invoice.save()
+        
+        try:
+            invoice.save()
+        except Exception as e:
+            # Fallback if reference no still clashes somehow
+            invoice.reference_no = f"PUR-{invoice.id}-DUP"
+            invoice.save()
 
         warehouse_id = request.POST.get('warehouse')
         
-        # Get arrays from POST data
         item_ids = request.POST.getlist('item_id[]')
         qtys = request.POST.getlist('qty[]')
         costs = request.POST.getlist('cost_price[]')
         batches = request.POST.getlist('batch_no[]')
         expiries = request.POST.getlist('expiry_date[]')
 
-        # Loop and create PurchaseItemLines
         for i in range(len(item_ids)):
             if item_ids[i]:
                 item = Item.objects.get(id=item_ids[i], company=company)
+                
+                # Safely convert strings to Decimal
+                try:
+                    qty_val = Decimal(qtys[i])
+                except (InvalidOperation, TypeError):
+                    qty_val = Decimal('0')
+                    
+                try:
+                    cost_val = Decimal(costs[i])
+                except (InvalidOperation, TypeError):
+                    cost_val = Decimal('0')
+
                 PurchaseItemLine.objects.create(
                     invoice=invoice,
                     item=item,
                     warehouse_id=warehouse_id,
-                    unit=item.base_unit, # Default to base unit for now
-                    conversion_factor=1,
-                    quantity=qtys[i],
-                    cost_price=costs[i],
+                    unit=item.base_unit,
+                    conversion_factor=Decimal('1.00'),
+                    quantity=qty_val,
+                    cost_price=cost_val,
                     batch_no=batches[i] or None,
                     expiry_date=expiries[i] or None
                 )
-                # Signal automatically fires here to update stock and MAC!
         
         # Return updated table
         invoices = PurchaseInvoice.objects.filter(company=company, invoice_status='finalized').order_by('-date_received')
@@ -263,8 +280,6 @@ class GoodsInSaveView(BaseAppView):
         page_obj = paginator.get_page(1)
         
         return render(request, 'frontend/goods_in/_table.html', {'invoices': page_obj.object_list, 'page_obj': page_obj, 'request': request})
-
-
 
 
 class PartiesView(BaseAppView):
