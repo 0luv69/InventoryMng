@@ -238,9 +238,18 @@ class GoodsInFormView(BaseAppView):
 
         next_ref = ''
         if not invoice:
-            last_inv = PurchaseInvoice.objects.filter(company=company).order_by('-id').first()
-            next_num = (last_inv.id + 1) if last_inv else 1
-            next_ref = f"PUR-{next_num:04d}"
+            prefix = "PUR-"
+            last_inv = PurchaseInvoice.objects.filter(company=company).order_by('-reference_no').first()
+            if last_inv:
+                try: num = int(last_inv.reference_no.split('-')[1]) + 1
+                except: num = 1
+            else: num = 1
+
+
+            next_ref = f"{prefix}{num:04d}"
+            while PurchaseInvoice.objects.filter(company=company, reference_no=next_ref).exists():
+                num += 1
+                next_ref = f"{prefix}{num:04d}"
 
         suppliers = Party.objects.filter(company=company, is_supplier=True, is_removed=False)
         warehouses = Warehouse.objects.filter(company=company, is_active=True)
@@ -316,15 +325,22 @@ class GoodsInSaveView(BaseAppView):
                 else:
                     net_cost = gross_cost
 
+                # Auto-generate batch number if user left it blank!
+                batch_no = batches[i].strip() if batches[i] else ''
+                if not batch_no:
+                    batch_no = f"AUTO-{invoice.reference_no}-B{i+1}"
+
                 PurchaseItemLine.objects.create(
+                    company=company,
                     invoice=invoice,
                     item=item,
+                    created_by=request.user,
                     warehouse_id=warehouse_id,
                     unit=item.base_unit,
                     conversion_factor=Decimal('1.00'),
                     quantity=qty_val,
                     cost_price=net_cost, # Save NET cost price
-                    batch_no=batches[i] or None,
+                    batch_no=batch_no,
                     expiry_date=expiries[i] or None
                 )
         
@@ -441,9 +457,17 @@ class GoodsOutFormView(BaseAppView):
 
         next_ref = ''
         if not invoice:
-            last_inv = SaleInvoice.objects.filter(company=company).order_by('-id').first()
-            next_num = (last_inv.id + 1) if last_inv else 1
-            next_ref = f"SAL-{next_num:04d}"
+            prefix = "SAL-"
+            last_inv = SaleInvoice.objects.filter(company=company).order_by('-reference_no').first()
+            if last_inv:
+                try: num = int(last_inv.reference_no.split('-')[1]) + 1
+                except: num = 1
+            else: num = 1
+            
+            next_ref = f"{prefix}{num:04d}"
+            while SaleInvoice.objects.filter(company=company, reference_no=next_ref).exists():
+                num += 1
+                next_ref = f"{prefix}{num:04d}"
 
         customers = Party.objects.filter(company=company, is_customer=True, is_removed=False)
         warehouses = Warehouse.objects.filter(company=company, is_active=True)
@@ -478,32 +502,37 @@ class GoodsOutSaveView(BaseAppView):
         
         if invoice_id:
             return JsonResponse({"success": False, "message": "Editing existing sales is disabled. Please void and create a new one."}, status=400)
-            
-        invoice = SaleInvoice(company=company)
-            
-        invoice.customer_id = request.POST.get('customer')
-        invoice.date_dispatched = request.POST.get('date_dispatched')
-        invoice.reference_no = request.POST.get('reference_no')
-        invoice.is_vat_inclusive = request.POST.get('is_vat_inclusive') == 'true'
-        invoice.invoice_status = 'finalized'
-        invoice.payment_status = 'unpaid'
+
+
+        # Check Credit Limit BEFORE doing anything
+        new_total = Decimal('0')
+        customer_id = request.POST.get('customer')
+        customer = Party.objects.get(id=customer_id, company=company)
         
-        # Check Credit Limit BEFORE saving
-        customer = invoice.customer
         if customer and customer.credit_limit > 0:
-            new_total = sum(Decimal(q) * Decimal(p) for q, p in zip(request.POST.getlist('qty[]'), request.POST.getlist('selling_price[]')))
+            qtys = request.POST.getlist('qty[]')
+            prices = request.POST.getlist('selling_price[]')
+            new_total = sum(Decimal(q) * Decimal(p) for q, p in zip(qtys, prices))
+            
             if customer.balance + new_total > customer.credit_limit:
-                return JsonResponse({"success": False, "message": f"Credit Limit Exceeded! Limit: Rs. {customer.credit_limit}, Balance: Rs. {customer.balance}."}, status=400)
-
-        warehouse_id = request.POST.get('warehouse')
-        item_ids = request.POST.getlist('item_id[]')
-        qtys = request.POST.getlist('qty[]')
-        prices = request.POST.getlist('selling_price[]')
-
+                return JsonResponse({"success": False, "message": f"Credit Limit Exceeded! Limit: Rs. {customer.credit_limit}, Current Balance: Rs. {customer.balance}."}, status=400)
+        # FIX: Wrap everything in a transaction. If a line fails, it rolls back the whole invoice!
         try:
-            # Wrap in transaction.atomic so if stock fails, the invoice doesn't save
             with transaction.atomic():
+                invoice = SaleInvoice(company=company)
+                invoice.customer_id = customer_id
+                invoice.date_dispatched = request.POST.get('date_dispatched')
+                invoice.reference_no = request.POST.get('reference_no')
+                invoice.is_vat_inclusive = request.POST.get('is_vat_inclusive') == 'true'
+                invoice.invoice_status = 'finalized'
+                invoice.payment_status = 'unpaid'
                 invoice.save()
+
+                warehouse_id = request.POST.get('warehouse')
+                
+                item_ids = request.POST.getlist('item_id[]')
+                qtys = request.POST.getlist('qty[]')
+                prices = request.POST.getlist('selling_price[]')
 
                 for i in range(len(item_ids)):
                     if item_ids[i]:
@@ -515,33 +544,30 @@ class GoodsOutSaveView(BaseAppView):
                         try: gross_price = Decimal(prices[i])
                         except: gross_price = Decimal('0')
 
-                        if invoice.is_vat_inclusive:
-                            net_price = (gross_price / Decimal('1.13')).quantize(Decimal('0.01'))
-                        else:
-                            net_price = gross_price
-
+                        # This will raise ValidationError if stock is insufficient
                         SaleItemLine.objects.create(
+                            company=company,
                             invoice=invoice,
+                            created_by=request.user,
                             item=item,
                             warehouse_id=warehouse_id,
                             unit=item.base_unit,
                             conversion_factor=Decimal('1.00'),
                             quantity=qty_val,
-                            selling_price=net_price,
+                            selling_price=gross_price,
                         )
-                        # Signal automatically fires here to deduct stock via FEFO!
-                        
         except ValidationError as e:
-            # This catches the "Insufficient stock" error from our InventoryService!
+            # transaction.atomic() automatically rolled back the DB. Just return the error.
             return JsonResponse({"success": False, "message": e.messages[0]}, status=400)
         except Exception as e:
-            return JsonResponse({"success": False, "message": str(e)}, status=400)
+            return JsonResponse({"success": False, "message": f"An unexpected error occurred: {str(e)}"}, status=400)
         
         invoices = SaleInvoice.objects.filter(company=company).exclude(invoice_status='void').order_by('-date_dispatched')
         paginator = Paginator(invoices, 10)
         page_obj = paginator.get_page(1)
         
         return render(request, 'frontend/goods_out/_table.html', {'invoices': page_obj.object_list, 'page_obj': page_obj, 'request': request, 'customers': Party.objects.filter(company=company, is_customer=True, is_removed=False)})
+
 
 class GoodsOutVoidView(BaseAppView):
     def post(self, request, invoice_id):

@@ -5,7 +5,7 @@ from .services import InventoryService
 
 @receiver(post_save, sender=PurchaseItemLine)
 def purchase_line_saved(sender, instance, created, **kwargs):
-    if instance.invoice.invoice_status == 'finalized':
+    if created and instance.invoice.invoice_status == 'finalized':
         InventoryService.process_purchase_line(instance)
         InventoryService.recalculate_invoice_totals(instance.invoice)
 
@@ -23,7 +23,7 @@ def purchase_line_deleted(sender, instance, **kwargs):
 
 @receiver(post_save, sender=SaleItemLine)
 def sale_line_saved(sender, instance, created, **kwargs):
-    if instance.invoice.invoice_status == 'finalized':
+    if created and instance.invoice.invoice_status == 'finalized':
         InventoryService.process_sale_line(instance)
         InventoryService.recalculate_invoice_totals(instance.invoice)
 

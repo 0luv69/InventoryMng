@@ -24,12 +24,12 @@ class InventoryService:
                 'expiry_date': line.expiry_date,
                 'landing_cost': line.cost_price,
                 'supplier': line.invoice.supplier,
-                'created_by': line.invoice.created_by
+                'created_by': line.invoice.created_by,
+                'quantity': base_qty
             }
         )
         
         if not created:
-            # If batch already exists, just add the quantity
             batch.quantity += base_qty
             batch.save(update_fields=['quantity', 'updated_at'])
 
@@ -56,7 +56,6 @@ class InventoryService:
             item.cost_price = new_stock_value / new_stock_qty
             item.save(update_fields=['cost_price', 'updated_at'])
 
-
     @staticmethod
     @transaction.atomic
     def process_sale_line(line):
@@ -65,6 +64,7 @@ class InventoryService:
 
         # 1. Check if enough stock exists (Strict Negative Stock Block)
         available_stock = StockBatch.objects.filter(
+            company=line.company,
             item=line.item, 
             warehouse=line.warehouse
         ).aggregate(total=models.Sum('quantity'))['total'] or 0
@@ -74,10 +74,11 @@ class InventoryService:
 
         # 2. FEFO Deduction (First Expired, First Out)
         batches = StockBatch.objects.filter(
+            company=line.company,
             item=line.item, 
             warehouse=line.warehouse, 
             quantity__gt=0
-        ).order_by('expiry_date', 'created_at') # Earliest expiry first
+        ).order_by('expiry_date', 'created_at')
 
         qty_to_deduct = base_qty
         assigned_batch = None
@@ -92,7 +93,6 @@ class InventoryService:
                 batch.save(update_fields=['quantity', 'updated_at'])
                 qty_to_deduct = 0
             else:
-                # Empty this batch and move to the next
                 qty_to_deduct -= batch.quantity
                 assigned_batch = batch.batch_no
                 batch.quantity = 0
@@ -121,7 +121,6 @@ class InventoryService:
         """ Called when a PurchaseItemLine is deleted. Reverses stock. """
         base_qty = line.quantity * line.conversion_factor
         
-        # Reverse the batch
         try:
             batch = StockBatch.objects.get(
                 company=line.company,
@@ -132,9 +131,8 @@ class InventoryService:
             batch.quantity -= base_qty
             batch.save(update_fields=['quantity', 'updated_at'])
         except StockBatch.DoesNotExist:
-            pass # Batch might have been deleted manually
+            pass
 
-        # Reverse Movement Log
         StockMovement.objects.create(
             company=line.company,
             item=line.item,
@@ -151,8 +149,6 @@ class InventoryService:
         """ Called when a SaleItemLine is deleted. Restores stock. """
         base_qty = line.quantity * line.conversion_factor
         
-        # We don't know exactly which batches were deducted if multiple were used,
-        # but for simple reversal, we add it back to the assigned batch or create a generic one.
         try:
             batch = StockBatch.objects.get(
                 company=line.company,
@@ -163,7 +159,6 @@ class InventoryService:
             batch.quantity += base_qty
             batch.save(update_fields=['quantity', 'updated_at'])
         except StockBatch.DoesNotExist:
-            # If batch doesn't exist, create a generic return batch
             StockBatch.objects.create(
                 company=line.company,
                 item=line.item,
@@ -172,7 +167,6 @@ class InventoryService:
                 quantity=base_qty
             )
 
-        # Reverse Movement Log
         StockMovement.objects.create(
             company=line.company,
             item=line.item,
@@ -183,31 +177,33 @@ class InventoryService:
             notes=f"Reversal of Sale Line for Invoice {line.invoice_id}"
         )
 
-
     @staticmethod
     def recalculate_invoice_totals(invoice):
         """ Recalculates the subtotal, tax, and grand total for an invoice """
         from decimal import Decimal
         
-        # Sum all line totals
         subtotal = sum(line.line_total for line in invoice.lines.all())
         
-        # Calculate Invoice-Level Discount
         if invoice.discount_type == 'percentage':
             inv_discount = subtotal * (invoice.discount_amount / 100)
         else:
             inv_discount = invoice.discount_amount
             
         taxable_amount = subtotal - inv_discount
+        # FIX: Handle VAT Inclusive vs Exclusive math correctly
+        if invoice.is_vat_inclusive:
+            # taxable_amount is Gross (includes VAT). Extract NET and VAT.
+            invoice.subtotal = taxable_amount
+            invoice.tax_amount = taxable_amount - (taxable_amount / Decimal('1.13'))
+            invoice.grand_total = taxable_amount
+        else:
+            # taxable_amount is Net (excludes VAT). Add VAT.
+            invoice.subtotal = taxable_amount
+            invoice.tax_amount = taxable_amount * Decimal('0.13')
+            invoice.grand_total = taxable_amount + invoice.tax_amount
         
-        # Calculate 13% VAT
-        tax_amount = taxable_amount * Decimal('0.13')
-        
-        # Save to invoice
-        invoice.subtotal = subtotal
-        invoice.tax_amount = tax_amount
-        invoice.grand_total = taxable_amount + tax_amount
         invoice.save(update_fields=['subtotal', 'tax_amount', 'grand_total', 'updated_at'])
+
 
 
     @staticmethod
@@ -215,22 +211,17 @@ class InventoryService:
     def process_payment_allocation(allocation):
         """ Updates Party balance and Invoice payment status when an allocation is saved """
         payment = allocation.payment
-        
-        # 1. Update Party Balance
         party = payment.party
+        
         if payment.payment_type == 'received':
-            # Customer paid us, so their balance decreases
             party.balance -= allocation.allocated_amount
         else:
-            # We paid supplier, so our debt to them decreases
             party.balance += allocation.allocated_amount
         
         party.save(update_fields=['balance', 'updated_at'])
 
-        # 2. Update Invoice Payment Status
         invoice = allocation.sale_invoice or allocation.purchase_invoice
         if invoice:
-            # Sum all allocations for this invoice
             total_paid = invoice.allocations.aggregate(
                 total=models.Sum('allocated_amount')
             )['total'] or 0
@@ -250,21 +241,17 @@ class InventoryService:
         """ Handles customer returns. Updates stock and customer balance. """
         base_qty = line.quantity * line.conversion_factor
         
-        # 1. Reduce Customer Balance (They get money/credit back)
         party = line.return_invoice.customer
         party.balance -= line.line_total
         party.save(update_fields=['balance', 'updated_at'])
 
-        # 2. Handle Stock
         if line.is_spoiled:
-            # Do NOT add back to sellable stock. Just log as spoilage movement.
             StockMovement.objects.create(
                 company=line.company, item=line.item, warehouse=line.warehouse,
                 batch_no=line.batch_no, movement_type='spoilage', quantity=-base_qty,
                 reference_model='SalesReturn', reference_id=str(line.return_invoice_id)
             )
         else:
-            # Add back to sellable stock in the specified batch
             batch, created = StockBatch.objects.get_or_create(
                 company=line.company, item=line.item, warehouse=line.warehouse, batch_no=line.batch_no,
                 defaults={'landing_cost': line.cost_price}
@@ -273,7 +260,6 @@ class InventoryService:
                 batch.quantity += base_qty
                 batch.save(update_fields=['quantity', 'updated_at'])
 
-            # Log movement
             StockMovement.objects.create(
                 company=line.company, item=line.item, warehouse=line.warehouse,
                 batch_no=line.batch_no, movement_type='sale_return', quantity=base_qty,
@@ -286,7 +272,6 @@ class InventoryService:
         """ Deducts stock directly from warehouse due to damage/expiry """
         base_qty = spoilage.quantity
         
-        # Deduct from batch
         try:
             batch = StockBatch.objects.get(
                 company=spoilage.company, item=spoilage.item, 
@@ -295,19 +280,10 @@ class InventoryService:
             batch.quantity -= base_qty
             batch.save(update_fields=['quantity', 'updated_at'])
         except StockBatch.DoesNotExist:
-            pass # Or raise error if strict matching is required
+            pass
             
-        # Log movement
         StockMovement.objects.create(
             company=spoilage.company, item=spoilage.item, warehouse=spoilage.warehouse,
             batch_no=spoilage.batch_no, movement_type='spoilage', quantity=-base_qty,
             reference_model='SpoilageLoss', reference_id=str(spoilage.id)
         )
-
-
-
-
-
-
-
-
