@@ -11,6 +11,7 @@ from django.db.models import Q
 from django.utils import timezone
 import json
 
+from django.db import transaction
 from apps.catalog.models import Item, Unit, Category
 from apps.transactions.models import PurchaseInvoice, PurchaseItemLine, SaleInvoice, SaleItemLine
 from apps.parties.models import Party
@@ -490,56 +491,57 @@ class GoodsOutSaveView(BaseAppView):
         # Check Credit Limit BEFORE saving
         customer = invoice.customer
         if customer and customer.credit_limit > 0:
-            # Sum the gross totals from the form
-            qtys = [Decimal(q) for q in request.POST.getlist('qty[]')]
-            prices = [Decimal(p) for p in request.POST.getlist('selling_price[]')]
-            new_total = sum(q * p for q, p in zip(qtys, prices))
-            
+            new_total = sum(Decimal(q) * Decimal(p) for q, p in zip(request.POST.getlist('qty[]'), request.POST.getlist('selling_price[]')))
             if customer.balance + new_total > customer.credit_limit:
-                return JsonResponse({"success": False, "message": f"Credit Limit Exceeded! Limit: Rs. {customer.credit_limit}, Current Balance: Rs. {customer.balance}."}, status=400)
-
-        invoice.save()
+                return JsonResponse({"success": False, "message": f"Credit Limit Exceeded! Limit: Rs. {customer.credit_limit}, Balance: Rs. {customer.balance}."}, status=400)
 
         warehouse_id = request.POST.get('warehouse')
-        
         item_ids = request.POST.getlist('item_id[]')
         qtys = request.POST.getlist('qty[]')
         prices = request.POST.getlist('selling_price[]')
 
-        for i in range(len(item_ids)):
-            if item_ids[i]:
-                item = Item.objects.get(id=item_ids[i], company=company)
-                
-                try: qty_val = Decimal(qtys[i])
-                except: qty_val = Decimal('0')
-                
-                try: gross_price = Decimal(prices[i])
-                except: gross_price = Decimal('0')
+        try:
+            # Wrap in transaction.atomic so if stock fails, the invoice doesn't save
+            with transaction.atomic():
+                invoice.save()
 
-                try:
-                    SaleItemLine.objects.create(
-                        invoice=invoice,
-                        item=item,
-                        warehouse_id=warehouse_id,
-                        unit=item.base_unit,
-                        conversion_factor=Decimal('1.00'),
-                        quantity=qty_val,
-                        selling_price=gross_price, # Save Gross Price, signals will calculate VAT perfectly
-                    )
-                except ValidationError as e:
-                    # FIX: Catch insufficient stock error and return nicely to frontend
-                    invoice.invoice_status = 'void'
-                    invoice.void_reason = "System error: Insufficient stock"
-                    invoice.save()
-                    return JsonResponse({"success": False, "message": e.messages[0]}, status=400)
+                for i in range(len(item_ids)):
+                    if item_ids[i]:
+                        item = Item.objects.get(id=item_ids[i], company=company)
+                        
+                        try: qty_val = Decimal(qtys[i])
+                        except: qty_val = Decimal('0')
+                        
+                        try: gross_price = Decimal(prices[i])
+                        except: gross_price = Decimal('0')
+
+                        if invoice.is_vat_inclusive:
+                            net_price = (gross_price / Decimal('1.13')).quantize(Decimal('0.01'))
+                        else:
+                            net_price = gross_price
+
+                        SaleItemLine.objects.create(
+                            invoice=invoice,
+                            item=item,
+                            warehouse_id=warehouse_id,
+                            unit=item.base_unit,
+                            conversion_factor=Decimal('1.00'),
+                            quantity=qty_val,
+                            selling_price=net_price,
+                        )
+                        # Signal automatically fires here to deduct stock via FEFO!
+                        
+        except ValidationError as e:
+            # This catches the "Insufficient stock" error from our InventoryService!
+            return JsonResponse({"success": False, "message": e.messages[0]}, status=400)
+        except Exception as e:
+            return JsonResponse({"success": False, "message": str(e)}, status=400)
         
         invoices = SaleInvoice.objects.filter(company=company).exclude(invoice_status='void').order_by('-date_dispatched')
         paginator = Paginator(invoices, 10)
         page_obj = paginator.get_page(1)
         
         return render(request, 'frontend/goods_out/_table.html', {'invoices': page_obj.object_list, 'page_obj': page_obj, 'request': request, 'customers': Party.objects.filter(company=company, is_customer=True, is_removed=False)})
-
-
 
 class GoodsOutVoidView(BaseAppView):
     def post(self, request, invoice_id):
