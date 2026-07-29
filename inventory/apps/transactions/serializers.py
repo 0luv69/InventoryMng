@@ -30,15 +30,16 @@ class PurchaseInvoiceSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         lines_data = validated_data.pop('lines')
-        
-        # 1. Create the Invoice Header
         invoice = PurchaseInvoice.objects.create(**validated_data)
         
-        # 2. Create the Line Items (This triggers our signals!)
         for line_data in lines_data:
-            PurchaseItemLine.objects.create(invoice=invoice, **line_data)
-            
-        # 3. Refresh to get the auto-calculated totals from our signals
+            # FIX: Pass company and created_by explicitly
+            PurchaseItemLine.objects.create(
+                invoice=invoice, 
+                company=invoice.company,
+                created_by=invoice.created_by,
+                **line_data
+            )
         invoice.refresh_from_db()
         return invoice
 
@@ -86,9 +87,13 @@ class SaleInvoiceSerializer(serializers.ModelSerializer):
         invoice = SaleInvoice.objects.create(**validated_data)
         
         for line_data in lines_data:
-            # This triggers the FEFO logic, MAC deduction, and Strict Negative Stock check!
-            SaleItemLine.objects.create(invoice=invoice, **line_data)
-            
+            # FIX: Pass company and created_by explicitly
+            SaleItemLine.objects.create(
+                invoice=invoice, 
+                company=invoice.company,
+                created_by=invoice.created_by,
+                **line_data
+            )
         invoice.refresh_from_db()
         return invoice
 
