@@ -6,6 +6,9 @@ app_name = 'frontend' # This allows us to use frontend:dashboard
 urlpatterns = [
     path('', views.DashboardView.as_view(), name='dashboard'),
 
+    path('settings/quick-add-category/', views.QuickAddCategoryView.as_view(), name='quick_add_category'),
+    path('settings/quick-add-unit/', views.QuickAddUnitView.as_view(), name='quick_add_unit'),
+    path('settings/quick-add-tier/', views.QuickAddPriceTierView.as_view(), name='quick_add_tier'),
     
     # Items
     path('items/', views.ItemsView.as_view(), name='items'),

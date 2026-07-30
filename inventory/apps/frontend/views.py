@@ -12,7 +12,7 @@ from django.utils import timezone
 import json
 
 from django.db import transaction
-from apps.catalog.models import Item, Unit, Category
+from apps.catalog.models import Item, Unit, Category, PriceTier, ItemUOM, ItemPrice
 from apps.transactions.models import PurchaseInvoice, PurchaseItemLine, SaleInvoice, SaleItemLine
 from apps.parties.models import Party
 from apps.inventory.models import Warehouse
@@ -30,25 +30,34 @@ class DashboardView(BaseAppView):
     def get(self, request):
         return render(request, 'frontend/dashboard.html')
 
+class QuickAddCategoryView(BaseAppView):
+    def post(self, request):
+        name = request.POST.get('name', '').strip() # Safely get name
+        if name:
+            cat = Category.objects.create(company=self.get_company(), name=name, created_by=request.user)
+            return JsonResponse({'id': cat.id, 'name': cat.name})
+        return JsonResponse({'error': 'Name required'}, status=400)
 
+class QuickAddUnitView(BaseAppView):
+    def post(self, request):
+        name = request.POST.get('name', '').strip()
+        short = request.POST.get('short_name', '').strip()
+        if name and short:
+            unit = Unit.objects.create(company=self.get_company(), name=name, short_name=short, created_by=request.user)
+            return JsonResponse({'id': unit.id, 'name': unit.name, 'short_name': unit.short_name})
+        return JsonResponse({'error': 'Name and Short Name required'}, status=400)
+
+class QuickAddPriceTierView(BaseAppView):
+    def post(self, request):
+        name = request.POST.get('name', '').strip()
+        if name:
+            tier = PriceTier.objects.create(company=self.get_company(), name=name, created_by=request.user)
+            return JsonResponse({'id': tier.id, 'name': tier.name})
+        return JsonResponse({'error': 'Name required'}, status=400)
+    
 # ==========================================
 # ITEMS
 # ==========================================
-class ItemFormView(BaseAppView):
-    def get(self, request):
-        company = self.get_company()
-        item_id = request.GET.get('id')
-        item = None
-        if item_id:
-            item = get_object_or_404(Item, id=item_id, company=company)
-            
-        context = {
-            'item': item,
-            'units': Unit.objects.filter(company=company),
-            'categories': Category.objects.filter(company=company),
-        }
-        return render(request, 'frontend/items/_form.html', context)
-
 class ItemsView(BaseAppView):
     def get(self, request):
         context = {
@@ -56,6 +65,41 @@ class ItemsView(BaseAppView):
             'categories': Category.objects.filter(company=self.get_company()),
         }
         return render(request, 'frontend/items/items.html', context)
+
+
+
+class ItemFormView(BaseAppView):
+    def get(self, request):
+        company = self.get_company()
+        item_id = request.GET.get('id')
+        is_editable = request.GET.get('editable', '0') == '1' # Check URL param
+        item = None
+        uom_json = '[]'
+        prices_json = '[]'
+
+        if item_id:
+            item = get_object_or_404(Item, id=item_id, company=company)
+            uoms = ItemUOM.objects.filter(item=item).select_related('unit')
+            uom_list = [{'unit_id': u.unit_id, 'factor': str(u.conversion_factor)} for u in uoms]
+            uom_json = json.dumps(uom_list)
+            
+            prices = ItemPrice.objects.filter(item=item).select_related('price_tier')
+            prices_list = [{'tier_id': p.price_tier_id, 'price': str(p.price)} for p in prices]
+            prices_json = json.dumps(prices_list)
+
+        context = {
+            'item': item,
+            'is_editable': is_editable, # Pass to context
+            'units': Unit.objects.filter(company=company),
+            'categories': Category.objects.filter(company=company),
+            'suppliers': Party.objects.filter(company=company, is_supplier=True, is_removed=False),
+            'price_tiers': PriceTier.objects.filter(company=company),
+            'uom_json': uom_json,
+            'prices_json': prices_json,
+        }
+        return render(request, 'frontend/items/_form.html', context)
+
+
 class ItemsTableView(BaseAppView):
     def get(self, request):
         company = self.get_company()
@@ -114,16 +158,42 @@ class ItemSaveView(BaseAppView):
         item.name = request.POST.get('name')
         item.category_id = request.POST.get('category') or None
         item.base_unit_id = request.POST.get('base_unit')
-        item.cost_price = request.POST.get('cost_price') or 0
         item.barcode = request.POST.get('barcode')
+        item.default_supplier_id = request.POST.get('default_supplier') or None
         item.status = 'active' if request.POST.get('is_active') == 'on' else 'inactive'
+        
+        # Handle Image Upload
+        if 'image' in request.FILES:
+            item.image = request.FILES['image']
         
         try:
             item.save()
         except Exception:
             pass
         
-        # CHANGED: exclude(status='deleted')
+        # Sync UOM Conversions (Clear old, add new)
+        item.uom_conversions.all().delete()
+        uom_unit_ids = request.POST.getlist('uom_unit_id[]')
+        uom_factors = request.POST.getlist('uom_factor[]')
+        for i in range(len(uom_unit_ids)):
+            if uom_unit_ids[i] and uom_factors[i]:
+                ItemUOM.objects.create(
+                    company=company, item=item, unit_id=uom_unit_ids[i], 
+                    conversion_factor=uom_factors[i], created_by=request.user
+                )
+
+        # Sync Price Tiers (Clear old, add new)
+        item.prices.all().delete()
+        tier_ids = request.POST.getlist('price_tier_id[]')
+        tier_prices = request.POST.getlist('price_amount[]')
+        for i in range(len(tier_ids)):
+            if tier_ids[i] and tier_prices[i]:
+                ItemPrice.objects.create(
+                    company=company, item=item, price_tier_id=tier_ids[i], 
+                    price=tier_prices[i], created_by=request.user
+                )
+        
+        # Return updated table
         items = Item.objects.filter(company=company).exclude(status='deleted').annotate(
             total_stock_calc=Sum('stock_batches__quantity')
         ).order_by('-created_at')
@@ -131,6 +201,7 @@ class ItemSaveView(BaseAppView):
         page_obj = paginator.get_page(1)
         
         return render(request, 'frontend/items/_table.html', {'items': page_obj.object_list, 'page_obj': page_obj, 'request': request})
+
 
 
 # 3. Update ItemDeleteView
@@ -505,16 +576,24 @@ class GoodsOutSaveView(BaseAppView):
 
 
         # Check Credit Limit BEFORE doing anything
-        new_total = Decimal('0')
+        grand_total = Decimal('0')
         customer_id = request.POST.get('customer')
         customer = Party.objects.get(id=customer_id, company=company)
         
         if customer and customer.credit_limit > 0:
             qtys = request.POST.getlist('qty[]')
             prices = request.POST.getlist('selling_price[]')
-            new_total = sum(Decimal(q) * Decimal(p) for q, p in zip(qtys, prices))
+            is_vat_inclusive = request.POST.get('is_vat_inclusive') == 'true'
+
+
+            subtotal = sum(Decimal(q) * Decimal(p) for q, p in zip(qtys, prices))
+
+            if is_vat_inclusive:
+                grand_total = subtotal
+            else:
+                grand_total = subtotal * Decimal('1.13')
             
-            if customer.balance + new_total > customer.credit_limit:
+            if customer.balance + grand_total > customer.credit_limit:
                 return JsonResponse({"success": False, "message": f"Credit Limit Exceeded! Limit: Rs. {customer.credit_limit}, Current Balance: Rs. {customer.balance}."}, status=400)
         # FIX: Wrap everything in a transaction. If a line fails, it rolls back the whole invoice!
         try:
@@ -568,7 +647,6 @@ class GoodsOutSaveView(BaseAppView):
         
         return render(request, 'frontend/goods_out/_table.html', {'invoices': page_obj.object_list, 'page_obj': page_obj, 'request': request, 'customers': Party.objects.filter(company=company, is_customer=True, is_removed=False)})
 
-
 class GoodsOutVoidView(BaseAppView):
     def post(self, request, invoice_id):
         company = self.get_company()
@@ -587,6 +665,8 @@ class GoodsOutVoidView(BaseAppView):
         page_obj = paginator.get_page(1)
         
         return render(request, 'frontend/goods_out/_table.html', {'invoices': page_obj.object_list, 'page_obj': page_obj, 'request': request, 'customers': Party.objects.filter(company=company, is_customer=True, is_removed=False)})
+
+
 
 
 

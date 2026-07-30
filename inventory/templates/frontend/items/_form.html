@@ -1,100 +1,168 @@
-<form x-data="{ 
-        changed: false, 
-        editable: {{ item|yesno:'false,true' }},
-        name: '{{ item.name|default:'' }}',
-        baseUnit: '{{ item.base_unit_id|default:'' }}'
-    }" 
+<form x-data="itemForm({{ item.id|default:'null' }}, {{ uom_json|safe }}, {{ prices_json|safe }}, {% if is_editable %}true{% else %}false{% endif %})" 
       @input="changed = true"
       hx-post="{% url 'frontend:item_save' %}" 
       hx-target="#items-table" 
       hx-swap="innerHTML" 
+      hx-encoding="multipart/form-data"
       hx-on::after-request="if(event.detail.successful) { toast.success('Item saved successfully!'); window.dispatchEvent(new CustomEvent('close-modal')); }"
-      class="space-y-5">
+      class="space-y-6">
       
     {% csrf_token %}
     <input type="hidden" name="id" value="{{ item.id|default:'' }}">
 
-    <!-- View Mode Unlock Button -->
-    {% if item %}
+    <!-- Hidden elements for Alpine -->
+    <input type="hidden" id="item-name-input" value="{{ item.name|default:'' }}">
+    <input type="hidden" id="item-base-unit-select" value="{{ item.base_unit_id|default:'' }}">
+    <script type="text/template" id="item-image-preview-src">{% if item and item.image %}{{ item.image.url }}{% endif %}</script>
+
+    {% if item and not is_editable %}
     <div x-show="!editable" class="p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-center justify-between">
         <p class="text-xs font-medium text-amber-700">You are viewing a read-only item.</p>
         <button type="button" @click="editable = true" class="px-3 py-1.5 text-xs font-semibold text-white bg-amber-500 rounded-lg hover:bg-amber-600">Edit Item</button>
     </div>
     {% endif %}
 
-    <div>
-        <label class="block text-xs font-semibold text-neutral-600 mb-1.5">Item Name *</label>
-        <input type="text" name="name" x-model="name" required 
-               :readonly="!editable"
-               :class="!editable ? 'bg-neutral-50 text-neutral-500 cursor-not-allowed' : 'bg-white focus:outline-none focus:ring-2 focus:ring-green-500/20'"
-               class="w-full px-4 py-2.5 text-sm border border-neutral-200 rounded-xl transition-all">
-    </div>
-
-    <div>
-        <label class="block text-xs font-semibold text-neutral-600 mb-1.5">Barcode</label>
-        <input type="text" name="barcode" value="{{ item.barcode|default:'' }}" 
-               :readonly="!editable"
-               :class="!editable ? 'bg-neutral-50 text-neutral-500 cursor-not-allowed' : 'bg-white focus:outline-none focus:ring-2 focus:ring-green-500/20'"
-               class="w-full px-4 py-2.5 text-sm border border-neutral-200 rounded-xl transition-all">
-    </div>
-
-    <div class="grid grid-cols-2 gap-4">
-        <div>
-            <label class="block text-xs font-semibold text-neutral-600 mb-1.5">Category</label>
-            <select name="category" 
-                    :disabled="!editable"
-                    :class="!editable ? 'bg-neutral-50 text-neutral-500 cursor-not-allowed' : 'bg-white focus:outline-none focus:ring-2 focus:ring-green-500/20'"
-                    class="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl transition-all appearance-none">
-                <option value="">None</option>
-                {% for c in categories %}
-                <option value="{{ c.id }}" {% if item.category_id == c.id %}selected{% endif %}>{{ c.name }}</option>
-                {% endfor %}
-            </select>
+    <!-- Basic Info & Image -->
+    <div class="grid grid-cols-3 gap-6">
+        <div class="col-span-1">
+            <label class="block text-xs font-semibold text-neutral-600 mb-1.5">Item Image</label>
+            <div class="w-full aspect-square rounded-xl border-2 border-dashed border-neutral-200 flex items-center justify-center overflow-hidden bg-neutral-50 relative">
+                <img x-show="imagePreview" :src="imagePreview" class="w-full h-full object-cover">
+                <div x-show="!imagePreview" class="text-center p-4">
+                    <svg class="w-8 h-8 text-neutral-300 mx-auto mb-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    <p class="text-xs text-neutral-400">PNG, JPG</p>
+                </div>
+                <input type="file" name="image" accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer" :disabled="!editable" @change="previewImage($event)">
+            </div>
         </div>
-        <div>
-            <label class="block text-xs font-semibold text-neutral-600 mb-1.5">Base Unit *</label>
-            <select name="base_unit" x-model="baseUnit" required 
-                    :disabled="!editable"
-                    :class="!editable ? 'bg-neutral-50 text-neutral-500 cursor-not-allowed' : 'bg-white focus:outline-none focus:ring-2 focus:ring-green-500/20'"
-                    class="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl transition-all appearance-none">
-                <option value="">Select</option>
-                {% for u in units %}
-                <option value="{{ u.id }}" {% if item.base_unit_id == u.id %}selected{% endif %}>{{ u.name }}</option>
-                {% endfor %}
-            </select>
+
+        <div class="col-span-2 space-y-4">
+            <div>
+                <label class="block text-xs font-semibold text-neutral-600 mb-1.5">Item Name *</label>
+                <input type="text" name="name" x-model="name" required :readonly="!editable" class="w-full px-4 py-2.5 text-sm border border-neutral-200 rounded-xl transition-all" :class="!editable ? 'bg-neutral-50 cursor-not-allowed' : 'bg-white focus:ring-2 focus:ring-green-500/20'">
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-neutral-600 mb-1.5">Barcode</label>
+                <input type="text" name="barcode" value="{{ item.barcode|default:'' }}" :readonly="!editable" class="w-full px-4 py-2.5 text-sm border border-neutral-200 rounded-xl transition-all" :class="!editable ? 'bg-neutral-50 cursor-not-allowed' : 'bg-white focus:ring-2 focus:ring-green-500/20'">
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-semibold text-neutral-600 mb-1.5">Category</label>
+                    <select name="category" :disabled="!editable" class="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white transition-all" :class="!editable ? 'bg-neutral-50 cursor-not-allowed' : ''">
+                        <option value="">None</option>
+                        {% for c in categories %}<option value="{{ c.id }}" {% if item.category_id == c.id %}selected{% endif %}>{{ c.name }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-neutral-600 mb-1.5">Base Unit *</label>
+                    <select name="base_unit" x-model="baseUnit" required :disabled="!editable" class="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white transition-all" :class="!editable ? 'bg-neutral-50 cursor-not-allowed' : ''">
+                        <option value="">Select</option>
+                        {% for u in units %}<option value="{{ u.id }}" {% if item.base_unit_id == u.id %}selected{% endif %}>{{ u.name }}</option>{% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-neutral-600 mb-1.5">Default Supplier</label>
+                <select name="default_supplier" :disabled="!editable" class="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white transition-all" :class="!editable ? 'bg-neutral-50 cursor-not-allowed' : ''">
+                    <option value="">None</option>
+                    {% for s in suppliers %}<option value="{{ s.id }}" {% if item.default_supplier_id == s.id %}selected{% endif %}>{{ s.name }}</option>{% endfor %}
+                </select>
+            </div>
         </div>
     </div>
 
-    <div>
-        <label class="block text-xs font-semibold text-neutral-600 mb-1.5">Cost Price (Moving Avg)</label>
-        <input type="number" name="cost_price" step="0.01" value="{{ item.cost_price|default:'0' }}" 
-               :readonly="!editable"
-               :class="!editable ? 'bg-neutral-50 text-neutral-500 cursor-not-allowed' : 'bg-white focus:outline-none focus:ring-2 focus:ring-green-500/20'"
-               class="w-full px-4 py-2.5 text-sm border border-neutral-200 rounded-xl transition-all">
-        <p class="text-[0.65rem] text-neutral-400 mt-1">Note: This is automatically updated when you purchase stock.</p>
+    <!-- UOM CONVERSIONS SECTION -->
+    <div class="border-t border-neutral-100 pt-6">
+        <div class="flex items-center justify-between mb-3">
+            <h3 class="text-xs font-bold text-neutral-600 uppercase tracking-wider">UOM Conversions (Buy/Sell in Cartons)</h3>
+            <button type="button" x-show="editable" @click="addUom()" class="text-xs font-semibold text-green-600 hover:text-green-700 flex items-center gap-1">
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Add UOM
+            </button>
+        </div>
+        <div class="space-y-2">
+            <template x-for="(uom, index) in uoms" :key="index">
+                <div class="flex items-center gap-2 bg-neutral-50 p-2 rounded-lg border border-neutral-200">
+                    <select x-model="uom.unit_id" name="uom_unit_id[]" :disabled="!editable" class="flex-1 px-3 py-2 text-sm border border-neutral-200 rounded-lg bg-white">
+                        <option value="">Select Unit</option>
+                        {% for u in units %}<option value="{{ u.id }}">{{ u.name }}</option>{% endfor %}
+                    </select>
+                    <span class="text-xs text-neutral-500">=</span>
+                    <input type="number" x-model="uom.factor" name="uom_factor[]" step="0.01" placeholder="12" :disabled="!editable" class="w-24 px-3 py-2 text-sm border border-neutral-200 rounded-lg bg-white">
+                    <span class="text-xs text-neutral-500">Base Units</span>
+                    <button type="button" x-show="editable" @click="removeUom(index)" class="text-red-400 hover:text-red-600 p-2">
+                        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                    </button>
+                </div>
+            </template>
+            <div x-show="uoms.length === 0" class="text-xs text-neutral-400 text-center py-4 border border-dashed border-neutral-200 rounded-lg">
+                No extra UOMs. Item will be bought/sold in Base Unit.
+            </div>
+        </div>
     </div>
 
+    <!-- PRICING SECTION (Cost + Selling) -->
+    <div class="border-t border-neutral-100 pt-6">
+        <h3 class="text-xs font-bold text-neutral-600 uppercase tracking-wider mb-3">Pricing</h3>
+        
+        <!-- Cost Price (Moving Average) -->
+        <div class="mb-4">
+            <label class="block text-xs font-semibold text-neutral-600 mb-1.5">Cost Price (Moving Average)</label>
+            <div class="relative">
+                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-neutral-400 font-medium">Rs.</span>
+                <input type="number" name="cost_price" step="0.01" value="{{ item.cost_price|default:'0' }}" :readonly="!editable" class="w-full pl-10 pr-4 py-2.5 text-sm border border-neutral-200 rounded-xl transition-all" :class="!editable ? 'bg-neutral-50 cursor-not-allowed' : 'bg-white focus:ring-2 focus:ring-green-500/20'">
+            </div>
+            <p class="text-[0.65rem] text-neutral-400 mt-1">Note: This is automatically updated when you purchase stock.</p>
+        </div>
+
+        <!-- Selling Prices (Dynamic) -->
+        <div class="flex items-center justify-between mb-3">
+            <h4 class="text-xs font-semibold text-neutral-500 uppercase tracking-wider">Selling Prices (Tiers)</h4>
+            <button type="button" x-show="editable" @click="addPrice()" class="text-xs font-semibold text-green-600 hover:text-green-700 flex items-center gap-1">
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Add Price
+            </button>
+        </div>
+        <div class="space-y-2">
+            <template x-for="(price, index) in prices" :key="index">
+                <div class="flex items-center gap-2 bg-neutral-50 p-2 rounded-lg border border-neutral-200">
+                    <select x-model="price.tier_id" name="price_tier_id[]" :disabled="!editable" class="flex-1 px-3 py-2 text-sm border border-neutral-200 rounded-lg bg-white">
+                        <option value="">Select Tier</option>
+                        {% for t in price_tiers %}<option value="{{ t.id }}">{{ t.name }}</option>{% endfor %}
+                    </select>
+                    <span class="text-xs text-neutral-500">Rs.</span>
+                    <input type="number" x-model="price.price" name="price_amount[]" step="0.01" placeholder="0.00" :disabled="!editable" class="w-32 px-3 py-2 text-sm border border-neutral-200 rounded-lg bg-white">
+                    <button type="button" x-show="editable" @click="removePrice(index)" class="text-red-400 hover:text-red-600 p-2">
+                        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                    </button>
+                </div>
+            </template>
+            <div x-show="prices.length === 0" class="text-xs text-neutral-400 text-center py-4 border border-dashed border-neutral-200 rounded-lg">
+                No selling prices set.
+            </div>
+        </div>
+    </div>
+
+    <!-- Active Toggle -->
     <div class="flex items-center justify-between p-4 bg-neutral-50 rounded-xl border border-neutral-100">
         <div class="text-sm font-semibold text-neutral-700">Active Item</div>
         <input type="checkbox" name="is_active" class="w-5 h-5 rounded text-green-500" :disabled="!editable" {% if not item or item.status == 'active' %}checked{% endif %}>
     </div>
 
+    <!-- Submit Button -->
     <div class="pt-4 border-t border-neutral-100">
         <button type="submit" 
                 :disabled="!editable || !changed || !name || !baseUnit"
                 :class="(!editable || !changed || !name || !baseUnit) ? 'bg-neutral-300 cursor-not-allowed' : 'bg-green-500 hover:bg-green-600'"
                 class="w-full px-4 py-2.5 text-sm font-semibold text-white rounded-xl transition-all flex items-center justify-center gap-2">
-            
             <span x-show="!editable" class="flex items-center gap-2">
                 <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
                 Switch to Edit Mode
             </span>
-            
             <span x-show="editable && !changed" class="flex items-center gap-2">
                 <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                 No Changes Made
             </span>
-            
             <span x-show="editable && changed && name && baseUnit" class="flex items-center gap-2">
                 <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
                 Save Item

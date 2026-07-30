@@ -58,6 +58,13 @@ class Item(BaseModel):
     
     # Moving Average Cost (Auto-calculated by system during purchases)
     cost_price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+
+    # NEW Fields:
+    image = models.ImageField(upload_to='item_images/', null=True, blank=True)
+    default_supplier = models.ForeignKey(
+        'parties.Party', on_delete=models.SET_NULL, null=True, blank=True, 
+        related_name='supplied_items', limit_choices_to={'is_supplier': True}
+    )
     
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.ACTIVE)
     
@@ -98,7 +105,7 @@ class ItemUOM(BaseModel):
     )
 
     class Meta:
-        constraints = [
+        constraints = [ 
             models.UniqueConstraint(fields=['item', 'unit'], name='uniq_item_uom')
         ]
 
@@ -115,7 +122,6 @@ class PriceTier(BaseModel):
         constraints = [
             models.UniqueConstraint(fields=['company', 'name'], name='uniq_pricetier_per_company')
         ]
-
     def __str__(self):
         return self.name
 

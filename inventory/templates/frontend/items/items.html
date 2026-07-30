@@ -4,29 +4,38 @@
 {% block page_title %}Items & Goods{% endblock %}
 
 {% block content %}
+<!-- Main Alpine Scope. Added settingsModal: false here -->
 <div x-data="{ 
         slideOver: false, 
         fullWidth: false, 
         filterOpen: false, 
         deleteModal: false, 
         deleteId: null, 
-        deleteReason: '' 
+        deleteReason: '',
+        settingsModal: false
     }" @open-modal.window="slideOver = true" @close-modal.window="slideOver = false" class="space-y-6">
 
     <div class="flex items-center justify-between">
         <div>
-            <h1 class="text-2xl font-extrabold text-neutral-900">Items & Goods</h1>
+            <h1 class="text-2xl font-extrabold text-neutral-900">Items & Goods <span class="text-sm font-medium text-neutral-400">(Master Items)</span></h1>
             <p class="text-sm text-neutral-400 mt-1">Manage your product catalogue and stock units.</p>
         </div>
         
-        <button @click="$dispatch('open-modal')" 
-                hx-get="{% url 'frontend:item_form' %}" 
-                hx-target="#formContainer" 
-                hx-swap="innerHTML"
-                class="inline-flex items-center gap-2 px-5 py-2.5 bg-green-500 text-white text-sm font-semibold rounded-xl hover:bg-green-600 transition-all">
-            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Add Item
-        </button>
+        <div class="flex items-center gap-2">
+            <button @click="settingsModal = true" class="inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-neutral-200 text-neutral-600 text-sm font-semibold rounded-xl hover:bg-neutral-50 transition-all">
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                Settings
+            </button>
+
+            <button @click="$dispatch('open-modal')" 
+                    hx-get="{% url 'frontend:item_form' %}" 
+                    hx-target="#formContainer" 
+                    hx-swap="innerHTML"
+                    class="inline-flex items-center gap-2 px-5 py-2.5 bg-green-500 text-white text-sm font-semibold rounded-xl hover:bg-green-600 transition-all">
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Add Item
+            </button>
+        </div>
     </div>
 
     <!-- Advanced Toolbar -->
@@ -136,5 +145,147 @@
         </div>
     </div>
 
+    <!-- SETTINGS MODAL (Moved INSIDE the x-data scope) -->
+    <div x-show="settingsModal" x-transition.opacity @click="settingsModal = false" class="fixed inset-0 bg-black/30 backdrop-blur-sm z-[70] flex items-center justify-center" style="display: none;">
+        <div x-show="settingsModal" x-transition @click.stop class="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 p-6">
+            <h3 class="text-lg font-bold text-neutral-900 mb-4">Quick Add Settings</h3>
+            
+            <div class="space-y-4">
+                <!-- Add Category -->
+                <div>
+                    <label class="block text-xs font-semibold text-neutral-600 mb-1.5">New Category</label>
+                    <div class="flex gap-2">
+                        <input type="text" id="quick-cat-name" placeholder="e.g. Beverages" class="flex-1 px-3 py-2 text-sm border border-neutral-200 rounded-lg">
+                        <button onclick="quickAdd('cat')" class="px-4 py-2 text-xs font-semibold text-white bg-green-500 rounded-lg hover:bg-green-600">Add</button>
+                    </div>
+                </div>
+
+                <!-- Add Unit -->
+                <div class="flex gap-2">
+                    <div class="flex-1">
+                        <label class="block text-xs font-semibold text-neutral-600 mb-1.5">New Unit Name</label>
+                        <input type="text" id="quick-unit-name" placeholder="e.g. Carton" class="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg">
+                    </div>
+                    <div class="w-20">
+                        <label class="block text-xs font-semibold text-neutral-600 mb-1.5">Short</label>
+                        <input type="text" id="quick-unit-short" placeholder="ctn" class="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg">
+                    </div>
+                    <div class="flex items-end">
+                        <button onclick="quickAdd('unit')" class="px-4 py-2 text-xs font-semibold text-white bg-green-500 rounded-lg hover:bg-green-600">Add</button>
+                    </div>
+                </div>
+
+                <!-- Add Price Tier -->
+                <div>
+                    <label class="block text-xs font-semibold text-neutral-600 mb-1.5">New Price Tier</label>
+                    <div class="flex gap-2">
+                        <input type="text" id="quick-tier-name" placeholder="e.g. Wholesale" class="flex-1 px-3 py-2 text-sm border border-neutral-200 rounded-lg">
+                        <button onclick="quickAdd('tier')" class="px-4 py-2 text-xs font-semibold text-white bg-green-500 rounded-lg hover:bg-green-600">Add</button>
+                    </div>
+                </div>
+            </div>
+
+            <button @click="settingsModal = false" class="mt-6 w-full px-4 py-2.5 text-sm font-semibold text-neutral-600 bg-neutral-100 rounded-xl hover:bg-neutral-200">Done</button>
+        </div>
+    </div>
+
 </div>
+<!-- END OF MAIN X-DATA DIV -->
+
+<script>
+// Safely extract CSRF token
+function getCsrfToken() {
+    const match = document.cookie.match(/csrftoken=([^;]+)/);
+    return match ? match[1] : '';
+}
+
+async function quickAdd(type) {
+    let url = '';
+    let payload = {};
+
+    if (type === 'cat') {
+        let val = document.getElementById('quick-cat-name').value;
+        if (!val) return toast.error("Enter category name");
+        url = "{% url 'frontend:quick_add_category' %}";
+        payload = { name: val };
+    } else if (type === 'unit') {
+        let val = document.getElementById('quick-unit-name').value;
+        let short = document.getElementById('quick-unit-short').value;
+        if (!val || !short) return toast.error("Enter unit name and short name");
+        url = "{% url 'frontend:quick_add_unit' %}";
+        payload = { name: val, short_name: short };
+    } else if (type === 'tier') {
+        let val = document.getElementById('quick-tier-name').value;
+        if (!val) return toast.error("Enter tier name");
+        url = "{% url 'frontend:quick_add_tier' %}";
+        payload = { name: val };
+    }
+
+    try {
+        // FIX: Use URLSearchParams to send standard form-data, NOT JSON
+        const res = await fetch(url, {
+            method: 'POST',
+            headers: { 
+                'X-CSRFToken': getCsrfToken() 
+            },
+            body: new URLSearchParams(payload)
+        });
+        const data = await res.json();
+        if (res.ok) {
+            toast.success(data.name + ' added! Reloading form...');
+            setTimeout(() => location.reload(), 800); // Simple reload to update dropdowns
+        } else {
+            toast.error(data.error || 'Failed to add');
+        }
+    } catch (e) {
+        toast.error('Network error');
+    }
+}
+</script>
+
+<!-- Alpine Item Form Logic -->
+<script>
+function itemForm(itemId, initialUoms, initialPrices, isEditable) {
+    return {
+        changed: false,
+        editable: itemId ? isEditable : true,
+        name: document.getElementById('item-name-input')?.value || '',
+        baseUnit: document.getElementById('item-base-unit-select')?.value || '',
+        imagePreview: document.getElementById('item-image-preview-src')?.textContent.trim() || '',
+        uoms: initialUoms || [],
+        prices: initialPrices || [],
+        
+        init() {
+            this.changed = false; 
+        },
+        
+        previewImage(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => { this.imagePreview = e.target.result; };
+                reader.readAsDataURL(file);
+            }
+        },
+        
+        addUom() {
+            this.uoms.push({ unit_id: '', factor: '' });
+            this.changed = true;
+        },
+        removeUom(index) {
+            this.uoms.splice(index, 1);
+            this.changed = true;
+        },
+        
+        addPrice() {
+            this.prices.push({ tier_id: '', price: '' });
+            this.changed = true;
+        },
+        removePrice(index) {
+            this.prices.splice(index, 1);
+            this.changed = true;
+        }
+    }
+}
+</script>
 {% endblock %}
