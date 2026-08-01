@@ -9,6 +9,7 @@ urlpatterns = [
     path('settings/quick-add-category/', views.QuickAddCategoryView.as_view(), name='quick_add_category'),
     path('settings/quick-add-unit/', views.QuickAddUnitView.as_view(), name='quick_add_unit'),
     path('settings/quick-add-tier/', views.QuickAddPriceTierView.as_view(), name='quick_add_tier'),
+    path('settings/set-default-tier/<int:tier_id>/', views.SetDefaultTierView.as_view(), name='set_default_tier'), # NEW
     
     # Items
     path('items/', views.ItemsView.as_view(), name='items'),

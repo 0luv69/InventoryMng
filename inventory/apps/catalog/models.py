@@ -116,6 +116,7 @@ class ItemUOM(BaseModel):
 class PriceTier(BaseModel):
     """ Custom price tags like MRP, Wholesale, Major Buyer """
     name = models.CharField(max_length=50)
+    is_default = models.BooleanField(default=False)
 
     class Meta:
         ordering = ['name']
@@ -130,7 +131,7 @@ class ItemPrice(BaseModel):
     item = models.ForeignKey(Item, on_delete=models.CASCADE, related_name='prices')
     price_tier = models.ForeignKey(PriceTier, on_delete=models.CASCADE, related_name='item_prices')
     price = models.DecimalField(max_digits=10, decimal_places=2)
-
+    is_default = models.BooleanField(default=False)
     class Meta:
         constraints = [
             models.UniqueConstraint(fields=['item', 'price_tier'], name='uniq_item_pricetier')

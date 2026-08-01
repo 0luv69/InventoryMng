@@ -54,25 +54,39 @@ class QuickAddPriceTierView(BaseAppView):
             tier = PriceTier.objects.create(company=self.get_company(), name=name, created_by=request.user)
             return JsonResponse({'id': tier.id, 'name': tier.name})
         return JsonResponse({'error': 'Name required'}, status=400)
+
+
+class SetDefaultTierView(BaseAppView):
+    def post(self, request, tier_id):
+        company = self.get_company()
+        # Set all company tiers to False, then set the selected one to True
+        PriceTier.objects.filter(company=company).update(is_default=False)
+        tier = get_object_or_404(PriceTier, id=tier_id, company=company)
+        tier.is_default = True
+        tier.save()
+        return JsonResponse({'success': True, 'id': tier.id})
+
     
 # ==========================================
 # ITEMS
 # ==========================================
 class ItemsView(BaseAppView):
     def get(self, request):
+        company = self.get_company()
         context = {
-            'units': Unit.objects.filter(company=self.get_company()),
-            'categories': Category.objects.filter(company=self.get_company()),
+            'units': Unit.objects.filter(company=company),
+            'categories': Category.objects.filter(company=company),
+            'price_tiers': PriceTier.objects.filter(company=company), 
+            'default_tier_id': PriceTier.objects.filter(company=company, is_default=True).first().id if PriceTier.objects.filter(company=company, is_default=True).exists() else None,
         }
         return render(request, 'frontend/items/items.html', context)
-
 
 
 class ItemFormView(BaseAppView):
     def get(self, request):
         company = self.get_company()
         item_id = request.GET.get('id')
-        is_editable = request.GET.get('editable', '0') == '1' # Check URL param
+        is_editable = request.GET.get('editable', '0') == '1'
         item = None
         uom_json = '[]'
         prices_json = '[]'
@@ -84,21 +98,30 @@ class ItemFormView(BaseAppView):
             uom_json = json.dumps(uom_list)
             
             prices = ItemPrice.objects.filter(item=item).select_related('price_tier')
-            prices_list = [{'tier_id': p.price_tier_id, 'price': str(p.price)} for p in prices]
+            prices_list = [{'tier_id': p.price_tier_id, 'price': str(p.price), 'is_default': p.is_default} for p in prices]
             prices_json = json.dumps(prices_list)
+
+        number_of_recent = 4
+        recent_cats_qs = Category.objects.filter(company=company).order_by('-created_at')[:number_of_recent]
+        recent_units_qs = Unit.objects.filter(company=company).order_by('-created_at')[:number_of_recent]
+        recent_suppliers_qs = Party.objects.filter(company=company, is_supplier=True, is_removed=False).order_by('-created_at')[:number_of_recent]
 
         context = {
             'item': item,
-            'is_editable': is_editable, # Pass to context
+            'is_editable': is_editable,
             'units': Unit.objects.filter(company=company),
             'categories': Category.objects.filter(company=company),
             'suppliers': Party.objects.filter(company=company, is_supplier=True, is_removed=False),
             'price_tiers': PriceTier.objects.filter(company=company),
             'uom_json': uom_json,
             'prices_json': prices_json,
+            'recent_categories': json.dumps([{'id': c.id, 'name': c.name} for c in recent_cats_qs]),
+            'recent_units': json.dumps([{'id': u.id, 'name': u.name} for u in recent_units_qs]),
+            'recent_suppliers': json.dumps([{'id': s.id, 'name': s.name} for s in recent_suppliers_qs]),
+            'unit_map_json': json.dumps({str(u.id): u.name for u in Unit.objects.filter(company=company)}),
+            'default_tier_id': PriceTier.objects.filter(company=company, is_default=True).first().id if PriceTier.objects.filter(company=company, is_default=True).exists() else None,
         }
         return render(request, 'frontend/items/_form.html', context)
-
 
 class ItemsTableView(BaseAppView):
     def get(self, request):
@@ -146,6 +169,7 @@ class ItemsTableView(BaseAppView):
 
 # 2. Update ItemSaveView
 class ItemSaveView(BaseAppView):
+    @transaction.atomic
     def post(self, request):
         company = self.get_company()
         item_id = request.POST.get('id')
@@ -162,46 +186,34 @@ class ItemSaveView(BaseAppView):
         item.default_supplier_id = request.POST.get('default_supplier') or None
         item.status = 'active' if request.POST.get('is_active') == 'on' else 'inactive'
         
-        # Handle Image Upload
         if 'image' in request.FILES:
             item.image = request.FILES['image']
+        item.save()
         
-        try:
-            item.save()
-        except Exception:
-            pass
-        
-        # Sync UOM Conversions (Clear old, add new)
         item.uom_conversions.all().delete()
         uom_unit_ids = request.POST.getlist('uom_unit_id[]')
         uom_factors = request.POST.getlist('uom_factor[]')
         for i in range(len(uom_unit_ids)):
             if uom_unit_ids[i] and uom_factors[i]:
-                ItemUOM.objects.create(
-                    company=company, item=item, unit_id=uom_unit_ids[i], 
-                    conversion_factor=uom_factors[i], created_by=request.user
-                )
+                ItemUOM.objects.create(company=company, item=item, unit_id=uom_unit_ids[i], conversion_factor=uom_factors[i], created_by=request.user)
 
-        # Sync Price Tiers (Clear old, add new)
         item.prices.all().delete()
         tier_ids = request.POST.getlist('price_tier_id[]')
         tier_prices = request.POST.getlist('price_amount[]')
+        default_flags = request.POST.getlist('price_is_default[]') # Array of '1' or '0'
+        
         for i in range(len(tier_ids)):
             if tier_ids[i] and tier_prices[i]:
                 ItemPrice.objects.create(
                     company=company, item=item, price_tier_id=tier_ids[i], 
-                    price=tier_prices[i], created_by=request.user
+                    price=tier_prices[i], created_by=request.user,
+                    is_default=(default_flags[i] == '1') if i < len(default_flags) else False
                 )
         
-        # Return updated table
-        items = Item.objects.filter(company=company).exclude(status='deleted').annotate(
-            total_stock_calc=Sum('stock_batches__quantity')
-        ).order_by('-created_at')
+        items = Item.objects.filter(company=company).exclude(status='deleted').annotate(total_stock_calc=Sum('stock_batches__quantity')).order_by('-created_at')
         paginator = Paginator(items, 10)
         page_obj = paginator.get_page(1)
-        
         return render(request, 'frontend/items/_table.html', {'items': page_obj.object_list, 'page_obj': page_obj, 'request': request})
-
 
 
 # 3. Update ItemDeleteView
@@ -518,51 +530,33 @@ class GoodsOutFormView(BaseAppView):
 
         if invoice_id:
             invoice = get_object_or_404(SaleInvoice, id=invoice_id, company=company)
-            lines_list = [{
-                'item_id': l.item_id,
-                'item_name': l.item.name,
-                'qty': str(l.quantity),
-                'selling_price': str(l.selling_price)
-            } for l in invoice.lines.all()]
+            lines_list = [{'item_id': l.item_id, 'item_name': l.item.name, 'qty': str(l.quantity), 'selling_price': str(l.selling_price)} for l in invoice.lines.all()]
             lines_json = json.dumps(lines_list)
 
-        next_ref = ''
-        if not invoice:
-            prefix = "SAL-"
-            last_inv = SaleInvoice.objects.filter(company=company).order_by('-reference_no').first()
-            if last_inv:
-                try: num = int(last_inv.reference_no.split('-')[1]) + 1
-                except: num = 1
-            else: num = 1
-            
-            next_ref = f"{prefix}{num:04d}"
-            while SaleInvoice.objects.filter(company=company, reference_no=next_ref).exists():
-                num += 1
-                next_ref = f"{prefix}{num:04d}"
+        next_ref = f"SAL-{(SaleInvoice.objects.filter(company=company).order_by('-id').first().id + 1) if SaleInvoice.objects.exists() else 1:04d}"
 
         customers = Party.objects.filter(company=company, is_customer=True, is_removed=False)
         warehouses = Warehouse.objects.filter(company=company, is_active=True)
-
+        
+        default_tier = PriceTier.objects.filter(company=company, is_default=True).first()
         items_qs = Item.objects.filter(company=company, status='active').select_related('category', 'base_unit')
-        items_list = [{
-            'id': i.id,
-            'name': i.name,
-            'category_id': i.category_id,
-            'category_name': i.category.name if i.category else 'Uncategorized',
-            'selling_price': str(i.cost_price), # Default to cost price, user can change
-            'stock': str(i.total_stock)
-        } for i in items_qs]
+        items_list = []
+        for i in items_qs:
+            # Find the price for the default tier. If not found, fallback to first price, else cost+20%
+            price_obj = i.prices.filter(price_tier=default_tier).first() if default_tier else i.prices.first()
+            default_sell = str(price_obj.price) if price_obj else str(i.cost_price * Decimal('1.20'))
+            items_list.append({
+                'id': i.id, 'name': i.name, 'category_id': i.category_id,
+                'category_name': i.category.name if i.category else 'Uncategorized',
+                'selling_price': default_sell, 'stock': str(i.total_stock)
+            })
 
         context = {
-            'invoice': invoice,
-            'customers': customers,
-            'warehouses': warehouses,
+            'invoice': invoice, 'customers': customers, 'warehouses': warehouses,
             'today_str': timezone.now().date().strftime('%Y-%m-%d'),
             'categories': Category.objects.filter(company=company),
-            'items_json': json.dumps(items_list),
-            'lines_json': lines_json,
-            'next_ref': next_ref,
-            'is_vat_inclusive': invoice.is_vat_inclusive if invoice else False,
+            'items_json': json.dumps(items_list), 'lines_json': lines_json,
+            'next_ref': next_ref, 'is_vat_inclusive': invoice.is_vat_inclusive if invoice else False,
         }
         return render(request, 'frontend/goods_out/_form.html', context)
 

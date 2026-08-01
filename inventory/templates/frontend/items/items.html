@@ -4,7 +4,6 @@
 {% block page_title %}Items & Goods{% endblock %}
 
 {% block content %}
-<!-- Main Alpine Scope. Added settingsModal: false here -->
 <div x-data="{ 
         slideOver: false, 
         fullWidth: false, 
@@ -15,6 +14,7 @@
         settingsModal: false
     }" @open-modal.window="slideOver = true" @close-modal.window="slideOver = false" class="space-y-6">
 
+    <!-- Page Header -->
     <div class="flex items-center justify-between">
         <div>
             <h1 class="text-2xl font-extrabold text-neutral-900">Items & Goods <span class="text-sm font-medium text-neutral-400">(Master Items)</span></h1>
@@ -47,35 +47,17 @@
                hx-include="[name='category'], [name='unit'], [name='status']"
                class="flex-1 min-w-[200px] px-4 py-2.5 text-sm border border-neutral-200 rounded-xl bg-neutral-50/50 focus:outline-none focus:ring-2 focus:ring-green-500/20">
         
-        <!-- Category Filter -->
-        <select name="category" 
-                hx-get="{% url 'frontend:items_table' %}" 
-                hx-trigger="change" 
-                hx-target="#items-table" 
-                hx-include="[name='search'], [name='unit'], [name='status']"
-                class="w-40 px-3 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-green-500/20">
+        <select name="category" hx-get="{% url 'frontend:items_table' %}" hx-trigger="change" hx-target="#items-table" hx-include="[name='search'], [name='unit'], [name='status']" class="w-40 px-3 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-green-500/20">
             <option value="">All Categories</option>
             {% for c in categories %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}
         </select>
 
-        <!-- Unit Filter -->
-        <select name="unit" 
-                hx-get="{% url 'frontend:items_table' %}" 
-                hx-trigger="change" 
-                hx-target="#items-table" 
-                hx-include="[name='search'], [name='category'], [name='status']"
-                class="w-32 px-3 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-green-500/20">
+        <select name="unit" hx-get="{% url 'frontend:items_table' %}" hx-trigger="change" hx-target="#items-table" hx-include="[name='search'], [name='category'], [name='status']" class="w-32 px-3 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-green-500/20">
             <option value="">All Units</option>
             {% for u in units %}<option value="{{ u.id }}">{{ u.short_name }}</option>{% endfor %}
         </select>
 
-        <!-- Status Filter -->
-        <select name="status" 
-                hx-get="{% url 'frontend:items_table' %}" 
-                hx-trigger="change" 
-                hx-target="#items-table" 
-                hx-include="[name='search'], [name='category'], [name='unit']"
-                class="w-32 px-3 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-green-500/20">
+        <select name="status" hx-get="{% url 'frontend:items_table' %}" hx-trigger="change" hx-target="#items-table" hx-include="[name='search'], [name='category'], [name='unit']" class="w-32 px-3 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-green-500/20">
             <option value="">All Status</option>
             <option value="active">Active</option>
             <option value="inactive">Inactive</option>
@@ -89,7 +71,7 @@
         </div>
     </div>
 
-    <!-- SLIDE-OVER MODAL (With Fullscreen Toggle) -->
+    <!-- SLIDE-OVER MODAL -->
     <div x-show="slideOver" x-transition.opacity class="fixed inset-0 h-screen bg-black/20 backdrop-blur-sm z-[60]" style="display: none;" @click="slideOver = false"></div>
     
     <div x-show="slideOver" 
@@ -121,7 +103,7 @@
         </div>
     </div>
 
-    <!-- DELETE CONFIRMATION MODAL (With Reason) -->
+    <!-- DELETE CONFIRMATION MODAL -->
     <div x-show="deleteModal" x-transition.opacity @click="deleteModal = false" class="fixed inset-0 bg-black/30 backdrop-blur-sm z-[70] flex items-center justify-center" style="display: none;">
         <div x-show="deleteModal" x-transition @click.stop class="bg-white rounded-2xl shadow-xl w-full max-w-sm mx-4 p-6">
             <div class="w-12 h-12 bg-red-50 rounded-xl flex items-center justify-center mx-auto mb-4">
@@ -145,146 +127,204 @@
         </div>
     </div>
 
-    <!-- SETTINGS MODAL (Moved INSIDE the x-data scope) -->
+    <!-- SETTINGS MODAL -->
     <div x-show="settingsModal" x-transition.opacity @click="settingsModal = false" class="fixed inset-0 bg-black/30 backdrop-blur-sm z-[70] flex items-center justify-center" style="display: none;">
-        <div x-show="settingsModal" x-transition @click.stop class="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 p-6">
-            <h3 class="text-lg font-bold text-neutral-900 mb-4">Quick Add Settings</h3>
+        <div x-show="settingsModal" x-transition @click.stop class="bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 p-0 overflow-hidden" x-data="{ tab: 'category' }">
             
-            <div class="space-y-4">
-                <!-- Add Category -->
-                <div>
-                    <label class="block text-xs font-semibold text-neutral-600 mb-1.5">New Category</label>
+            <div class="p-5 border-b border-neutral-100 flex items-center justify-between">
+                <h3 class="text-lg font-bold text-neutral-900">Catalog Settings</h3>
+                <button @click="settingsModal = false" class="text-neutral-400 hover:text-neutral-600">
+                    <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+            </div>
+
+            <div class="flex border-b border-neutral-100">
+                <button @click="tab='category'" :class="tab === 'category' ? 'border-green-500 text-green-600' : 'border-transparent text-neutral-500'" class="flex-1 py-3 text-sm font-semibold border-b-2 transition-colors">Categories</button>
+                <button @click="tab='unit'" :class="tab === 'unit' ? 'border-green-500 text-green-600' : 'border-transparent text-neutral-500'" class="flex-1 py-3 text-sm font-semibold border-b-2 transition-colors">Units</button>
+                <button @click="tab='tier'" :class="tab === 'tier' ? 'border-green-500 text-green-600' : 'border-transparent text-neutral-500'" class="flex-1 py-3 text-sm font-semibold border-b-2 transition-colors">Price Tiers</button>
+            </div>
+
+            <div class="p-5 space-y-4">
+                <!-- Categories Tab -->
+                <div x-show="tab === 'category'" class="space-y-4">
                     <div class="flex gap-2">
                         <input type="text" id="quick-cat-name" placeholder="e.g. Beverages" class="flex-1 px-3 py-2 text-sm border border-neutral-200 rounded-lg">
                         <button onclick="quickAdd('cat')" class="px-4 py-2 text-xs font-semibold text-white bg-green-500 rounded-lg hover:bg-green-600">Add</button>
                     </div>
+                    <div class="border border-neutral-100 rounded-lg max-h-40 overflow-y-auto divide-y divide-neutral-50">
+                        {% for c in categories %}
+                        <div class="px-3 py-2 text-sm text-neutral-700 flex items-center justify-between">
+                            {{ c.name }}
+                            <span class="text-[0.65rem] text-neutral-400">ID: {{ c.id }}</span>
+                        </div>
+                        {% empty %}
+                        <div class="px-3 py-4 text-xs text-neutral-400 text-center">No categories added yet.</div>
+                        {% endfor %}
+                    </div>
                 </div>
 
-                <!-- Add Unit -->
-                <div class="flex gap-2">
-                    <div class="flex-1">
-                        <label class="block text-xs font-semibold text-neutral-600 mb-1.5">New Unit Name</label>
-                        <input type="text" id="quick-unit-name" placeholder="e.g. Carton" class="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg">
-                    </div>
-                    <div class="w-20">
-                        <label class="block text-xs font-semibold text-neutral-600 mb-1.5">Short</label>
-                        <input type="text" id="quick-unit-short" placeholder="ctn" class="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg">
-                    </div>
-                    <div class="flex items-end">
+                <!-- Units Tab -->
+                <div x-show="tab === 'unit'" class="space-y-4" style="display: none;">
+                    <div class="flex gap-2">
+                        <input type="text" id="quick-unit-name" placeholder="Unit Name (e.g. Carton)" class="flex-1 px-3 py-2 text-sm border border-neutral-200 rounded-lg">
+                        <input type="text" id="quick-unit-short" placeholder="Short (e.g. ctn)" class="w-24 px-3 py-2 text-sm border border-neutral-200 rounded-lg">
                         <button onclick="quickAdd('unit')" class="px-4 py-2 text-xs font-semibold text-white bg-green-500 rounded-lg hover:bg-green-600">Add</button>
                     </div>
+                    <div class="border border-neutral-100 rounded-lg max-h-40 overflow-y-auto divide-y divide-neutral-50">
+                        {% for u in units %}
+                        <div class="px-3 py-2 text-sm text-neutral-700 flex items-center justify-between">
+                            {{ u.name }} ({{ u.short_name }})
+                            <span class="text-[0.65rem] text-neutral-400">ID: {{ u.id }}</span>
+                        </div>
+                        {% empty %}
+                        <div class="px-3 py-4 text-xs text-neutral-400 text-center">No units added yet.</div>
+                        {% endfor %}
+                    </div>
                 </div>
 
-                <!-- Add Price Tier -->
-                <div>
-                    <label class="block text-xs font-semibold text-neutral-600 mb-1.5">New Price Tier</label>
+                <!-- Tiers Tab -->
+                <div x-show="tab === 'tier'" class="space-y-4" style="display: none;">
                     <div class="flex gap-2">
                         <input type="text" id="quick-tier-name" placeholder="e.g. Wholesale" class="flex-1 px-3 py-2 text-sm border border-neutral-200 rounded-lg">
                         <button onclick="quickAdd('tier')" class="px-4 py-2 text-xs font-semibold text-white bg-green-500 rounded-lg hover:bg-green-600">Add</button>
                     </div>
+                    <div class="border border-neutral-100 rounded-lg max-h-40 overflow-y-auto divide-y divide-neutral-50">
+                        {% for t in price_tiers %}
+                        <div class="px-3 py-2 text-sm text-neutral-700 flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <!-- Star Button -->
+                                <button onclick="setDefaultTier({{ t.id }})" title="Set as Default">
+                                    <svg class="w-4 h-4 {% if t.is_default %}text-yellow-400 fill-yellow-400{% else %}text-neutral-300 fill-none{% endif %}" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                                </button>
+                                {{ t.name }}
+                            </div>
+                            <span class="text-[0.65rem] text-neutral-400">ID: {{ t.id }}</span>
+                        </div>
+                        {% empty %}
+                        <div class="px-3 py-4 text-xs text-neutral-400 text-center">No price tiers added yet.</div>
+                        {% endfor %}
+                    </div>
                 </div>
             </div>
 
-            <button @click="settingsModal = false" class="mt-6 w-full px-4 py-2.5 text-sm font-semibold text-neutral-600 bg-neutral-100 rounded-xl hover:bg-neutral-200">Done</button>
+            <div class="p-5 bg-neutral-50 border-t border-neutral-100">
+                <button @click="settingsModal = false" class="w-full px-4 py-2.5 text-sm font-semibold text-neutral-600 bg-white border border-neutral-200 rounded-xl hover:bg-neutral-50">Done</button>
+            </div>
         </div>
     </div>
 
 </div>
-<!-- END OF MAIN X-DATA DIV -->
 
 <script>
-// Safely extract CSRF token
-function getCsrfToken() {
-    const match = document.cookie.match(/csrftoken=([^;]+)/);
-    return match ? match[1] : '';
+function getCsrfToken() { 
+    const m = document.cookie.match(/csrftoken=([^;]+)/); 
+    return m ? m[1] : ''; 
 }
 
 async function quickAdd(type) {
-    let url = '';
-    let payload = {};
-
-    if (type === 'cat') {
-        let val = document.getElementById('quick-cat-name').value;
-        if (!val) return toast.error("Enter category name");
-        url = "{% url 'frontend:quick_add_category' %}";
-        payload = { name: val };
-    } else if (type === 'unit') {
-        let val = document.getElementById('quick-unit-name').value;
-        let short = document.getElementById('quick-unit-short').value;
-        if (!val || !short) return toast.error("Enter unit name and short name");
-        url = "{% url 'frontend:quick_add_unit' %}";
-        payload = { name: val, short_name: short };
-    } else if (type === 'tier') {
-        let val = document.getElementById('quick-tier-name').value;
-        if (!val) return toast.error("Enter tier name");
-        url = "{% url 'frontend:quick_add_tier' %}";
-        payload = { name: val };
+    let url = '', payload = {};
+    if (type === 'cat') { 
+        let v = document.getElementById('quick-cat-name').value; 
+        if(!v) return toast.error("Enter name"); 
+        url = "{% url 'frontend:quick_add_category' %}"; 
+        payload = { name: v }; 
+    } else if (type === 'unit') { 
+        let v = document.getElementById('quick-unit-name').value; 
+        let s = document.getElementById('quick-unit-short').value; 
+        if(!v||!s) return toast.error("Enter name & short"); 
+        url = "{% url 'frontend:quick_add_unit' %}"; 
+        payload = { name: v, short_name: s }; 
+    } else if (type === 'tier') { 
+        let v = document.getElementById('quick-tier-name').value; 
+        if(!v) return toast.error("Enter name"); 
+        url = "{% url 'frontend:quick_add_tier' %}"; 
+        payload = { name: v }; 
     }
-
     try {
-        // FIX: Use URLSearchParams to send standard form-data, NOT JSON
-        const res = await fetch(url, {
-            method: 'POST',
-            headers: { 
-                'X-CSRFToken': getCsrfToken() 
-            },
-            body: new URLSearchParams(payload)
-        });
-        const data = await res.json();
-        if (res.ok) {
-            toast.success(data.name + ' added! Reloading form...');
-            setTimeout(() => location.reload(), 800); // Simple reload to update dropdowns
-        } else {
-            toast.error(data.error || 'Failed to add');
-        }
-    } catch (e) {
-        toast.error('Network error');
-    }
+        const res = await fetch(url, { method: 'POST', headers: { 'X-CSRFToken': getCsrfToken() }, body: new URLSearchParams(payload) });
+        if (res.ok) { toast.success('Added! Reloading...'); setTimeout(() => location.reload(), 800); }
+        else { toast.error('Failed to add'); }
+    } catch(e) { toast.error('Network error'); }
 }
-</script>
 
-<!-- Alpine Item Form Logic -->
-<script>
-function itemForm(itemId, initialUoms, initialPrices, isEditable) {
+async function setDefaultTier(tierId) {
+    try {
+        const res = await fetch(`{% url 'frontend:set_default_tier' tier_id=0 %}`.replace('0', tierId), { method: 'POST', headers: { 'X-CSRFToken': getCsrfToken() } });
+        if (res.ok) { toast.success('Default tier updated! Reloading...'); setTimeout(() => location.reload(), 800); }
+    } catch(e) { toast.error('Network error'); }
+}
+
+function itemForm(itemId, isEditable) {
     return {
-        changed: false,
+        changed: false, 
         editable: itemId ? isEditable : true,
         name: document.getElementById('item-name-input')?.value || '',
         baseUnit: document.getElementById('item-base-unit-select')?.value || '',
+        category: document.getElementById('item-category-select')?.value || '',
+        defaultSupplier: document.getElementById('item-supplier-select')?.value || '',
         imagePreview: document.getElementById('item-image-preview-src')?.textContent.trim() || '',
-        uoms: initialUoms || [],
-        prices: initialPrices || [],
+        uoms: [], prices: [], recentCategories: [], recentUnits: [], recentSuppliers: [], unitMap: {},
+        defaultTierId: document.getElementById('default-tier-id')?.value || null,
+        defaultPriceIndex: 0, 
+        cropModal: false, cropper: null, croppedFile: null,
         
         init() {
             this.changed = false; 
+            try { this.uoms = JSON.parse(document.getElementById('uom-data')?.textContent || '[]'); } catch(e) {}
+            try { this.prices = JSON.parse(document.getElementById('prices-data')?.textContent || '[]'); } catch(e) {}
+            try { this.recentCategories = JSON.parse(document.getElementById('recent-cats-data')?.textContent || '[]'); } catch(e) {}
+            try { this.recentUnits = JSON.parse(document.getElementById('recent-units-data')?.textContent || '[]'); } catch(e) {}
+            try { this.recentSuppliers = JSON.parse(document.getElementById('recent-sups-data')?.textContent || '[]'); } catch(e) {}
+            try { this.unitMap = JSON.parse(document.getElementById('unit-map-data')?.textContent || '{}'); } catch(e) {}
+
+            const defIdx = this.prices.findIndex(p => p.is_default);
+            if (defIdx !== -1) this.defaultPriceIndex = defIdx;
+
+            if (!itemId) {
+                if (this.uoms.length === 0) this.addUom();
+                if (this.prices.length === 0) this.addPrice();
+            }
         },
+        get baseUnitName() { return this.unitMap[this.baseUnit] || 'Base Units'; },
         
-        previewImage(event) {
+        handleFileSelect(event) {
             const file = event.target.files[0];
             if (file) {
                 const reader = new FileReader();
-                reader.onload = (e) => { this.imagePreview = e.target.result; };
+                reader.onload = (e) => {
+                    this.$refs.cropImage.src = e.target.result;
+                    this.cropModal = true;
+                    this.$nextTick(() => {
+                        if (this.cropper) this.cropper.destroy();
+                        this.cropper = new Cropper(this.$refs.cropImage, { aspectRatio: 1, viewMode: 1, autoCropArea: 0.9 });
+                    });
+                };
                 reader.readAsDataURL(file);
             }
         },
+        saveCrop() {
+            const canvas = this.cropper.getCroppedCanvas({ width: 400, height: 400 });
+            this.imagePreview = canvas.toDataURL('image/jpeg');
+            canvas.toBlob((blob) => {
+                this.croppedFile = new File([blob], 'cropped.jpg', { type: 'image/jpeg' });
+                const dataTransfer = new DataTransfer();
+                dataTransfer.items.add(this.croppedFile);
+                document.getElementById('image-upload-input').files = dataTransfer.files;
+            });
+            this.cropper.destroy(); this.cropModal = false; this.changed = true;
+        },
+        cancelCrop() { this.cropper.destroy(); this.cropModal = false; document.getElementById('image-upload-input').value = ''; },
         
-        addUom() {
-            this.uoms.push({ unit_id: '', factor: '' });
-            this.changed = true;
-        },
-        removeUom(index) {
-            this.uoms.splice(index, 1);
-            this.changed = true;
-        },
+        addUom() { this.uoms.push({ unit_id: '', factor: '' }); this.changed = true; },
+        removeUom(i) { this.uoms.splice(i, 1); this.changed = true; },
         
-        addPrice() {
-            this.prices.push({ tier_id: '', price: '' });
-            this.changed = true;
+        addPrice() { 
+            this.prices.push({ tier_id: this.defaultTierId || '', price: '', is_default: false });
+            if (this.prices.length === 1) this.defaultPriceIndex = 0; 
+            this.changed = true; 
         },
-        removePrice(index) {
-            this.prices.splice(index, 1);
-            this.changed = true;
-        }
+        removePrice(i) { this.uoms.splice(i, 1); this.changed = true; },
+        setDefaultPrice(index) { this.defaultPriceIndex = index; this.changed = true; }
     }
 }
 </script>
