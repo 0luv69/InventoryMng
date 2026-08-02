@@ -1,17 +1,16 @@
-from datetime import timedelta
-from decimal import Decimal, InvalidOperation
-
 from django.views import View
+from datetime import timedelta
 from django.shortcuts import redirect, render, get_object_or_404
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.paginator import Paginator
-from django.db.models import Sum, F
 from django.core.serializers.json import DjangoJSONEncoder
-from django.db.models import Q
+from django.db.models import Sum, F, Q, Prefetch
 from django.utils import timezone
 import json
 
-from django.db import transaction
+from django.db import transaction, IntegrityError
+from decimal import Decimal, InvalidOperation
+
 from apps.catalog.models import Item, Unit, Category, PriceTier, ItemUOM, ItemPrice
 from apps.transactions.models import PurchaseInvoice, PurchaseItemLine, SaleInvoice, SaleItemLine
 from apps.parties.models import Party
@@ -22,6 +21,7 @@ from django.http import JsonResponse
 from django.core.exceptions import ValidationError
 
 class BaseAppView(LoginRequiredMixin, View):
+    pagination_size = 30
     def get_company(self):
         return self.request.user.profile.company
 
@@ -101,34 +101,45 @@ class ItemFormView(BaseAppView):
             prices_list = [{'tier_id': p.price_tier_id, 'price': str(p.price), 'is_default': p.is_default} for p in prices]
             prices_json = json.dumps(prices_list)
 
-        number_of_recent = 4
-        recent_cats_qs = Category.objects.filter(company=company).order_by('-created_at')[:number_of_recent]
-        recent_units_qs = Unit.objects.filter(company=company).order_by('-created_at')[:number_of_recent]
-        recent_suppliers_qs = Party.objects.filter(company=company, is_supplier=True, is_removed=False).order_by('-created_at')[:number_of_recent]
+        # EFFICIENCY FIX: Query once, let DB sort and slice
+        units_qs = Unit.objects.filter(company=company).order_by('name')
+        cats_qs = Category.objects.filter(company=company).order_by('name')
+        sups_qs = Party.objects.filter(company=company, is_supplier=True, is_removed=False).order_by('name')
+        tiers_qs = PriceTier.objects.filter(company=company)
+
+        recent_cats = cats_qs.order_by('-created_at')[:4]
+        recent_units = units_qs.order_by('-created_at')[:4]
+        recent_sups = sups_qs.order_by('-created_at')[:4]
+        
+        default_tier = tiers_qs.filter(is_default=True).first()
 
         context = {
             'item': item,
             'is_editable': is_editable,
-            'units': Unit.objects.filter(company=company),
-            'categories': Category.objects.filter(company=company),
-            'suppliers': Party.objects.filter(company=company, is_supplier=True, is_removed=False),
-            'price_tiers': PriceTier.objects.filter(company=company),
+            'units': units_qs,
+            'categories': cats_qs,
+            'suppliers': sups_qs,
+            'price_tiers': tiers_qs,
             'uom_json': uom_json,
             'prices_json': prices_json,
-            'recent_categories': json.dumps([{'id': c.id, 'name': c.name} for c in recent_cats_qs]),
-            'recent_units': json.dumps([{'id': u.id, 'name': u.name} for u in recent_units_qs]),
-            'recent_suppliers': json.dumps([{'id': s.id, 'name': s.name} for s in recent_suppliers_qs]),
-            'unit_map_json': json.dumps({str(u.id): u.name for u in Unit.objects.filter(company=company)}),
-            'default_tier_id': PriceTier.objects.filter(company=company, is_default=True).first().id if PriceTier.objects.filter(company=company, is_default=True).exists() else None,
+            'recent_categories': json.dumps([{'id': c.id, 'name': c.name} for c in recent_cats]),
+            'recent_units': json.dumps([{'id': u.id, 'name': u.name} for u in recent_units]),
+            'recent_suppliers': json.dumps([{'id': s.id, 'name': s.name} for s in recent_sups]),
+            'unit_map_json': json.dumps({str(u.id): u.name for u in units_qs}),
+            'default_tier_id': default_tier.id if default_tier else None,
         }
         return render(request, 'frontend/items/_form.html', context)
+
+
 
 class ItemsTableView(BaseAppView):
     def get(self, request):
         company = self.get_company()
         
-        # CHANGED: exclude(status='deleted') instead of is_removed=False
-        items = Item.objects.filter(company=company).exclude(status='deleted').annotate(
+        # EFFICIENCY FIX: select_related stops N+1 queries for category/base_unit
+        items = Item.objects.filter(company=company).exclude(status='deleted').select_related(
+            'category', 'base_unit'
+        ).annotate(
             total_stock_calc=Sum('stock_batches__quantity')
         )
 
@@ -156,7 +167,7 @@ class ItemsTableView(BaseAppView):
         else:
             items = items.order_by('-created_at')
 
-        paginator = Paginator(items, 10)
+        paginator = Paginator(items, self.pagination_size)
         page_obj = paginator.get_page(request.GET.get('page', 1))
 
         context = {
@@ -178,6 +189,7 @@ class ItemSaveView(BaseAppView):
             item = get_object_or_404(Item, id=item_id, company=company)
         else:
             item = Item(company=company)
+            item.created_by = request.user
             
         item.name = request.POST.get('name')
         item.category_id = request.POST.get('category') or None
@@ -186,33 +198,68 @@ class ItemSaveView(BaseAppView):
         item.default_supplier_id = request.POST.get('default_supplier') or None
         item.status = 'active' if request.POST.get('is_active') == 'on' else 'inactive'
         
+        # Handle Image Upload and Clearing
+        old_image_path = item.image.path if item.image else None
+        
         if 'image' in request.FILES:
+            # If uploading a new image, delete the old one to save disk space
+            if old_image_path:
+                item.image.delete(save=False)
             item.image = request.FILES['image']
-        item.save()
+            
+        elif request.POST.get('clear_image') == '1' and item.image:
+            # If explicitly cleared, delete the file and nullify the field
+            item.image.delete(save=False)
+            item.image = None
+        
+        # BUG FIX: Catch duplicate name error
+        try:
+            item.save()
+        except IntegrityError:
+            return JsonResponse({"success": False, "message": "An item with this name already exists."}, status=400)
         
         item.uom_conversions.all().delete()
         uom_unit_ids = request.POST.getlist('uom_unit_id[]')
         uom_factors = request.POST.getlist('uom_factor[]')
+
+        seen_uoms = set()
         for i in range(len(uom_unit_ids)):
             if uom_unit_ids[i] and uom_factors[i]:
-                ItemUOM.objects.create(company=company, item=item, unit_id=uom_unit_ids[i], conversion_factor=uom_factors[i], created_by=request.user)
+                if uom_unit_ids[i] in seen_uoms:
+                    return JsonResponse({"success": False, "message": "Duplicate Unit found in UOM Conversions. Please select each unit only once."}, status=400)
+                seen_uoms.add(uom_unit_ids[i])
+                ItemUOM.objects.create(
+                    company=company, item=item, unit_id=uom_unit_ids[i], 
+                    conversion_factor=uom_factors[i], created_by=request.user
+                )
 
         item.prices.all().delete()
         tier_ids = request.POST.getlist('price_tier_id[]')
         tier_prices = request.POST.getlist('price_amount[]')
-        default_flags = request.POST.getlist('price_is_default[]') # Array of '1' or '0'
-        
+        default_flags = request.POST.getlist('price_is_default[]')
+
+        seen_tiers = set()
         for i in range(len(tier_ids)):
             if tier_ids[i] and tier_prices[i]:
+                if tier_ids[i] in seen_tiers:
+                    return JsonResponse({"success": False, "message": "Duplicate Price Tier found. Please select each tier only once."}, status=400)
+                seen_tiers.add(tier_ids[i])
+
                 ItemPrice.objects.create(
                     company=company, item=item, price_tier_id=tier_ids[i], 
                     price=tier_prices[i], created_by=request.user,
                     is_default=(default_flags[i] == '1') if i < len(default_flags) else False
                 )
         
-        items = Item.objects.filter(company=company).exclude(status='deleted').annotate(total_stock_calc=Sum('stock_batches__quantity')).order_by('-created_at')
-        paginator = Paginator(items, 10)
+        # EFFICIENCY FIX: select_related here too
+        items = Item.objects.filter(company=company).exclude(status='deleted').select_related(
+            'category', 'base_unit'
+        ).annotate(
+            total_stock_calc=Sum('stock_batches__quantity')
+        ).order_by('-created_at')
+        paginator = Paginator(items, self.pagination_size)
         page_obj = paginator.get_page(1)
+        
         return render(request, 'frontend/items/_table.html', {'items': page_obj.object_list, 'page_obj': page_obj, 'request': request})
 
 
@@ -224,21 +271,20 @@ class ItemDeleteView(BaseAppView):
         
         reason = request.POST.get('delete_reason', 'No reason provided')
         
-        # CHANGED: Set status to deleted instead of is_removed=True
         item.status = 'deleted'
         item.delete_reason = reason
         item.save()
         
-        # CHANGED: exclude(status='deleted')
-        items = Item.objects.filter(company=company).exclude(status='deleted').annotate(
+        # EFFICIENCY FIX: select_related here too
+        items = Item.objects.filter(company=company).exclude(status='deleted').select_related(
+            'category', 'base_unit'
+        ).annotate(
             total_stock_calc=Sum('stock_batches__quantity')
         ).order_by('-created_at')
-        paginator = Paginator(items, 10)
+        paginator = Paginator(items, self.pagination_size)
         page_obj = paginator.get_page(1)
         
         return render(request, 'frontend/items/_table.html', {'items': page_obj.object_list, 'page_obj': page_obj, 'request': request})
-
-
 
 # ==========================================
 # GOODS IN (PURCHASE INVOICES)
@@ -288,7 +334,7 @@ class GoodsInTableView(BaseAppView):
         else:
             invoices = invoices.order_by('-date_received')
 
-        paginator = Paginator(invoices, 10)
+        paginator = Paginator(invoices, self.pagination_size)
         page_obj = paginator.get_page(request.GET.get('page', 1))
 
         context = {
@@ -366,19 +412,14 @@ class GoodsInSaveView(BaseAppView):
         company = self.get_company()
         invoice_id = request.POST.get('id')
         
-        # SECURITY: Completely block editing of existing invoices. 
-        # If they made a mistake, they must Void it and create a new one.
         if invoice_id:
             return JsonResponse({"success": False, "message": "Editing existing invoices is disabled. Please void the invoice and create a new one."}, status=400)
             
-        # Proceed to create a NEW invoice
         invoice = PurchaseInvoice(company=company)
             
         invoice.supplier_id = request.POST.get('supplier')
         invoice.date_received = request.POST.get('date_received')
         invoice.reference_no = request.POST.get('reference_no')
-        
-        # Parse 'true'/'false' string from Alpine JS
         invoice.is_vat_inclusive = request.POST.get('is_vat_inclusive') == 'true'
         invoice.invoice_status = 'finalized'
         invoice.payment_status = 'unpaid'
@@ -392,9 +433,13 @@ class GoodsInSaveView(BaseAppView):
         batches = request.POST.getlist('batch_no[]')
         expiries = request.POST.getlist('expiry_date[]')
 
+        # EFFICIENCY FIX: Fetch all items in one query
+        items_dict = {i.id: i for i in Item.objects.filter(id__in=item_ids, company=company)}
+
         for i in range(len(item_ids)):
             if item_ids[i]:
-                item = Item.objects.get(id=item_ids[i], company=company)
+                item = items_dict.get(int(item_ids[i]))
+                if not item: continue
                 
                 try: qty_val = Decimal(qtys[i])
                 except: qty_val = Decimal('0')
@@ -402,37 +447,28 @@ class GoodsInSaveView(BaseAppView):
                 try: gross_cost = Decimal(costs[i])
                 except: gross_cost = Decimal('0')
 
-                # If VAT inclusive, extract Net Cost before saving to DB
                 if invoice.is_vat_inclusive:
                     net_cost = (gross_cost / Decimal('1.13')).quantize(Decimal('0.01'))
                 else:
                     net_cost = gross_cost
 
-                # Auto-generate batch number if user left it blank!
                 batch_no = batches[i].strip() if batches[i] else ''
                 if not batch_no:
                     batch_no = f"AUTO-{invoice.reference_no}-B{i+1}"
 
                 PurchaseItemLine.objects.create(
-                    company=company,
-                    invoice=invoice,
-                    item=item,
-                    created_by=request.user,
-                    warehouse_id=warehouse_id,
-                    unit=item.base_unit,
-                    conversion_factor=Decimal('1.00'),
-                    quantity=qty_val,
-                    cost_price=net_cost, # Save NET cost price
-                    batch_no=batch_no,
-                    expiry_date=expiries[i] or None
+                    company=company, invoice=invoice, item=item, created_by=request.user,
+                    warehouse_id=warehouse_id, unit=item.base_unit, conversion_factor=Decimal('1.00'),
+                    quantity=qty_val, cost_price=net_cost, batch_no=batch_no, expiry_date=expiries[i] or None
                 )
         
-        # Return updated table
         invoices = PurchaseInvoice.objects.filter(company=company).exclude(invoice_status='void').order_by('-date_received')
-        paginator = Paginator(invoices, 10)
+        paginator = Paginator(invoices, self.pagination_size)
         page_obj = paginator.get_page(1)
         
         return render(request, 'frontend/goods_in/_table.html', {'invoices': page_obj.object_list, 'page_obj': page_obj, 'request': request, 'suppliers': Party.objects.filter(company=company, is_supplier=True, is_removed=False)})
+
+
 
 class GoodsInVoidView(BaseAppView):
     def post(self, request, invoice_id):
@@ -448,7 +484,7 @@ class GoodsInVoidView(BaseAppView):
         invoice.save()
         
         invoices = PurchaseInvoice.objects.filter(company=company).exclude(invoice_status='void').order_by('-date_received')
-        paginator = Paginator(invoices, 10)
+        paginator = Paginator(invoices, self.pagination_size)
         page_obj = paginator.get_page(1)
         
         return render(request, 'frontend/goods_in/_table.html', {'invoices': page_obj.object_list, 'page_obj': page_obj, 'request': request, 'suppliers': Party.objects.filter(company=company, is_supplier=True, is_removed=False)})
@@ -509,7 +545,7 @@ class GoodsOutTableView(BaseAppView):
         else:
             invoices = invoices.order_by('-date_dispatched')
 
-        paginator = Paginator(invoices, 10)
+        paginator = Paginator(invoices, self.pagination_size)
         page_obj = paginator.get_page(request.GET.get('page', 1))
 
         context = {
@@ -533,18 +569,33 @@ class GoodsOutFormView(BaseAppView):
             lines_list = [{'item_id': l.item_id, 'item_name': l.item.name, 'qty': str(l.quantity), 'selling_price': str(l.selling_price)} for l in invoice.lines.all()]
             lines_json = json.dumps(lines_list)
 
-        next_ref = f"SAL-{(SaleInvoice.objects.filter(company=company).order_by('-id').first().id + 1) if SaleInvoice.objects.exists() else 1:04d}"
+        if not invoice:
+            prefix = "SAL-"
+            last_inv = SaleInvoice.objects.filter(company=company).order_by('-reference_no').first()
+            if last_inv:
+                try: num = int(last_inv.reference_no.split('-')[1]) + 1
+                except: num = 1
+            else: num = 1
+
+            next_ref = f"{prefix}{num:04d}"
+            while SaleInvoice.objects.filter(company=company, reference_no=next_ref).exists():
+                num += 1
+                next_ref = f"{prefix}{num:04d}"
 
         customers = Party.objects.filter(company=company, is_customer=True, is_removed=False)
         warehouses = Warehouse.objects.filter(company=company, is_active=True)
         
         default_tier = PriceTier.objects.filter(company=company, is_default=True).first()
-        items_qs = Item.objects.filter(company=company, status='active').select_related('category', 'base_unit')
+        
+        # EFFICIENCY FIX: Use Prefetch to get default prices in 2 queries instead of N+1
+        price_qs = ItemPrice.objects.filter(price_tier=default_tier) if default_tier else ItemPrice.objects.all()
+        items_qs = Item.objects.filter(company=company, status='active').select_related('category', 'base_unit').prefetch_related(
+            Prefetch('prices', queryset=price_qs, to_attr='default_prices')
+        )
+        
         items_list = []
         for i in items_qs:
-            # Find the price for the default tier. If not found, fallback to first price, else cost+20%
-            price_obj = i.prices.filter(price_tier=default_tier).first() if default_tier else i.prices.first()
-            default_sell = str(price_obj.price) if price_obj else str(i.cost_price * Decimal('1.20'))
+            default_sell = str(i.default_prices[0].price) if hasattr(i, 'default_prices') and i.default_prices else str(i.cost_price * Decimal('1.20'))
             items_list.append({
                 'id': i.id, 'name': i.name, 'category_id': i.category_id,
                 'category_name': i.category.name if i.category else 'Uncategorized',
@@ -560,6 +611,7 @@ class GoodsOutFormView(BaseAppView):
         }
         return render(request, 'frontend/goods_out/_form.html', context)
 
+
 class GoodsOutSaveView(BaseAppView):
     def post(self, request):
         company = self.get_company()
@@ -568,17 +620,16 @@ class GoodsOutSaveView(BaseAppView):
         if invoice_id:
             return JsonResponse({"success": False, "message": "Editing existing sales is disabled. Please void and create a new one."}, status=400)
 
-
-        # Check Credit Limit BEFORE doing anything
         grand_total = Decimal('0')
         customer_id = request.POST.get('customer')
+        if not customer_id:
+            return JsonResponse({"success": False, "message": "Please select a customer."}, status=400)
         customer = Party.objects.get(id=customer_id, company=company)
         
         if customer and customer.credit_limit > 0:
             qtys = request.POST.getlist('qty[]')
             prices = request.POST.getlist('selling_price[]')
             is_vat_inclusive = request.POST.get('is_vat_inclusive') == 'true'
-
 
             subtotal = sum(Decimal(q) * Decimal(p) for q, p in zip(qtys, prices))
 
@@ -589,7 +640,7 @@ class GoodsOutSaveView(BaseAppView):
             
             if customer.balance + grand_total > customer.credit_limit:
                 return JsonResponse({"success": False, "message": f"Credit Limit Exceeded! Limit: Rs. {customer.credit_limit}, Current Balance: Rs. {customer.balance}."}, status=400)
-        # FIX: Wrap everything in a transaction. If a line fails, it rolls back the whole invoice!
+
         try:
             with transaction.atomic():
                 invoice = SaleInvoice(company=company)
@@ -607,9 +658,13 @@ class GoodsOutSaveView(BaseAppView):
                 qtys = request.POST.getlist('qty[]')
                 prices = request.POST.getlist('selling_price[]')
 
+                # EFFICIENCY FIX: Fetch all items in one query
+                items_dict = {i.id: i for i in Item.objects.filter(id__in=item_ids, company=company)}
+
                 for i in range(len(item_ids)):
                     if item_ids[i]:
-                        item = Item.objects.get(id=item_ids[i], company=company)
+                        item = items_dict.get(int(item_ids[i]))
+                        if not item: continue
                         
                         try: qty_val = Decimal(qtys[i])
                         except: qty_val = Decimal('0')
@@ -617,29 +672,22 @@ class GoodsOutSaveView(BaseAppView):
                         try: gross_price = Decimal(prices[i])
                         except: gross_price = Decimal('0')
 
-                        # This will raise ValidationError if stock is insufficient
                         SaleItemLine.objects.create(
-                            company=company,
-                            invoice=invoice,
-                            created_by=request.user,
-                            item=item,
-                            warehouse_id=warehouse_id,
-                            unit=item.base_unit,
-                            conversion_factor=Decimal('1.00'),
-                            quantity=qty_val,
-                            selling_price=gross_price,
+                            company=company, invoice=invoice, created_by=request.user,
+                            item=item, warehouse_id=warehouse_id, unit=item.base_unit,
+                            conversion_factor=Decimal('1.00'), quantity=qty_val, selling_price=gross_price,
                         )
         except ValidationError as e:
-            # transaction.atomic() automatically rolled back the DB. Just return the error.
             return JsonResponse({"success": False, "message": e.messages[0]}, status=400)
         except Exception as e:
             return JsonResponse({"success": False, "message": f"An unexpected error occurred: {str(e)}"}, status=400)
         
         invoices = SaleInvoice.objects.filter(company=company).exclude(invoice_status='void').order_by('-date_dispatched')
-        paginator = Paginator(invoices, 10)
+        paginator = Paginator(invoices, self.pagination_size)
         page_obj = paginator.get_page(1)
         
         return render(request, 'frontend/goods_out/_table.html', {'invoices': page_obj.object_list, 'page_obj': page_obj, 'request': request, 'customers': Party.objects.filter(company=company, is_customer=True, is_removed=False)})
+
 
 class GoodsOutVoidView(BaseAppView):
     def post(self, request, invoice_id):
@@ -655,7 +703,7 @@ class GoodsOutVoidView(BaseAppView):
         invoice.save()
         
         invoices = SaleInvoice.objects.filter(company=company).exclude(invoice_status='void').order_by('-date_dispatched')
-        paginator = Paginator(invoices, 10)
+        paginator = Paginator(invoices, self.pagination_size)
         page_obj = paginator.get_page(1)
         
         return render(request, 'frontend/goods_out/_table.html', {'invoices': page_obj.object_list, 'page_obj': page_obj, 'request': request, 'customers': Party.objects.filter(company=company, is_customer=True, is_removed=False)})

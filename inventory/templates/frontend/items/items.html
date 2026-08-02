@@ -103,7 +103,7 @@
         </div>
     </div>
 
-    <!-- DELETE CONFIRMATION MODAL -->
+ <!-- DELETE CONFIRMATION MODAL (With Reason) -->
     <div x-show="deleteModal" x-transition.opacity @click="deleteModal = false" class="fixed inset-0 bg-black/30 backdrop-blur-sm z-[70] flex items-center justify-center" style="display: none;">
         <div x-show="deleteModal" x-transition @click.stop class="bg-white rounded-2xl shadow-xl w-full max-w-sm mx-4 p-6">
             <div class="w-12 h-12 bg-red-50 rounded-xl flex items-center justify-center mx-auto mb-4">
@@ -119,8 +119,23 @@
 
             <div class="flex flex-col gap-3">
                 <button @click="deleteModal = false" class="w-full px-4 py-2.5 text-sm font-semibold text-neutral-600 bg-white border border-neutral-200 rounded-xl hover:bg-neutral-50 transition-all">Cancel</button>
-                <button @click="htmx.ajax('POST', `{% url 'frontend:item_delete' item_id=0 %}`.replace('0', deleteId), { target: '#items-table', swap: 'innerHTML', values: { delete_reason: deleteReason } }); deleteModal = false; deleteReason = ''" 
-                        class="w-full px-4 py-2.5 text-sm font-semibold text-white bg-red-500 rounded-xl hover:bg-red-600 transition-all whitespace-nowrap">
+                
+                <!-- FIXED: Added Promise handlers for Success and Error toasts -->
+                <button @click="
+                    htmx.ajax('POST', `{% url 'frontend:item_delete' item_id=0 %}`.replace('0', deleteId), { 
+                        target: '#items-table', 
+                        swap: 'innerHTML', 
+                        values: { delete_reason: deleteReason } 
+                    }).then(() => {
+                        // Success: Show toast and close modal
+                        toast.success('Item deleted successfully!');
+                        deleteModal = false;
+                        deleteReason = '';
+                    }).catch(() => {
+                        // Error: Show error toast
+                        toast.error('Failed to delete item.');
+                    });
+                " class="w-full px-4 py-2.5 text-sm font-semibold text-white bg-red-500 rounded-xl hover:bg-red-600 transition-all whitespace-nowrap">
                     Confirm Delete
                 </button>
             </div>
@@ -254,6 +269,7 @@ async function setDefaultTier(tierId) {
     } catch(e) { toast.error('Network error'); }
 }
 
+
 function itemForm(itemId, isEditable) {
     return {
         changed: false, 
@@ -263,9 +279,10 @@ function itemForm(itemId, isEditable) {
         category: document.getElementById('item-category-select')?.value || '',
         defaultSupplier: document.getElementById('item-supplier-select')?.value || '',
         imagePreview: document.getElementById('item-image-preview-src')?.textContent.trim() || '',
+        imageRemoved: false,
         uoms: [], prices: [], recentCategories: [], recentUnits: [], recentSuppliers: [], unitMap: {},
         defaultTierId: document.getElementById('default-tier-id')?.value || null,
-        defaultPriceIndex: 0, 
+        defaultPriceTierId: null, 
         cropModal: false, cropper: null, croppedFile: null,
         
         init() {
@@ -277,15 +294,20 @@ function itemForm(itemId, isEditable) {
             try { this.recentSuppliers = JSON.parse(document.getElementById('recent-sups-data')?.textContent || '[]'); } catch(e) {}
             try { this.unitMap = JSON.parse(document.getElementById('unit-map-data')?.textContent || '{}'); } catch(e) {}
 
-            const defIdx = this.prices.findIndex(p => p.is_default);
-            if (defIdx !== -1) this.defaultPriceIndex = defIdx;
+            const defPrice = this.prices.find(p => p.is_default);
+            if (defPrice) this.defaultPriceTierId = defPrice.tier_id;
 
+            // UX FIX: Auto-add one empty UOM and Price row for NEW items
             if (!itemId) {
                 if (this.uoms.length === 0) this.addUom();
                 if (this.prices.length === 0) this.addPrice();
             }
         },
-        get baseUnitName() { return this.unitMap[this.baseUnit] || 'Base Units'; },
+        
+        // UX FIX: Dynamic Base Unit Name text
+        get baseUnitName() { 
+            return this.unitMap[this.baseUnit] ? this.unitMap[this.baseUnit] : 'Base Units'; 
+        },
         
         handleFileSelect(event) {
             const file = event.target.files[0];
@@ -311,21 +333,37 @@ function itemForm(itemId, isEditable) {
                 dataTransfer.items.add(this.croppedFile);
                 document.getElementById('image-upload-input').files = dataTransfer.files;
             });
-            this.cropper.destroy(); this.cropModal = false; this.changed = true;
+            this.cropper.destroy(); 
+            this.cropModal = false; 
+            this.imageRemoved = false; // NEW: We added an image, so ensure removal flag is false
+            this.changed = true;
         },
         cancelCrop() { this.cropper.destroy(); this.cropModal = false; document.getElementById('image-upload-input').value = ''; },
         
         addUom() { this.uoms.push({ unit_id: '', factor: '' }); this.changed = true; },
         removeUom(i) { this.uoms.splice(i, 1); this.changed = true; },
         
+        // UX FIX: Auto-select default tier when adding a price
         addPrice() { 
-            this.prices.push({ tier_id: this.defaultTierId || '', price: '', is_default: false });
-            if (this.prices.length === 1) this.defaultPriceIndex = 0; 
+            // Check if the default tier is already used in an existing row
+            const isDefaultUsed = this.defaultTierId && this.prices.some(p => p.tier_id === this.defaultTierId);
+            
+            // If it's already used, leave the tier_id blank. If not, use the default.
+            const tierId = isDefaultUsed ? '' : (this.defaultTierId || '');
+            
+            this.prices.push({ tier_id: tierId, price: '', is_default: false });
+            
+            // If this is the first price added and we successfully auto-selected the default tier
+            if (this.prices.length === 1 && tierId) {
+                this.defaultPriceTierId = this.defaultTierId;
+            }
             this.changed = true; 
         },
-        removePrice(i) { this.uoms.splice(i, 1); this.changed = true; },
-        setDefaultPrice(index) { this.defaultPriceIndex = index; this.changed = true; }
+        removePrice(i) { this.prices.splice(i, 1); this.changed = true; },
+        setDefaultPrice(tierId) { this.defaultPriceTierId = tierId; this.changed = true; }
     }
 }
+
+
 </script>
 {% endblock %}

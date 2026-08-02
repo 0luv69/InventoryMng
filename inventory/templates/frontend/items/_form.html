@@ -12,9 +12,21 @@
       hx-target="#items-table" 
       hx-swap="innerHTML" 
       hx-encoding="multipart/form-data"
-      hx-on::after-request="if(event.detail.successful) { toast.success('Item saved successfully!'); window.dispatchEvent(new CustomEvent('close-modal')); }"
+      hx-on::after-request="
+        if(event.detail.successful) { 
+            toast.success('Item saved successfully!'); 
+            window.dispatchEvent(new CustomEvent('close-modal')); 
+        } else {
+            try {
+                let res = JSON.parse(event.detail.xhr.response);
+                toast.error(res.message || 'Failed to save item.');
+            } catch(e) {
+                toast.error('An unexpected error occurred.');
+            }
+        }
+      "
       class="space-y-6">
-      
+
     {% csrf_token %}
     <input type="hidden" name="id" value="{{ item.id|default:'' }}">
     <input type="hidden" id="item-name-input" value="{{ item.name|default:'' }}">
@@ -45,7 +57,14 @@
                         <p class="text-xs text-neutral-400">Click to upload</p>
                     </div>
                 </div>
-                <input type="file" id="image-upload-input" accept="image/*" class="hidden" :disabled="!editable" @change="handleFileSelect($event)">
+                <input type="file" id="image-upload-input" name="image" accept="image/*" class="hidden" :disabled="!editable" @change="handleFileSelect($event)">
+                <input type="hidden" name="clear_image" :value="imageRemoved ? '1' : '0'">
+                
+                <button type="button" x-show="imagePreview && editable" 
+                        @click="imagePreview = ''; document.getElementById('image-upload-input').value = ''; imageRemoved = true; changed = true" 
+                        class="mt-2 text-xs font-semibold text-red-500 hover:text-red-600 cursor-pointer">
+                    Remove Image
+                </button>
             </div>
             <div class="col-span-2 space-y-4">
                 <div>
@@ -65,7 +84,7 @@
                 <label class="block text-xs font-semibold text-neutral-600 mb-1.5">Category</label>
                 <div class="flex flex-wrap gap-1 mb-2" x-show="editable">
                     <template x-for="cat in recentCategories" :key="cat.id">
-                        <button type="button" @click="category = (category == cat.id ? '' : cat.id)" :class="category == cat.id ? 'bg-green-500 text-white' : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'" class="px-2.5 py-1 text-xs font-semibold rounded-full transition-colors" x-text="cat.name"></button>
+                        <button type="button" @click="category = (category == String(cat.id) ? '' : String(cat.id))" :class="category == cat.id ? 'bg-green-500 text-white' : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'" class="px-2.5 py-1 text-xs font-semibold rounded-full transition-colors" x-text="cat.name"></button>
                     </template>
                 </div>
                 <select name="category" x-model="category" :disabled="!editable" class="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white" :class="!editable ? 'bg-neutral-50 cursor-not-allowed' : ''">
@@ -76,7 +95,7 @@
                 <label class="block text-xs font-semibold text-neutral-600 mb-1.5">Default Supplier</label>
                 <div class="flex flex-wrap gap-1 mb-2" x-show="editable">
                     <template x-for="sup in recentSuppliers" :key="sup.id">
-                        <button type="button" @click="defaultSupplier = (defaultSupplier == sup.id ? '' : sup.id)" :class="defaultSupplier == sup.id ? 'bg-green-500 text-white' : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'" class="px-2.5 py-1 text-xs font-semibold rounded-full transition-colors" x-text="sup.name"></button>
+                        <button type="button" @click="defaultSupplier = (defaultSupplier == String(sup.id) ? '' : String(sup.id))" :class="defaultSupplier == sup.id ? 'bg-green-500 text-white' : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'" class="px-2.5 py-1 text-xs font-semibold rounded-full transition-colors" x-text="sup.name"></button>
                     </template>
                 </div>
                 <select name="default_supplier" x-model="defaultSupplier" :disabled="!editable" class="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white" :class="!editable ? 'bg-neutral-50 cursor-not-allowed' : ''">
@@ -92,7 +111,7 @@
                 <label class="block text-xs font-semibold text-neutral-600 mb-1.5">Base Unit (Smallest Unit) *</label>
                 <div class="flex flex-wrap gap-1 mb-2" x-show="editable">
                     <template x-for="unt in recentUnits" :key="unt.id">
-                        <button type="button" @click="baseUnit = (baseUnit == unt.id ? '' : unt.id)" :class="baseUnit == unt.id ? 'bg-green-500 text-white' : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'" class="px-2.5 py-1 text-xs font-semibold rounded-full transition-colors" x-text="unt.name"></button>
+                        <button type="button" @click="baseUnit = (baseUnit == String(unt.id) ? '' : String(unt.id))" :class="baseUnit == unt.id ? 'bg-green-500 text-white' : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'" class="px-2.5 py-1 text-xs font-semibold rounded-full transition-colors" x-text="unt.name"></button>
                     </template>
                 </div>
                 <select name="base_unit" x-model="baseUnit" required :disabled="!editable" class="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white" :class="!editable ? 'bg-neutral-50 cursor-not-allowed' : ''">
@@ -107,7 +126,12 @@
                 <div class="space-y-2">
                     <template x-for="(uom, index) in uoms" :key="index">
                         <div class="flex items-center gap-2 bg-white p-2 rounded-lg border border-neutral-200">
-                            <select x-model="uom.unit_id" name="uom_unit_id[]" :disabled="!editable" class="flex-1 px-3 py-2 text-sm border border-neutral-200 rounded-lg bg-white"><option value="">Select Unit</option>{% for u in units %}<option value="{{ u.id }}">{{ u.name }}</option>{% endfor %}</select>
+                            <select x-model="uom.unit_id" name="uom_unit_id[]" :disabled="!editable" class="flex-1 px-3 py-2 text-sm border border-neutral-200 rounded-lg bg-white">
+                                <option value="">Select Unit</option>
+                                {% for u in units %}
+                                <option value="{{ u.id }}"  :disabled="uoms.some((o, idx) => idx !== index && o.unit_id === '{{ u.id }}')">{{ u.name }}</option>
+                                {% endfor %}
+                            </select>
                             <span class="text-xs text-neutral-500">=</span>
                             <input type="number" x-model="uom.factor" name="uom_factor[]" step="0.01" placeholder="12" :disabled="!editable" class="w-20 px-3 py-2 text-sm border border-neutral-200 rounded-lg bg-white">
                             <span class="text-xs text-neutral-500 w-20 truncate" x-text="baseUnitName"></span>
@@ -137,19 +161,30 @@
                 <template x-for="(price, index) in prices" :key="index">
                     <div class="flex items-center gap-2 bg-neutral-50 p-2 rounded-lg border border-neutral-200">
                         <!-- Default Star Button -->
-                        <button type="button" @click="setDefaultPrice(index)" x-show="editable" class="p-2">
-                            <svg class="w-5 h-5" :class="defaultPriceIndex === index ? 'text-yellow-400 fill-yellow-400' : 'text-neutral-300 fill-none'" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                        <button type="button" @click="setDefaultPrice(price.tier_id)" x-show="editable" class="p-2">
+                            <svg class="w-5 h-5" :class="defaultPriceTierId === price.tier_id ? 'text-yellow-400 fill-yellow-400' : 'text-neutral-300 fill-none'" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
                         </button>
-                        <select x-model="price.tier_id" name="price_tier_id[]" :disabled="!editable" class="flex-1 px-3 py-2 text-sm border border-neutral-200 rounded-lg bg-white"><option value="">Select Tier</option>{% for t in price_tiers %}<option value="{{ t.id }}">{{ t.name }}</option>{% endfor %}</select>
+                        <select x-model="price.tier_id" name="price_tier_id[]" :disabled="!editable" class="flex-1 px-3 py-2 text-sm border border-neutral-200 rounded-lg bg-white">
+                            <option value="">Select Tier</option>
+                            {% for t in price_tiers %}
+                            <option value="{{ t.id }}" :disabled="prices.some((o, idx) => idx !== index && o.tier_id === '{{ t.id }}')">{{ t.name }}</option>
+                            {% endfor %}
+                        </select>
                         <span class="text-xs text-neutral-500">Rs.</span>
                         <input type="number" x-model="price.price" name="price_amount[]" step="0.01" placeholder="0.00" :disabled="!editable" class="w-32 px-3 py-2 text-sm border border-neutral-200 rounded-lg bg-white">
-                        <!-- Hidden input for is_default flag -->
-                        <input type="hidden" name="price_is_default[]" :value="defaultPriceIndex === index ? '1' : '0'">
+                        
+                        <input type="hidden" name="price_is_default[]" :value="defaultPriceTierId === price.tier_id ? '1' : '0'">
                         <button type="button" x-show="editable" @click="removePrice(index)" class="text-red-400 hover:text-red-600 p-2"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
                     </div>
                 </template>
                 <div x-show="prices.length === 0" class="text-xs text-neutral-400 text-center py-4 border border-dashed border-neutral-200 rounded-lg">No selling prices set.</div>
             </div>
+        </div>
+
+        <div>
+            <label class="block text-xs font-semibold text-neutral-600 mb-1.5">Low Stock Alert Threshold</label>
+            <input type="number" name="low_stock_threshold" min="0" value="{{ item.low_stock_threshold|default:'10' }}" :readonly="!editable" class="w-full px-4 py-2.5 text-sm border border-neutral-200 rounded-xl transition-all" :class="!editable ? 'bg-neutral-50 cursor-not-allowed' : 'bg-white focus:ring-2 focus:ring-green-500/20'">
+            <p class="text-[0.65rem] text-neutral-400 mt-1">System will warn you on the dashboard when stock falls to or below this number.</p>
         </div>
 
         <div class="flex items-center justify-between p-4 bg-neutral-50 rounded-xl border border-neutral-100">
