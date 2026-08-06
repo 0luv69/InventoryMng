@@ -81,7 +81,6 @@ class ItemsView(BaseAppView):
         }
         return render(request, 'frontend/items/items.html', context)
 
-
 class ItemFormView(BaseAppView):
     def get(self, request):
         company = self.get_company()
@@ -98,7 +97,11 @@ class ItemFormView(BaseAppView):
             uom_json = json.dumps(uom_list)
             
             prices = ItemPrice.objects.filter(item=item).select_related('price_tier')
-            prices_list = [{'tier_id': p.price_tier_id, 'price': str(p.price), 'is_default': p.is_default} for p in prices]
+            prices_list = [{'tier_id': p.price_tier_id, 'price': str(p.price), 
+                            'is_default': p.is_default,
+                            'entry_unit_id': p.entry_unit_id
+
+                            } for p in prices]
             prices_json = json.dumps(prices_list)
 
         # EFFICIENCY FIX: Query once, let DB sort and slice
@@ -127,10 +130,9 @@ class ItemFormView(BaseAppView):
             'recent_suppliers': json.dumps([{'id': s.id, 'name': s.name} for s in recent_sups]),
             'unit_map_json': json.dumps({str(u.id): u.name for u in units_qs}),
             'default_tier_id': default_tier.id if default_tier else None,
+            'cost_entry_unit_id': item.cost_entry_unit_id if item else None,
         }
         return render(request, 'frontend/items/_form.html', context)
-
-
 
 class ItemsTableView(BaseAppView):
     def get(self, request):
@@ -186,9 +188,9 @@ class ItemSaveView(BaseAppView):
         item_id = request.POST.get('id')
         
         if item_id:
-            item = get_object_or_404(Item, id=item_id, company=company)
+            item: Item = get_object_or_404(Item, id=item_id, company=company)
         else:
-            item = Item(company=company)
+            item: Item = Item(company=company)
             item.created_by = request.user
             
         item.name = request.POST.get('name')
@@ -197,7 +199,9 @@ class ItemSaveView(BaseAppView):
         item.barcode = request.POST.get('barcode')
         item.default_supplier_id = request.POST.get('default_supplier') or None
         item.status = 'active' if request.POST.get('is_active') == 'on' else 'inactive'
-        
+        item.cost_entry_unit_id = request.POST.get('cost_entry_unit') or None
+        item.cost_price = request.POST.get('cost_price') or 0
+
         # Handle Image Upload and Clearing
         old_image_path = item.image.path if item.image else None
         
@@ -223,8 +227,11 @@ class ItemSaveView(BaseAppView):
         uom_factors = request.POST.getlist('uom_factor[]')
 
         seen_uoms = set()
+        base_unit_id = request.POST.get('base_unit')
         for i in range(len(uom_unit_ids)):
             if uom_unit_ids[i] and uom_factors[i]:
+                if uom_unit_ids[i] == base_unit_id:
+                    return JsonResponse({"success": False, "message": "Base unit can't be added as its own UOM conversion."}, status=400)
                 if uom_unit_ids[i] in seen_uoms:
                     return JsonResponse({"success": False, "message": "Duplicate Unit found in UOM Conversions. Please select each unit only once."}, status=400)
                 seen_uoms.add(uom_unit_ids[i])
@@ -237,7 +244,11 @@ class ItemSaveView(BaseAppView):
         tier_ids = request.POST.getlist('price_tier_id[]')
         tier_prices = request.POST.getlist('price_amount[]')
         default_flags = request.POST.getlist('price_is_default[]')
+        entry_units = request.POST.getlist('price_entry_unit[]')
 
+        if sum(1 for f in default_flags if f == '1') > 1:
+            return JsonResponse({"success": False, "message": "Only one price tier can be marked as default."}, status=400)
+        
         seen_tiers = set()
         for i in range(len(tier_ids)):
             if tier_ids[i] and tier_prices[i]:
@@ -248,6 +259,7 @@ class ItemSaveView(BaseAppView):
                 ItemPrice.objects.create(
                     company=company, item=item, price_tier_id=tier_ids[i], 
                     price=tier_prices[i], created_by=request.user,
+                    entry_unit_id=entry_units[i] if i < len(entry_units) and entry_units[i] else None,
                     is_default=(default_flags[i] == '1') if i < len(default_flags) else False
                 )
         
@@ -406,7 +418,6 @@ class GoodsInFormView(BaseAppView):
         }
         return render(request, 'frontend/goods_in/_form.html', context)
 
-
 class GoodsInSaveView(BaseAppView):
     def post(self, request):
         company = self.get_company()
@@ -467,8 +478,6 @@ class GoodsInSaveView(BaseAppView):
         page_obj = paginator.get_page(1)
         
         return render(request, 'frontend/goods_in/_table.html', {'invoices': page_obj.object_list, 'page_obj': page_obj, 'request': request, 'suppliers': Party.objects.filter(company=company, is_supplier=True, is_removed=False)})
-
-
 
 class GoodsInVoidView(BaseAppView):
     def post(self, request, invoice_id):

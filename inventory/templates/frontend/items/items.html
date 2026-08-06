@@ -282,31 +282,68 @@ function itemForm(itemId, isEditable) {
         imageRemoved: false,
         uoms: [], prices: [], recentCategories: [], recentUnits: [], recentSuppliers: [], unitMap: {},
         defaultTierId: document.getElementById('default-tier-id')?.value || null,
+        costEntryUnit: '', costEntryAmount: '', costPrice: '0',
         defaultPriceTierId: null, 
         cropModal: false, cropper: null, croppedFile: null,
         
         init() {
             this.changed = false; 
             try { this.uoms = JSON.parse(document.getElementById('uom-data')?.textContent || '[]'); } catch(e) {}
-            try { this.prices = JSON.parse(document.getElementById('prices-data')?.textContent || '[]'); } catch(e) {}
             try { this.recentCategories = JSON.parse(document.getElementById('recent-cats-data')?.textContent || '[]'); } catch(e) {}
             try { this.recentUnits = JSON.parse(document.getElementById('recent-units-data')?.textContent || '[]'); } catch(e) {}
             try { this.recentSuppliers = JSON.parse(document.getElementById('recent-sups-data')?.textContent || '[]'); } catch(e) {}
             try { this.unitMap = JSON.parse(document.getElementById('unit-map-data')?.textContent || '{}'); } catch(e) {}
+            
+            // Cost price — reverse-populate entry amount from stored base-unit price
+            this.costEntryUnit = document.getElementById('cost-entry-unit-input')?.value || this.baseUnit;
+            this.costPrice = parseFloat(document.getElementById('item-cost-price-input')?.value || '0').toFixed(2);
+            this.costEntryAmount = (parseFloat(this.costPrice) * this.getUnitFactor(this.costEntryUnit)).toFixed(2);
+
+            // Prices — same reverse-populate per row
+            try {
+                const rawPrices = JSON.parse(document.getElementById('prices-data')?.textContent || '[]');
+                this.prices = rawPrices.map(p => {
+                    const entry_unit = p.entry_unit_id || this.baseUnit;
+                    const factor = this.getUnitFactor(entry_unit);
+                    return { ...p, entry_unit, entry_amount: (parseFloat(p.price) * factor).toFixed(2) };
+                });
+            } catch(e) {}
+
 
             const defPrice = this.prices.find(p => p.is_default);
             if (defPrice) this.defaultPriceTierId = defPrice.tier_id;
 
-            // UX FIX: Auto-add one empty UOM and Price row for NEW items
             if (!itemId) {
                 if (this.uoms.length === 0) this.addUom();
                 if (this.prices.length === 0) this.addPrice();
             }
+
+            this.$watch('baseUnit', (value) => {
+                this.uoms = this.uoms.filter(u => u.unit_id !== value);
+            });
         },
         
         // UX FIX: Dynamic Base Unit Name text
         get baseUnitName() { 
             return this.unitMap[this.baseUnit] ? this.unitMap[this.baseUnit] : 'Base Units'; 
+        },
+
+        getUnitFactor(unitId) {
+            if (!unitId || unitId === this.baseUnit) return 1;
+            const u = this.uoms.find(u => u.unit_id === unitId);
+            return (u && u.factor) ? parseFloat(u.factor) : 1;
+        },
+
+        syncCostPrice() {
+            const factor = this.getUnitFactor(this.costEntryUnit);
+            this.costPrice = ((parseFloat(this.costEntryAmount) || 0) / factor).toFixed(2);
+            this.changed = true;
+        },
+
+        syncPrice(i) {
+            const factor = this.getUnitFactor(this.prices[i].entry_unit);
+            this.prices[i].price = ((parseFloat(this.prices[i].entry_amount) || 0) / factor).toFixed(2);
+            this.changed = true;
         },
         
         handleFileSelect(event) {
@@ -351,7 +388,7 @@ function itemForm(itemId, isEditable) {
             // If it's already used, leave the tier_id blank. If not, use the default.
             const tierId = isDefaultUsed ? '' : (this.defaultTierId || '');
             
-            this.prices.push({ tier_id: tierId, price: '', is_default: false });
+            this.prices.push({ tier_id: tierId, price: '', entry_unit: this.baseUnit, entry_amount: '', is_default: false });
             
             // If this is the first price added and we successfully auto-selected the default tier
             if (this.prices.length === 1 && tierId) {
@@ -360,7 +397,19 @@ function itemForm(itemId, isEditable) {
             this.changed = true; 
         },
         removePrice(i) { this.prices.splice(i, 1); this.changed = true; },
-        setDefaultPrice(tierId) { this.defaultPriceTierId = tierId; this.changed = true; }
+        setDefaultPrice(tierId) { this.defaultPriceTierId = tierId; this.changed = true; },
+
+        unitOptionLabel(unitId, baseLabel, index) {
+            if (unitId === this.baseUnit) return `${baseLabel} — Base Unit`;
+            const taken = this.uoms.some((o, idx) => idx !== index && o.unit_id === unitId);
+            return taken ? `${baseLabel} — Taken` : baseLabel;
+        },
+
+        unitOptionStyle(unitId, index) {
+            if (unitId === this.baseUnit) return 'color:#16a34a;font-weight:600;';
+            const taken = this.uoms.some((o, idx) => idx !== index && o.unit_id === unitId);
+            return taken ? 'color:#9ca3af;' : '';
+        },
     }
 }
 

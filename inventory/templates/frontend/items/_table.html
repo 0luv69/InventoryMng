@@ -3,7 +3,7 @@
         <tr>
             <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-neutral-400 w-12">S.N.</th>
             <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-neutral-400">
-                <button hx-get="{% url 'frontend:items_table' %}?sort=name&order={% if request.GET.sort == 'name' and request.GET.order == 'desc' %}asc{% else %}desc{% endif %}&search={{ request.GET.search }}&category={{ request.GET.category }}&unit={{ request.GET.unit }}&status={{ request.GET.status }}" hx-target="#items-table" class="flex items-center gap-1 cursor-pointer hover:text-neutral-700">
+                <button hx-get="{% url 'frontend:items_table' %}?sort=name&order={% if request.GET.sort == 'name' and request.GET.order == 'desc' %}asc{% else %}desc{% endif %}&search={{ request.GET.search|urlencode }}&category={{ request.GET.category|urlencode }}&unit={{ request.GET.unit|urlencode }}&status={{ request.GET.status|urlencode }}" hx-target="#items-table" class="flex items-center gap-1 cursor-pointer hover:text-neutral-700">
                     Name 
                     {% if request.GET.sort == 'name' %}
                         {% if request.GET.order == 'desc' %}<svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M12 5v14M19 12l-7 7-7-7"/></svg>{% else %}<svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M12 19V5M5 12l7-7 7 7"/></svg>{% endif %}
@@ -12,7 +12,7 @@
             </th>
             <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-neutral-400">Category</th>
             <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-neutral-400">
-                <button hx-get="{% url 'frontend:items_table' %}?sort=cost_price&order={% if request.GET.sort == 'cost_price' and request.GET.order == 'desc' %}asc{% else %}desc{% endif %}&search={{ request.GET.search }}&category={{ request.GET.category }}&unit={{ request.GET.unit }}&status={{ request.GET.status }}" hx-target="#items-table" class="flex items-center gap-1 cursor-pointer hover:text-neutral-700">
+                <button hx-get="{% url 'frontend:items_table' %}?sort=cost_price&order={% if request.GET.sort == 'cost_price' and request.GET.order == 'desc' %}asc{% else %}desc{% endif %}&search={{ request.GET.search|urlencode }}&category={{ request.GET.category|urlencode }}&unit={{ request.GET.unit|urlencode }}&status={{ request.GET.status|urlencode }}" hx-target="#items-table" class="flex items-center gap-1 cursor-pointer hover:text-neutral-700">
                     Cost Price 
                     {% if request.GET.sort == 'cost_price' %}
                         {% if request.GET.order == 'desc' %}<svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M12 5v14M19 12l-7 7-7-7"/></svg>{% else %}<svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M12 19V5M5 12l7-7 7 7"/></svg>{% endif %}
@@ -20,7 +20,7 @@
                 </button>
             </th>
             <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-neutral-400">
-                <button hx-get="{% url 'frontend:items_table' %}?sort=total_stock_calc&order={% if request.GET.sort == 'total_stock_calc' and request.GET.order == 'desc' %}asc{% else %}desc{% endif %}&search={{ request.GET.search }}&category={{ request.GET.category }}&unit={{ request.GET.unit }}&status={{ request.GET.status }}" hx-target="#items-table" class="flex items-center gap-1 cursor-pointer hover:text-neutral-700">
+                <button hx-get="{% url 'frontend:items_table' %}?sort=total_stock_calc&order={% if request.GET.sort == 'total_stock_calc' and request.GET.order == 'desc' %}asc{% else %}desc{% endif %}&search={{ request.GET.search|urlencode }}&category={{ request.GET.category|urlencode }}&unit={{ request.GET.unit|urlencode }}&status={{ request.GET.status|urlencode }}" hx-target="#items-table" class="flex items-center gap-1 cursor-pointer hover:text-neutral-700">
                     Stock 
                     {% if request.GET.sort == 'total_stock_calc' %}
                         {% if request.GET.order == 'desc' %}<svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M12 5v14M19 12l-7 7-7-7"/></svg>{% else %}<svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M12 19V5M5 12l7-7 7 7"/></svg>{% endif %}
@@ -52,8 +52,10 @@
                 </div>
             </td>
             <td class="px-6 py-4 text-sm text-neutral-600">{{ item.category.name|default:"-" }}</td>
-            <td class="px-6 py-4 text-sm text-neutral-600">Rs. {{ item.cost_price }}</td>
-            <td class="px-6 py-4 text-sm font-semibold text-neutral-800">{{ item.total_stock_calc|default:0 }}</td>
+            <!-- ADDED Unit next to Cost Price -->
+            <td class="px-6 py-4 text-sm text-neutral-600">Rs. {{ item.cost_price }} <span class="text-xs text-neutral-400">/ {{ item.base_unit.short_name }}</span></td>
+            <!-- ADDED Unit next to Stock -->
+            <td class="px-6 py-4 text-sm font-semibold text-neutral-800">{{ item.total_stock_calc|default:0 }} <span class="text-xs text-neutral-400">{{ item.base_unit.short_name }}</span></td>
             <td class="px-6 py-4">
                 {% if item.status == 'active' %}
                 <span class="px-2 py-1 text-[0.65rem] font-bold bg-green-50 text-green-600 border border-green-200 rounded-md">Active</span>
@@ -99,15 +101,15 @@
     </div>
     <div class="flex items-center gap-1">
         {% if page_obj.has_previous %}
-            <button hx-get="{% url 'frontend:items_table' %}?page=1&sort={{ request.GET.sort }}&order={{ request.GET.order }}&search={{ request.GET.search }}&category={{ request.GET.category }}&unit={{ request.GET.unit }}&status={{ request.GET.status }}" hx-target="#items-table" class="px-3 py-1.5 text-xs border border-neutral-200 rounded-md hover:bg-white">First</button>
-            <button hx-get="{% url 'frontend:items_table' %}?page={{ page_obj.previous_page_number }}&sort={{ request.GET.sort }}&order={{ request.GET.order }}&search={{ request.GET.search }}&category={{ request.GET.category }}&unit={{ request.GET.unit }}&status={{ request.GET.status }}" hx-target="#items-table" class="px-3 py-1.5 text-xs border border-neutral-200 rounded-md hover:bg-white">Prev</button>
+            <button hx-get="{% url 'frontend:items_table' %}?page=1&sort={{ request.GET.sort|urlencode }}&order={{ request.GET.order|urlencode }}&search={{ request.GET.search|urlencode }}&category={{ request.GET.category|urlencode }}&unit={{ request.GET.unit|urlencode }}&status={{ request.GET.status|urlencode }}" hx-target="#items-table" class="px-3 py-1.5 text-xs border border-neutral-200 rounded-md hover:bg-white">First</button>
+            <button hx-get="{% url 'frontend:items_table' %}?page={{ page_obj.previous_page_number }}&sort={{ request.GET.sort|urlencode }}&order={{ request.GET.order|urlencode }}&search={{ request.GET.search|urlencode }}&category={{ request.GET.category|urlencode }}&unit={{ request.GET.unit|urlencode }}&status={{ request.GET.status|urlencode }}" hx-target="#items-table" class="px-3 py-1.5 text-xs border border-neutral-200 rounded-md hover:bg-white">Prev</button>
         {% endif %}
 
         <span class="px-3 py-1.5 text-xs font-semibold bg-green-500 text-white rounded-md">{{ page_obj.number }}</span>
 
         {% if page_obj.has_next %}
-            <button hx-get="{% url 'frontend:items_table' %}?page={{ page_obj.next_page_number }}&sort={{ request.GET.sort }}&order={{ request.GET.order }}&search={{ request.GET.search }}&category={{ request.GET.category }}&unit={{ request.GET.unit }}&status={{ request.GET.status }}" hx-target="#items-table" class="px-3 py-1.5 text-xs border border-neutral-200 rounded-md hover:bg-white">Next</button>
-            <button hx-get="{% url 'frontend:items_table' %}?page={{ page_obj.paginator.num_pages }}&sort={{ request.GET.sort }}&order={{ request.GET.order }}&search={{ request.GET.search }}&category={{ request.GET.category }}&unit={{ request.GET.unit }}&status={{ request.GET.status }}" hx-target="#items-table" class="px-3 py-1.5 text-xs border border-neutral-200 rounded-md hover:bg-white">Last</button>
+            <button hx-get="{% url 'frontend:items_table' %}?page={{ page_obj.next_page_number }}&sort={{ request.GET.sort|urlencode }}&order={{ request.GET.order|urlencode }}&search={{ request.GET.search|urlencode }}&category={{ request.GET.category|urlencode }}&unit={{ request.GET.unit|urlencode }}&status={{ request.GET.status|urlencode }}" hx-target="#items-table" class="px-3 py-1.5 text-xs border border-neutral-200 rounded-md hover:bg-white">Next</button>
+            <button hx-get="{% url 'frontend:items_table' %}?page={{ page_obj.paginator.num_pages }}&sort={{ request.GET.sort|urlencode }}&order={{ request.GET.order|urlencode }}&search={{ request.GET.search|urlencode }}&category={{ request.GET.category|urlencode }}&unit={{ request.GET.unit|urlencode }}&status={{ request.GET.status|urlencode }}" hx-target="#items-table" class="px-3 py-1.5 text-xs border border-neutral-200 rounded-md hover:bg-white">Last</button>
         {% endif %}
     </div>
 </div>

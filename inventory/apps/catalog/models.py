@@ -1,6 +1,8 @@
 from django.db import models
 from apps.core.models import BaseModel
 import uuid
+from django.core.validators import MinValueValidator
+from decimal import Decimal
 
 # ==========================================
 # 1. CATEGORY
@@ -74,6 +76,11 @@ class Item(BaseModel):
     # Reorder level
     low_stock_threshold = models.PositiveIntegerField(default=10)
 
+    cost_entry_unit = models.ForeignKey(
+        Unit, on_delete=models.SET_NULL, null=True, blank=True, related_name='+',
+        help_text="Unit the cost is normally typed in (e.g. Carton). cost_price itself always stays per base_unit."
+    )
+
     @property
     def total_stock(self):
         """ Calculate live stock from all warehouses and batches """
@@ -101,6 +108,7 @@ class ItemUOM(BaseModel):
     unit = models.ForeignKey(Unit, on_delete=models.PROTECT, related_name='item_conversions')
     conversion_factor = models.DecimalField(
         max_digits=10, decimal_places=2, 
+        validators= [MinValueValidator(Decimal('0.01'))],
         help_text="e.g., If Base is Pcs and this is Carton, factor = 12"
     )
 
@@ -132,6 +140,10 @@ class ItemPrice(BaseModel):
     price_tier = models.ForeignKey(PriceTier, on_delete=models.CASCADE, related_name='item_prices')
     price = models.DecimalField(max_digits=10, decimal_places=2)
     is_default = models.BooleanField(default=False)
+    entry_unit = models.ForeignKey(
+        Unit, on_delete=models.SET_NULL, null=True, blank=True, related_name='+',
+        help_text="Unit this tier's price is normally typed in. price itself always stays per base_unit."
+    )
     class Meta:
         constraints = [
             models.UniqueConstraint(fields=['item', 'price_tier'], name='uniq_item_pricetier')
