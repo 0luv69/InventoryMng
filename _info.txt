@@ -1,104 +1,110 @@
-timestamp: createdat, updatedat
+dir /s /b /a-d | findstr /v /i "\\__pycache__\\ \\.git\\ \\venv\\ \\static\\ \\media\\"
 
-UserProfile:
-	phnum
-	USER: dajngo user model, fn, ln, email, ped
-	Company
-
-Company: model
-	name
-	slug
-	logo
-	Contact: email, ph, address, city, state/province, country
-	Financial info: currency, tax/pan id
-
-class Unit:
-    company_id              
-    name                   
-    short_name        
-
-      
-class Suppliers:
-    company_id    
-    slug/ uuid          
-    name                    
-    pic/ logo
-    contact: contact_person, phone, email, address
-    balance gave/ balance to give
-    note/ remarks, description
-    status: active, inactive
-    is_removed: bool
-
-class Customers:
-    company_id     
-    slug/ uuid         
-    name                    
-    pic/ logo
-    contact: contact_person, phone, email, address
-    balance got/ balance to get
-    note/ remarks, description
-    status: active, inactive
-    is_removed: bool
-
-Suppliers & Customers are similar i think of reusing or something
-
-
-class Items:
-	company model
-	name, logo, description
-	slug/ unique id
-	unit model
-	cost price, selling price
-	is_active
-	quantity in stock
-	low_stock_threshold
-
-class GoodsIn (the items adding in inventory)
-	Suppliers Model
-	Items model
-	cp, sp (default value from items, and could be changed)
-	Quantity of items
-	recivedby (items recived by)
-	notes
-	date_recived(this could be changed on the creation time)
-	
-	payment_status: paid, partial, unpaid
-	payment_method: online, cash, cheque
-
-
-Goods Out:
-	Customer Model
-	Items model
-	Quantity of items
-	sp (default value from items, and could be changed)
-	dis_type: percentage/ number
-	dis_amt: 
-	dispatched by (items recived by)
-	notes
-	date_recived(this could be changed on the creation time)
-	
-	payment_status: paid, partial, unpaid
-	payment_method: online, cash, cheque
-	
-
-
-class Spoilage&loss:
-	-items
-	- reason: expire, damaged, loss, sample
-	-quantity of product
-	- perprice or total price
-	- date of reported
-	-reported by
-	-notes
-
-
-
-Payment:
-	payment_tpye: recived, sent
-	customer(recived), supplier(sent)
-	amt
-	paid date
-	recived by
-	payment method: cash, cheque
-	payment status
-	notes
+Exchange System/
+├── .gitignore
+├── requirements.txt
+├── report/
+├── _info.txt
+└── inventory/
+    ├── .env
+    ├── db.sqlite3
+    ├── manage.py
+    │
+    ├── config/
+    │   ├── settings.py
+    │   ├── urls.py
+    │   ├── asgi.py
+    │   └── wsgi.py
+    │
+    ├── apps/
+    │   ├── accounts/
+    │   │   ├── admin.py
+    │   │   ├── apps.py
+    │   │   ├── context_processors.py
+    │   │   ├── models.py
+    │   │   ├── views.py
+    │   │   └── migrations/ (0001,0002)
+    │   │
+    │   ├── catalog/
+    │   │   ├── admin.py
+    │   │   ├── api_views.py
+    │   │   ├── apps.py
+    │   │   ├── models.py
+    │   │   ├── serializers.py
+    │   │   ├── views.py
+    │   │   └── migrations/ (0001-0006)
+    │   │
+    │   ├── core/
+    │   │   ├── admin.py
+    │   │   ├── api.py
+    │   │   ├── apps.py
+    │   │   ├── models.py
+    │   │   └── views.py
+    │   │
+    │   ├── frontend/
+    │   │   ├── admin.py
+    │   │   ├── apps.py
+    │   │   ├── models.py
+    │   │   ├── urls.py
+    │   │   └── views.py
+    │   │
+    │   ├── inventory/
+    │   │   ├── admin.py
+    │   │   ├── apps.py
+    │   │   ├── models.py
+    │   │   ├── views.py
+    │   │   └── migrations/ (0001)
+    │   │
+    │   ├── parties/
+    │   │   ├── admin.py
+    │   │   ├── api_views.py
+    │   │   ├── apps.py
+    │   │   ├── models.py
+    │   │   ├── serializers.py
+    │   │   ├── views.py
+    │   │   └── migrations/ (0001)
+    │   │
+    │   ├── reports/
+    │   │   ├── admin.py
+    │   │   ├── apps.py
+    │   │   ├── models.py
+    │   │   └── views.py
+    │   │
+    │   └── transactions/
+    │       ├── admin.py
+    │       ├── api_views.py
+    │       ├── apps.py
+    │       ├── models.py
+    │       ├── serializers.py
+    │       ├── services.py
+    │       ├── signals.py
+    │       ├── views.py
+    │       └── migrations/ (0001)
+    │
+    ├── templates/
+    │   ├── base.html
+    │   ├── test.html
+    │   └── frontend/
+    │       ├── dashboard.html
+    │       ├── goods_in/
+    │       │   ├── goods_in.html
+    │       │   ├── _form.html
+    │       │   ├── _item_search.html
+    │       │   ├── _table.html
+    │       │   └── test.html
+    │       ├── goods_out/
+    │       │   ├── goods_out.html
+    │       │   ├── _form.html
+    │       │   └── _table.html
+    │       └── items/
+    │           ├── items.html
+    │           ├── _form.html
+    │           └── _table.html
+    │
+    └── theme/
+        ├── apps.py
+        ├── templates/
+        │   └── base.html
+        └── static_src/
+            └── src/
+                └── styles.css

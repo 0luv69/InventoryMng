@@ -1,5 +1,4 @@
 from django.db import models
-from django.conf import settings
 from apps.core.models import BaseModel
 from apps.catalog.models import Item 
 from apps.parties.models import Party
@@ -58,7 +57,7 @@ class StockBatch(BaseModel):
             models.UniqueConstraint(
                 fields=['company', 'item', 'warehouse', 'batch_no'], 
                 name='uniq_stockbatch_per_warehouse',
-                condition=models.Q(batch_no__isnull=False) # Only apply if batch_no is not null
+                condition=models.Q(batch_no__isnull=False) & ~models.Q(batch_no='') # Only apply if batch_no is not null
             )
         ]
 
@@ -97,7 +96,6 @@ class StockMovement(BaseModel):
     reference_id = models.CharField(max_length=50, blank=True)
     
     notes = models.TextField(blank=True)
-    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
 
     class Meta:
         ordering = ['-created_at']

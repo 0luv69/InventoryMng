@@ -3,6 +3,7 @@ from django.core.exceptions import ValidationError
 from decimal import Decimal
 from apps.inventory.models import StockBatch, StockMovement
 from apps.catalog.models import Item
+from apps.core.utils import get_vat_rate
 
 class InventoryService:
     """ Handles all stock movements, MAC calculations, and validations """
@@ -191,20 +192,23 @@ class InventoryService:
             
         taxable_amount = subtotal - inv_discount
         # FIX: Handle VAT Inclusive vs Exclusive math correctly
+
+        vat_rate = get_vat_rate(invoice.company)
+        vat_multiplier = (vat_rate / Decimal('100')) + Decimal('1')
+
+
         if invoice.is_vat_inclusive:
             # taxable_amount is Gross (includes VAT). Extract NET and VAT.
             invoice.subtotal = taxable_amount
-            invoice.tax_amount = taxable_amount - (taxable_amount / Decimal('1.13'))
+            invoice.tax_amount = taxable_amount - (taxable_amount / vat_multiplier)
             invoice.grand_total = taxable_amount
         else:
             # taxable_amount is Net (excludes VAT). Add VAT.
             invoice.subtotal = taxable_amount
-            invoice.tax_amount = taxable_amount * Decimal('0.13')
+            invoice.tax_amount = taxable_amount * (vat_rate / Decimal('100'))
             invoice.grand_total = taxable_amount + invoice.tax_amount
         
         invoice.save(update_fields=['subtotal', 'tax_amount', 'grand_total', 'updated_at'])
-
-
 
     @staticmethod
     @transaction.atomic
