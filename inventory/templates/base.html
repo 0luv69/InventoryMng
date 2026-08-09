@@ -119,16 +119,19 @@ ALPINE SCOPE FOR ENTIRE APP
         
         <!-- Top bar -->
         <header class="sticky top-0 z-40 h-16 bg-white/85 backdrop-blur-md border-b border-neutral-100 flex items-center justify-between px-8 max-md:px-4">
+            <!-- Collapse Toggle (Desktop) - Now at the top! -->
+            <button @click="sidebarCollapsed = !sidebarCollapsed" x-show="!sidebarOpen" class="hidden md:flex w-8 h-8 items-center justify-center rounded-lg hover:bg-neutral-100 text-neutral-400 hover:text-neutral-600 transition-colors">
+                <svg class="w-5 h-5 shrink-0 transition-transform duration-300" :class="sidebarCollapsed && 'rotate-180'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="11 17 6 12 11 7"/><polyline points="18 17 13 12 18 7"/></svg>
+            </button>
+
+            
             <div class="flex items-center gap-4">
+
                 <!-- Hamburger (mobile) -->
                 <button @click="sidebarOpen = true" class="hidden max-md:flex w-[38px] h-[38px] border border-neutral-200 rounded-[10px] bg-white text-neutral-600 items-center justify-center">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
                 </button>
-                <div class="flex items-center gap-1.5 text-xs font-medium">
-                    <span class="text-neutral-400">App</span>
-                    <span class="text-neutral-300">/</span>
-                    <span class="text-neutral-800 font-semibold">{% block page_title %}Dashboard{% endblock %}</span>
-                </div>
+                <h1 class="text-base font-bold text-neutral-900">{% block page_title %}Dashboard{% endblock %}</h1>
             </div>
             <div class="flex items-center gap-2">
                 <button class="w-[38px] h-[38px] border border-neutral-200 rounded-[10px] bg-white text-neutral-500 flex items-center justify-center hover:bg-stone-50">

@@ -419,6 +419,7 @@ class GoodsInFormView(BaseAppView):
         return render(request, 'frontend/goods_in/_form.html', context)
 
 class GoodsInSaveView(BaseAppView):
+    @transaction.atomic
     def post(self, request):
         company = self.get_company()
         invoice_id = request.POST.get('id')
