@@ -1,0 +1,6 @@
+    <!-- Data Table Container -->
+    <div class="bg-white border border-neutral-100 rounded-2xl overflow-x-auto">
+        <div id="items-table" hx-get="{% url 'frontend:items_table' %}" hx-trigger="load" class="w-full">
+            <div class="p-8 text-center text-sm text-neutral-400">Loading items...</div>
+        </div>
+    </div>

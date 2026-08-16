@@ -7,7 +7,7 @@ from django.core.serializers.json import DjangoJSONEncoder
 from django.db.models import Sum, F, Q, Prefetch
 from django.utils import timezone
 import json
-
+from django.core.files.storage import default_storage
 from django.db import transaction, IntegrityError
 from decimal import Decimal, InvalidOperation
 
@@ -180,90 +180,152 @@ class ItemsTableView(BaseAppView):
         return render(request, 'frontend/items/_table.html', context)
 
 
-# 2. Update ItemSaveView
+# 2. ItemSaveView
 class ItemSaveView(BaseAppView):
     @transaction.atomic
     def post(self, request):
         company = self.get_company()
         item_id = request.POST.get('id')
-        
-        if item_id:
-            item: Item = get_object_or_404(Item, id=item_id, company=company)
-        else:
-            item: Item = Item(company=company)
-            item.created_by = request.user
-            
-        item.name = request.POST.get('name')
-        item.category_id = request.POST.get('category') or None
-        item.base_unit_id = request.POST.get('base_unit')
-        item.barcode = request.POST.get('barcode')
-        item.default_supplier_id = request.POST.get('default_supplier') or None
-        item.status = 'active' if request.POST.get('is_active') == 'on' else 'inactive'
-        item.cost_entry_unit_id = request.POST.get('cost_entry_unit') or None
-        item.cost_price = request.POST.get('cost_price') or 0
 
-        # Handle Image Upload and Clearing
-        old_image_path = item.image.path if item.image else None
-        
-        if 'image' in request.FILES:
-            # If uploading a new image, delete the old one to save disk space
-            if old_image_path:
-                item.image.delete(save=False)
-            item.image = request.FILES['image']
-            
-        elif request.POST.get('clear_image') == '1' and item.image:
-            # If explicitly cleared, delete the file and nullify the field
-            item.image.delete(save=False)
-            item.image = None
-        
-        # BUG FIX: Catch duplicate name error
-        try:
-            item.save()
-        except IntegrityError:
-            return JsonResponse({"success": False, "message": "An item with this name already exists."}, status=400)
-        
-        item.uom_conversions.all().delete()
+
+        base_unit_id = request.POST.get('base_unit')
+        if not base_unit_id:
+            return JsonResponse({"success": False, "message": "Base Unit is required."}, status=400)
+
+
+        # Parse and Validate UOMs
         uom_unit_ids = request.POST.getlist('uom_unit_id[]')
         uom_factors = request.POST.getlist('uom_factor[]')
 
+        parsed_uoms = []
         seen_uoms = set()
-        base_unit_id = request.POST.get('base_unit')
+
         for i in range(len(uom_unit_ids)):
             if uom_unit_ids[i] and uom_factors[i]:
                 if uom_unit_ids[i] == base_unit_id:
                     return JsonResponse({"success": False, "message": "Base unit can't be added as its own UOM conversion."}, status=400)
                 if uom_unit_ids[i] in seen_uoms:
                     return JsonResponse({"success": False, "message": "Duplicate Unit found in UOM Conversions. Please select each unit only once."}, status=400)
-                seen_uoms.add(uom_unit_ids[i])
-                ItemUOM.objects.create(
-                    company=company, item=item, unit_id=uom_unit_ids[i], 
-                    conversion_factor=uom_factors[i], created_by=request.user
-                )
 
-        item.prices.all().delete()
+                # Bug D Fix: Explicitly validate conversion factor
+                try:
+                    factor = Decimal(uom_factors[i])
+                    if factor <= 0:
+                        raise ValueError
+                except (InvalidOperation, ValueError):
+                    return JsonResponse({"success": False, "message": f"Invalid conversion factor: {uom_factors[i]}. Must be > 0."}, status=400)
+
+                seen_uoms.add(uom_unit_ids[i])
+                parsed_uoms.append({'unit_id': uom_unit_ids[i], 'factor': factor})
+
+
+        # Parse and Validate Prices
         tier_ids = request.POST.getlist('price_tier_id[]')
         tier_prices = request.POST.getlist('price_amount[]')
         default_flags = request.POST.getlist('price_is_default[]')
         entry_units = request.POST.getlist('price_entry_unit[]')
 
-        if sum(1 for f in default_flags if f == '1') > 1:
-            return JsonResponse({"success": False, "message": "Only one price tier can be marked as default."}, status=400)
-        
+        parsed_prices = []
         seen_tiers = set()
+        default_count = 0
+
         for i in range(len(tier_ids)):
             if tier_ids[i] and tier_prices[i]:
                 if tier_ids[i] in seen_tiers:
                     return JsonResponse({"success": False, "message": "Duplicate Price Tier found. Please select each tier only once."}, status=400)
-                seen_tiers.add(tier_ids[i])
 
-                ItemPrice.objects.create(
-                    company=company, item=item, price_tier_id=tier_ids[i], 
-                    price=tier_prices[i], created_by=request.user,
-                    entry_unit_id=entry_units[i] if i < len(entry_units) and entry_units[i] else None,
-                    is_default=(default_flags[i] == '1') if i < len(default_flags) else False
-                )
+                # Fix: Explicitly validate price amount to ensure it's a valid decimal and non-negative
+                try:
+                    price = Decimal(tier_prices[i])
+                    if price < 0:
+                        raise ValueError
+                except (InvalidOperation, ValueError):
+                    return JsonResponse({"success": False, "message": f"Invalid price amount: {tier_prices[i]}."}, status=400)
+
+                is_default = (default_flags[i] == '1') if i < len(default_flags) else False
+                if is_default:
+                    default_count += 1
+
+                seen_tiers.add(tier_ids[i])
+                parsed_prices.append({
+                    'tier_id': tier_ids[i],
+                    'price': price,
+                    'is_default': is_default,
+                    'entry_unit_id': entry_units[i] if i < len(entry_units) else None
+                })
+
+
+        if default_count > 1:
+            return JsonResponse({"success": False, "message": "Multiple default prices found. Please select only one default price."}, status=400)
+
+
         
-        # EFFICIENCY FIX: select_related here too
+        if item_id:
+            item = get_object_or_404(Item, id=item_id, company=company)
+        else:
+            item = Item(company=company)
+            item.created_by = request.user
+
+
+        item.name = request.POST.get('name')
+        item.category_id = request.POST.get('category') or None
+        item.base_unit_id = base_unit_id
+        item.barcode = request.POST.get('barcode')
+        item.default_supplier_id = request.POST.get('default_supplier') or None
+        item.status = 'active' if request.POST.get('is_active') == 'on' else 'inactive'
+        item.cost_entry_unit_id = request.POST.get('cost_entry_unit') or None
+        
+        try:
+            cost_price = Decimal(request.POST.get('cost_price'))
+            if cost_price < 0:
+                raise ValueError
+        except (InvalidOperation, ValueError, TypeError):
+            return JsonResponse({"success": False, "message": "Invalid Cost Price. Must be a positive number."}, status=400)
+
+        # Fix: Filesystem operations deferred to on_commit
+
+        old_image_path = item.image.path if item.image else None
+        clear_image_flag = request.POST.get('clear_image') == '1'
+        new_image_uploaded = 'image' in request.FILES
+        
+        if new_image_uploaded:
+            item.image = request.FILES['image']
+        elif clear_image_flag and item.image:
+            item.image = None  # Nullify DB field
+
+        try:
+            item.save()
+        except IntegrityError:
+            return JsonResponse({"success": False, "message": "An item with this name already exists."}, status=400)
+        
+        # Synchronize UOMs
+        item.uom_conversions.all().delete()
+        for uom in parsed_uoms:
+            ItemUOM.objects.create(
+                company=company, item=item, unit_id=uom['unit_id'], 
+                conversion_factor=uom['factor'], created_by=request.user
+            )
+
+        # Synchronize Prices
+        item.prices.all().delete()
+        for price in parsed_prices:
+            ItemPrice.objects.create(
+                company=company, item=item, price_tier_id=price['tier_id'], 
+                price=price['price'], created_by=request.user,
+                entry_unit_id=price['entry_unit_id'],
+                is_default=price['is_default']
+            )
+
+
+        # Fix for safe file deletion
+        new_image_path = item.image.path if item.image else None
+        if old_image_path and old_image_path != new_image_path:
+            def delete_old_file():
+                if default_storage.exists(old_image_path):
+                    default_storage.delete(old_image_path)
+            transaction.on_commit(delete_old_file)
+        
+        # Fetch updated list for table render
         items = Item.objects.filter(company=company).exclude(status='deleted').select_related(
             'category', 'base_unit'
         ).annotate(
@@ -273,6 +335,16 @@ class ItemSaveView(BaseAppView):
         page_obj = paginator.get_page(1)
         
         return render(request, 'frontend/items/_table.html', {'items': page_obj.object_list, 'page_obj': page_obj, 'request': request})
+        
+
+
+
+
+
+
+
+
+
 
 
 # 3. Update ItemDeleteView

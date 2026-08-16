@@ -30,7 +30,6 @@ class Party(BaseModel):
     
     # State
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.ACTIVE)
-    is_removed = models.BooleanField(default=False) # Soft delete
 
     class Meta:
         ordering = ['name']

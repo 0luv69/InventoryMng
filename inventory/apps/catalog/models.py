@@ -15,7 +15,7 @@ class Category(BaseModel):
         ordering = ['name']
         verbose_name_plural = 'Categories'
         constraints = [
-            models.UniqueConstraint(fields=['company', 'name'], name='uniq_category_per_company')
+            models.UniqueConstraint(fields=['company', 'name'],  condition=~models.Q(is_deleted=True), name='uniq_category_per_company')
         ]
 
     def __str__(self):
@@ -46,16 +46,11 @@ class Item(BaseModel):
     class Status(models.TextChoices):
         ACTIVE = 'active', 'Active'
         INACTIVE = 'inactive', 'Inactive'
-        DELETED = 'deleted', 'Deleted' # NEW
 
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     name = models.CharField(max_length=200)
     category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True, blank=True, related_name='items')
-    
-    # The Base Unit is the smallest unit (e.g., Piece). Stock is ALWAYS tracked in this unit.
     base_unit = models.ForeignKey(Unit, on_delete=models.PROTECT, related_name='items')
-    
-    # Barcodes for POS/Scanner
     barcode = models.CharField(max_length=100, blank=True, db_index=True)
     
     # Moving Average Cost (Auto-calculated by system during purchases)
@@ -69,17 +64,14 @@ class Item(BaseModel):
     )
     
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.ACTIVE)
-    
-    # delete_reason
     delete_reason = models.TextField(blank=True, null=True, help_text="Reason for deleting/discontinuing the item")
-    
-    # Reorder level
     low_stock_threshold = models.PositiveIntegerField(default=10)
 
-    cost_entry_unit = models.ForeignKey(
-        Unit, on_delete=models.SET_NULL, null=True, blank=True, related_name='+',
-        help_text="Unit the cost is normally typed in (e.g. Carton). cost_price itself always stays per base_unit."
-    )
+    @property
+    def is_locked(self):
+        from apps.transactions.models import PurchaseItemLine, SaleItemLine
+        return PurchaseItemLine.objects.filter(item=self).exists() or SaleItemLine.objects.filter(item=self).exists()
+
 
     @property
     def total_stock(self):
@@ -93,7 +85,8 @@ class Item(BaseModel):
     class Meta:
         ordering = ['name']
         constraints = [
-            models.UniqueConstraint(fields=['company', 'name'], name='uniq_item_name_per_company')
+            models.UniqueConstraint(fields=['company', 'name'], condition=~models.Q(is_deleted=True), name='uniq_item_name_per_company'),
+            models.UniqueConstraint(fields=['company', 'barcode'], condition=~models.Q(barcode=''), name='uniq_item_barcode_per_company'),
         ]
 
     def __str__(self):
@@ -111,10 +104,13 @@ class ItemUOM(BaseModel):
         validators= [MinValueValidator(Decimal('0.01'))],
         help_text="e.g., If Base is Pcs and this is Carton, factor = 12"
     )
+    barcode = models.CharField(max_length=100, blank=True, db_index=True)
+
 
     class Meta:
         constraints = [ 
-            models.UniqueConstraint(fields=['item', 'unit'], name='uniq_item_uom')
+            models.UniqueConstraint(fields=['item', 'unit'], name='uniq_item_uom'),
+            models.UniqueConstraint(fields=['company', 'barcode'], condition=~models.Q(barcode=''), name='uniq_itemuom_barcode_per_company'),
         ]
 
 
@@ -129,7 +125,7 @@ class PriceTier(BaseModel):
     class Meta:
         ordering = ['name']
         constraints = [
-            models.UniqueConstraint(fields=['company', 'name'], name='uniq_pricetier_per_company')
+            models.UniqueConstraint(fields=['company', 'name'], condition=~models.Q(is_deleted=True), name='uniq_pricetier_per_company')
         ]
     def __str__(self):
         return self.name
@@ -138,13 +134,10 @@ class ItemPrice(BaseModel):
     """ Stores the actual price of an item for a specific price tier """
     item = models.ForeignKey(Item, on_delete=models.CASCADE, related_name='prices')
     price_tier = models.ForeignKey(PriceTier, on_delete=models.CASCADE, related_name='item_prices')
+    unit = models.ForeignKey(Unit, on_delete=models.PROTECT, related_name='item_prices')
     price = models.DecimalField(max_digits=10, decimal_places=2)
-    is_default = models.BooleanField(default=False)
-    entry_unit = models.ForeignKey(
-        Unit, on_delete=models.SET_NULL, null=True, blank=True, related_name='+',
-        help_text="Unit this tier's price is normally typed in. price itself always stays per base_unit."
-    )
+
     class Meta:
         constraints = [
-            models.UniqueConstraint(fields=['item', 'price_tier'], name='uniq_item_pricetier')
+            models.UniqueConstraint(fields=['item', 'price_tier', 'unit'], name='uniq_item_pricetier')
         ]

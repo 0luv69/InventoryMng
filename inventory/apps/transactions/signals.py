@@ -11,6 +11,10 @@ def purchase_line_saved(sender, instance, created, **kwargs):
 
 @receiver(post_delete, sender=PurchaseItemLine)
 def purchase_line_deleted(sender, instance, **kwargs):
+    #FIX: Prevent do/uble-reversal if the parent invoice is already voided
+    if instance.invoice.invoice_status == 'void':
+        # log here
+        return
     if instance.invoice.invoice_status == 'finalized':
         InventoryService.reverse_purchase_line(instance)
         # We must fetch the invoice from DB again because the line is gone
@@ -29,6 +33,12 @@ def sale_line_saved(sender, instance, created, **kwargs):
 
 @receiver(post_delete, sender=SaleItemLine)
 def sale_line_deleted(sender, instance, **kwargs):
+    #  FIX: Prevent double-reversal if the parent invoice is already voided
+    if instance.invoice.invoice_status == 'void':
+        #log here
+        return
+
+
     if instance.invoice.invoice_status == 'finalized':
         InventoryService.reverse_sale_line(instance)
         from .models import SaleInvoice
