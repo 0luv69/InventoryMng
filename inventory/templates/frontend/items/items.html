@@ -283,8 +283,9 @@ function itemForm(itemId, isEditable, isLocked) {
         recentCategories: [], recentUnits: [], recentSuppliers: [], unitMap: {},
         cropModal: false, cropper: null, croppedFile: null,
         grid: [],
-        overrideTracker: {}, // now keyed by `${row.id}_${tierId}`, not `${index}_${tierId}`
+        overrideTracker: {},
         allTierIds: [],
+        cartonUnitId: '',
         _idCounter: 0,
 
         genId() {
@@ -302,11 +303,13 @@ function itemForm(itemId, isEditable, isLocked) {
                 this.allTierIds = JSON.parse(document.getElementById('all-tier-ids-data')?.textContent || '[]');
             } catch(e) {}
 
+            this.cartonUnitId = document.getElementById('carton-unit-id')?.value || '';
+
             const dataEl = document.getElementById('packaging-data');
             if (dataEl && dataEl.textContent.trim() !== '[]') {
                 this.grid = JSON.parse(dataEl.textContent);
                 this.grid.forEach((row) => {
-                    row.id = this.genId(); // FIX: assign stable id to every loaded row
+                    row.id = this.genId();
                     if (!row.prices) row.prices = {};
                     for (const tierId in row.prices) {
                         this.overrideTracker[`${row.id}_${tierId}`] = true;
@@ -314,6 +317,9 @@ function itemForm(itemId, isEditable, isLocked) {
                 });
             } else {
                 this.grid = [{ id: this.genId(), unit_id: '', factor: 1, barcode: '', cost: '', prices: {} }];
+                if (this.cartonUnitId) {
+                    this.grid.push({ id: this.genId(), unit_id: this.cartonUnitId, factor: '', barcode: '', cost: '', prices: {} });
+                }
             }
         },
 
@@ -345,6 +351,17 @@ function itemForm(itemId, isEditable, isLocked) {
             this.changed = true;
         },
 
+        handleBaseUnitChange() {
+            const baseUnitId = this.grid[0].unit_id;
+            this.grid.forEach((row, idx) => {
+                if (idx > 0 && row.unit_id === baseUnitId) {
+                    this.updateGridRow(row);
+                    row.unit_id = '';
+                }
+            });
+            this.changed = true;
+        },
+
         recalculateCost(changedIndex) {
             const changedRow = this.grid[changedIndex];
             const changedCost = parseFloat(changedRow.cost) || 0;
@@ -354,7 +371,6 @@ function itemForm(itemId, isEditable, isLocked) {
             this.grid[0].cost = baseCost.toFixed(2);
             
             this.grid.forEach((row, idx) => {
-                // FIX: skip the cell being typed into, so rounding doesn't jitter it
                 if (idx === 0 || idx === changedIndex) return;
                 const factor = parseFloat(row.factor) || 1;
                 row.cost = (baseCost * factor).toFixed(2);
@@ -372,7 +388,7 @@ function itemForm(itemId, isEditable, isLocked) {
                 
                 if (!row.prices) row.prices = {};
                 this.allTierIds.forEach(tierId => {
-                    const k = `${row.id}_${tierId}`; // FIX: id-based key
+                    const k = `${row.id}_${tierId}`;
                     if (!this.overrideTracker[k]) {
                         const baseTierPrice = parseFloat(this.grid[0].prices?.[tierId] || 0);
                         row.prices[tierId] = (baseTierPrice * factor).toFixed(2);
@@ -388,14 +404,14 @@ function itemForm(itemId, isEditable, isLocked) {
             const changedPrice = parseFloat(changedRow.prices[tierId]) || 0;
             const changedFactor = parseFloat(changedRow.factor) || 1;
             
-            this.overrideTracker[`${changedRow.id}_${tierId}`] = true; // FIX: id-based key
+            this.overrideTracker[`${changedRow.id}_${tierId}`] = true;
 
             const basePrice = changedIndex === 0 ? changedPrice : changedPrice / changedFactor;
             
             this.grid.forEach((row, idx) => {
                 if (idx === changedIndex) return; 
                 if (!row.prices) row.prices = {};
-                const k = `${row.id}_${tierId}`; // FIX: id-based key
+                const k = `${row.id}_${tierId}`;
                 
                 if (!this.overrideTracker[k]) {
                     const factor = parseFloat(row.factor) || 1;
@@ -405,8 +421,6 @@ function itemForm(itemId, isEditable, isLocked) {
             this.changed = true;
         },
 
-        // FIX: explicitly pick fields instead of spreading `...row`,
-        // so the internal client-side `id` never leaks into the POST payload
         gridData() {
             return this.grid.map(row => {
                 const cleanPrices = {};
@@ -459,7 +473,6 @@ function itemForm(itemId, isEditable, isLocked) {
         cancelCrop() { this.cropper.destroy(); this.cropModal = false; document.getElementById('image-upload-input').value = ''; }
     }
 }
-
 
 </script>
 {% endblock %}

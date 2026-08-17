@@ -1,19 +1,22 @@
 from django.db import transaction, models
 from django.core.exceptions import ValidationError
 from decimal import Decimal
+from django.db.models import F
 from apps.inventory.models import StockBatch, StockMovement
 from apps.catalog.models import Item
 from apps.core.utils import get_vat_rate
-
 class InventoryService:
     """ Handles all stock movements, MAC calculations, and validations """
-
     @staticmethod
     @transaction.atomic
     def process_purchase_line(line):
-        """ Called when a PurchaseItemLine is saved. Adds stock and updates MAC. """
         base_qty = line.quantity * line.conversion_factor
-        total_cost = base_qty * line.cost_price
+        total_cost = line.line_total
+
+        # FIX 1: Lock and snapshot stock BEFORE batch mutation
+        item = Item.objects.select_for_update().get(id=line.item_id)
+        old_stock_qty = item.total_stock
+        old_cost_price = item.cost_price
 
         # 1. Find or Create StockBatch
         batch, created = StockBatch.objects.get_or_create(
@@ -31,158 +34,106 @@ class InventoryService:
         )
         
         if not created:
-            batch.quantity += base_qty
-            batch.save(update_fields=['quantity', 'updated_at'])
+            # FIX 2: Atomic DB-level increment to prevent race conditions
+            StockBatch.objects.filter(pk=batch.pk).update(quantity=F('quantity') + base_qty)
 
-        # 2. Create Stock Movement (Audit Trail)
+        # 2. Create Stock Movement
         StockMovement.objects.create(
-            company=line.company,
-            item=line.item,
-            warehouse=line.warehouse,
-            batch_no=line.batch_no,
-            movement_type='purchase',
-            quantity=base_qty,
-            reference_model='PurchaseInvoice',
-            reference_id=str(line.invoice_id),
+            company=line.company, item=line.item, warehouse=line.warehouse,
+            batch_no=line.batch_no, movement_type='purchase', quantity=base_qty,
+            reference_model='PurchaseInvoice', reference_id=str(line.invoice_id),
             created_by=line.invoice.created_by
         )
 
-        # 3. Update Moving Average Cost (MAC) on the Item
-        item = Item.objects.select_for_update().get(id=line.item_id)
-        current_stock_value = (item.total_stock * item.cost_price)
-        new_stock_value = current_stock_value + total_cost
-        new_stock_qty = item.total_stock + base_qty
-        
+        # 3. Update MAC using old snapshot
+        new_stock_qty = old_stock_qty + base_qty
         if new_stock_qty > 0:
+            new_stock_value = (old_stock_qty * old_cost_price) + total_cost
             item.cost_price = new_stock_value / new_stock_qty
             item.save(update_fields=['cost_price', 'updated_at'])
 
     @staticmethod
     @transaction.atomic
     def process_sale_line(line):
-        """ Called when a SaleItemLine is saved. Deducts stock using FEFO. """
         base_qty = line.quantity * line.conversion_factor
 
-        # 1. Check if enough stock exists (Strict Negative Stock Block)
-        available_stock = StockBatch.objects.filter(
-            company=line.company,
-            item=line.item, 
-            warehouse=line.warehouse
-        ).aggregate(total=models.Sum('quantity'))['total'] or 0
+        # FIX 3: Lock batches during availability check
+        batches = StockBatch.objects.select_for_update().filter(
+            company=line.company, item=line.item, warehouse=line.warehouse, quantity__gt=0
+        ).order_by('expiry_date', 'created_at')
 
+        available_stock = batches.aggregate(total=models.Sum('quantity'))['total'] or 0
         if base_qty > available_stock:
             raise ValidationError(f"Insufficient stock for {line.item.name}. Available: {available_stock} {line.item.base_unit.short_name}")
 
-        # 2. FEFO Deduction (First Expired, First Out)
-        batches = StockBatch.objects.filter(
-            company=line.company,
-            item=line.item, 
-            warehouse=line.warehouse, 
-            quantity__gt=0
-        ).order_by('expiry_date', 'created_at')
-
+        # FEFO Deduction
         qty_to_deduct = base_qty
         assigned_batch = None
 
         for batch in batches:
-            if qty_to_deduct <= 0:
-                break
-                
+            if qty_to_deduct <= 0: break
+            
             if batch.quantity >= qty_to_deduct:
-                batch.quantity -= qty_to_deduct
+                # FIX 2: Atomic DB-level decrement
+                StockBatch.objects.filter(pk=batch.pk).update(quantity=F('quantity') - qty_to_deduct)
                 assigned_batch = batch.batch_no
-                batch.save(update_fields=['quantity', 'updated_at'])
                 qty_to_deduct = 0
             else:
                 qty_to_deduct -= batch.quantity
                 assigned_batch = batch.batch_no
-                batch.quantity = 0
-                batch.save(update_fields=['quantity', 'updated_at'])
+                StockBatch.objects.filter(pk=batch.pk).update(quantity=0)
 
-        # Save the assigned batch back to the invoice line for records
         line.assigned_batch_no = assigned_batch or "N/A"
         line.save(update_fields=['assigned_batch_no'])
 
-        # 3. Create Stock Movement
         StockMovement.objects.create(
-            company=line.company,
-            item=line.item,
-            warehouse=line.warehouse,
-            batch_no=assigned_batch,
-            movement_type='sale',
-            quantity=-base_qty, # NEGATIVE for outgoing
-            reference_model='SaleInvoice',
-            reference_id=str(line.invoice_id),
+            company=line.company, item=line.item, warehouse=line.warehouse,
+            batch_no=assigned_batch, movement_type='sale', quantity=-base_qty,
+            reference_model='SaleInvoice', reference_id=str(line.invoice_id),
             created_by=line.invoice.created_by
         )
 
     @staticmethod
     @transaction.atomic
     def reverse_purchase_line(line):
-        """ Called when a PurchaseItemLine is deleted. Reverses stock. """
         base_qty = line.quantity * line.conversion_factor
-        
         try:
-            batch = StockBatch.objects.get(
-                company=line.company,
-                item=line.item,
-                warehouse=line.warehouse,
-                batch_no=line.batch_no
-            )
-            batch.quantity -= base_qty
-            batch.save(update_fields=['quantity', 'updated_at'])
+            # Use atomic decrement here too
+            StockBatch.objects.filter(
+                company=line.company, item=line.item, warehouse=line.warehouse, batch_no=line.batch_no
+            ).update(quantity=F('quantity') - base_qty)
         except StockBatch.DoesNotExist:
             pass
 
         StockMovement.objects.create(
-            company=line.company,
-            item=line.item,
-            warehouse=line.warehouse,
-            batch_no=line.batch_no,
-            movement_type='adjustment',
-            quantity=-base_qty,
+            company=line.company, item=line.item, warehouse=line.warehouse,
+            batch_no=line.batch_no, movement_type='adjustment', quantity=-base_qty,
             notes=f"Reversal of Purchase Line for Invoice {line.invoice_id}"
         )
 
     @staticmethod
     @transaction.atomic
     def reverse_sale_line(line):
-        """ Called when a SaleItemLine is deleted. Restores stock. """
         base_qty = line.quantity * line.conversion_factor
-        
         try:
-            batch = StockBatch.objects.get(
-                company=line.company,
-                item=line.item,
-                warehouse=line.warehouse,
-                batch_no=line.assigned_batch_no
-            )
-            batch.quantity += base_qty
-            batch.save(update_fields=['quantity', 'updated_at'])
+            StockBatch.objects.filter(
+                company=line.company, item=line.item, warehouse=line.warehouse, batch_no=line.assigned_batch_no
+            ).update(quantity=F('quantity') + base_qty)
         except StockBatch.DoesNotExist:
             StockBatch.objects.create(
-                company=line.company,
-                item=line.item,
-                warehouse=line.warehouse,
-                batch_no=f"RETURN-{line.invoice_id}",
-                quantity=base_qty
+                company=line.company, item=line.item, warehouse=line.warehouse,
+                batch_no=f"RETURN-{line.invoice_id}", quantity=base_qty
             )
 
         StockMovement.objects.create(
-            company=line.company,
-            item=line.item,
-            warehouse=line.warehouse,
-            batch_no=line.assigned_batch_no,
-            movement_type='sale_return',
-            quantity=base_qty,
+            company=line.company, item=line.item, warehouse=line.warehouse,
+            batch_no=line.assigned_batch_no, movement_type='sale_return', quantity=base_qty,
             notes=f"Reversal of Sale Line for Invoice {line.invoice_id}"
         )
 
     @staticmethod
     def recalculate_invoice_totals(invoice):
-        """ Recalculates the subtotal, tax, and grand total for an invoice """
         from decimal import Decimal
-        
         subtotal = sum(line.line_total for line in invoice.lines.all())
         
         if invoice.discount_type == 'percentage':
@@ -191,19 +142,14 @@ class InventoryService:
             inv_discount = invoice.discount_amount
             
         taxable_amount = subtotal - inv_discount
-        # FIX: Handle VAT Inclusive vs Exclusive math correctly
-
         vat_rate = get_vat_rate(invoice.company)
         vat_multiplier = (vat_rate / Decimal('100')) + Decimal('1')
 
-
         if invoice.is_vat_inclusive:
-            # taxable_amount is Gross (includes VAT). Extract NET and VAT.
             invoice.subtotal = taxable_amount
             invoice.tax_amount = taxable_amount - (taxable_amount / vat_multiplier)
             invoice.grand_total = taxable_amount
         else:
-            # taxable_amount is Net (excludes VAT). Add VAT.
             invoice.subtotal = taxable_amount
             invoice.tax_amount = taxable_amount * (vat_rate / Decimal('100'))
             invoice.grand_total = taxable_amount + invoice.tax_amount
@@ -213,7 +159,6 @@ class InventoryService:
     @staticmethod
     @transaction.atomic
     def process_payment_allocation(allocation):
-        """ Updates Party balance and Invoice payment status when an allocation is saved """
         payment = allocation.payment
         party = payment.party
         
@@ -226,17 +171,13 @@ class InventoryService:
 
         invoice = allocation.sale_invoice or allocation.purchase_invoice
         if invoice:
-            total_paid = invoice.allocations.aggregate(
-                total=models.Sum('allocated_amount')
-            )['total'] or 0
-            
+            total_paid = invoice.allocations.aggregate(total=models.Sum('allocated_amount'))['total'] or 0
             if total_paid >= invoice.grand_total:
                 invoice.payment_status = 'paid'
             elif total_paid > 0:
                 invoice.payment_status = 'partial'
             else:
                 invoice.payment_status = 'unpaid'
-            
             invoice.save(update_fields=['payment_status', 'updated_at'])
 
     @staticmethod
@@ -261,8 +202,7 @@ class InventoryService:
                 defaults={'landing_cost': line.cost_price}
             )
             if not created:
-                batch.quantity += base_qty
-                batch.save(update_fields=['quantity', 'updated_at'])
+                StockBatch.objects.filter(pk=batch.pk).update(quantity=F('quantity') + base_qty)
 
             StockMovement.objects.create(
                 company=line.company, item=line.item, warehouse=line.warehouse,
@@ -281,8 +221,7 @@ class InventoryService:
                 company=spoilage.company, item=spoilage.item, 
                 warehouse=spoilage.warehouse, batch_no=spoilage.batch_no
             )
-            batch.quantity -= base_qty
-            batch.save(update_fields=['quantity', 'updated_at'])
+            StockBatch.objects.filter(pk=batch.pk).update(quantity=F('quantity') - base_qty)
         except StockBatch.DoesNotExist:
             pass
             

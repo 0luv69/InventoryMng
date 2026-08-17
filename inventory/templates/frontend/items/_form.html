@@ -33,6 +33,7 @@
     <input type="hidden" id="item-name-input" value="{{ item.name|default:'' }}">
     <input type="hidden" id="item-category-select" value="{{ item.category_id|default:'' }}">
     <input type="hidden" id="item-supplier-select" value="{{ item.default_supplier_id|default:'' }}">
+    <input type="hidden" id="carton-unit-id" value="{{ carton_unit_id|default:'' }}">
     <script type="text/template" id="item-image-preview-src">{% if item and item.image %}{{ item.image.url }}{% endif %}</script>
 
     {% if item and not is_editable %}
@@ -108,74 +109,84 @@
                 <label class="block text-xs font-semibold text-neutral-600 mb-1.5">Base Unit (Stock Tracked Here) *</label>
                 <div class="flex flex-wrap gap-1 mb-2" x-show="editable && !isLocked">
                     <template x-for="unt in recentUnits" :key="unt.id">
-                        <button type="button" @click="grid[0].unit_id = String(unt.id)" :class="grid[0].unit_id == String(unt.id) ? 'bg-green-500 text-white' : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'" class="px-2.5 py-1 text-xs font-semibold rounded-full transition-colors" x-text="unt.name"></button>
+                        <button type="button" @click="grid[0].unit_id = String(unt.id); handleBaseUnitChange()" :class="grid[0].unit_id == String(unt.id) ? 'bg-green-500 text-white' : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'" class="px-2.5 py-1 text-xs font-semibold rounded-full transition-colors" x-text="unt.name"></button>
                     </template>
                 </div>
-                <select x-model="grid[0].unit_id" required :disabled="!editable || isLocked" class="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white" :class="!editable || isLocked ? 'bg-neutral-50 cursor-not-allowed' : ''">
+                <select x-model="grid[0].unit_id" @change="handleBaseUnitChange()" required :disabled="!editable || isLocked" class="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white" :class="!editable || isLocked ? 'bg-neutral-50 cursor-not-allowed' : ''">
                     <option value="">Select Base Unit</option>{% for u in units %}<option value="{{ u.id }}">{{ u.name }} ({{ u.short_name }})</option>{% endfor %}
                 </select>
                 <p x-show="isLocked" class="text-[0.65rem] text-amber-500 mt-1">Base unit is locked because this item has existing transactions.</p>
             </div>
 
             <!-- The Grid -->
-            <div class="overflow-x-auto bg-neutral-50 p-3 rounded-xl border border-neutral-100">
-                <div class="min-w-[700px] grid grid-cols-12 gap-2 items-center text-xs font-bold text-neutral-500 uppercase tracking-wider mb-2">
-                    <div class="col-span-3">Unit</div>
-                    <div class="col-span-2">Contains</div>
-                    <div class="col-span-2">Barcode</div>
-                    <div class="col-span-2 text-right">Cost (Rs)</div>
+            <div class="overflow-x-auto bg-neutral-50 p-4 rounded-xl border border-neutral-100"
+                 style="--pkg-cols: 200px 130px 150px 130px repeat({{ price_tiers|length }}, 110px);">
+
+                <div class="grid gap-3 items-center text-xs font-bold text-neutral-500 uppercase tracking-wider mb-3 w-max px-1" style="grid-template-columns: var(--pkg-cols);">
+                    <div>Unit</div>
+                    <div>Contains</div>
+                    <div>Barcode</div>
+                    <div class="text-right">Cost (Rs)</div>
                     {% for tier in price_tiers %}
-                    <div class="col-span-1 text-right">{{ tier.name }}</div>
+                    <div class="text-right truncate" title="{{ tier.name }}">{{ tier.name }}</div>
                     {% endfor %}
-                    <div class="col-span-1"></div>
                 </div>
 
-                <template x-for="(row, index) in grid" :key="index">
-                    <div class="min-w-[700px] grid grid-cols-12 gap-2 items-center mb-2">
-                        <div class="col-span-3">
+                <template x-for="(row, index) in grid" :key="row.id">
+                    <div class="relative grid gap-3 items-center mb-4 w-max p-3 rounded-xl border shadow-sm"
+                         :class="index === 0 ? 'bg-emerald-50/60 border-emerald-200' : 'bg-white border-neutral-200'"
+                         style="grid-template-columns: var(--pkg-cols);">
+
+                        <!-- Corner delete button: half in, half out of the card -->
+                        <button type="button" x-show="index > 0 && editable" @click="removeRow(index)"
+                                class="absolute -top-3 -left-3 w-6 h-6 rounded-full bg-red-500 hover:bg-red-600 text-white flex items-center justify-center shadow-md ring-2 ring-white transition-colors z-10">
+                            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                        </button>
+
+                        <div>
                             <template x-if="index === 0">
-                                <div class="text-sm font-medium text-neutral-800 px-2 py-2 bg-white rounded-lg border border-neutral-200 flex flex-col justify-center h-[38px]">
-                                    <span x-text="unitMap[row.unit_id] || 'N/A'"></span>
+                                <div class="text-sm font-medium text-neutral-800 h-[38px] flex items-center gap-1.5">
+                                    <span x-text="unitMap[row.unit_id] || 'Select above'"></span>
+                                    <span class="text-[0.6rem] font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded shrink-0">BASE</span>
                                 </div>
                             </template>
                             <template x-if="index > 0">
-                                <select x-model="row.unit_id" :disabled="!editable" class="w-full px-2 py-2 text-sm border border-neutral-200 rounded-lg bg-white h-[38px]">
+                                <select x-model="row.unit_id" @change="updateGridRow(row)" :disabled="!editable" class="w-full px-2 py-2 text-sm border border-neutral-200 rounded-lg bg-white h-[38px]">
                                     <option value="">Select Unit</option>
                                     {% for u in units %}
-                                    <option value="{{ u.id }}">{{ u.name }}</option>
+                                    <option value="{{ u.id }}" :disabled="grid.some((r, idx) => idx !== index && r.unit_id === '{{ u.id }}')">{{ u.name }}</option>
                                     {% endfor %}
                                 </select>
                             </template>
                         </div>
-                        <div class="col-span-2 text-sm text-neutral-500 px-2 h-[38px] flex items-center">
+
+                        <div class="text-sm text-neutral-500 h-[38px] flex items-center">
                             <template x-if="index === 0"><span class="text-neutral-400">—</span></template>
                             <template x-if="index > 0">
                                 <span class="flex items-center gap-1">
-                                    = <input type="number" x-model="row.factor" @input="recalculateFromBase()" step="0.01" :disabled="!editable" class="w-16 px-1 py-1 text-sm border border-neutral-200 rounded-md">
+                                    = <input type="number" x-model="row.factor" @input="recalculateFromBase()" step="0.01" placeholder="e.g. 12" :disabled="!editable" class="w-20 px-1 py-1 text-sm border border-neutral-200 rounded-md">
                                     <span x-text="unitMap[grid[0].unit_id] || 'Base'" class="truncate"></span>
                                 </span>
                             </template>
                         </div>
-                        <div class="col-span-2">
+
+                        <div>
                             <input type="text" x-model="row.barcode" :disabled="!editable" class="w-full px-2 py-2 text-sm border border-neutral-200 rounded-lg bg-white h-[38px]">
                         </div>
-                        <div class="col-span-2">
+
+                        <div>
                             <input type="number" x-model="row.cost" @input="recalculateCost(index)" step="0.01" :disabled="!editable" class="w-full px-2 py-2 text-sm border border-neutral-200 rounded-lg bg-white text-right h-[38px]">
                         </div>
+
                         {% for tier in price_tiers %}
-                        <div class="col-span-1">
+                        <div>
                             <input type="number" x-model="row.prices[{{ tier.id }}]" @input="recalculateTier(index, '{{ tier.id }}')" step="0.01" :disabled="!editable" class="w-full px-2 py-2 text-sm border border-neutral-200 rounded-lg bg-white text-right h-[38px]">
                         </div>
                         {% endfor %}
-                        <div class="col-span-1 text-center">
-                            <button type="button" x-show="index > 0 && editable" @click="removeRow(index)" class="text-red-400 hover:text-red-600 p-2">
-                                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-                            </button>
-                        </div>
                     </div>
                 </template>
                 
-                <button type="button" x-show="editable" @click="addRow()" class="mt-2 text-xs font-semibold text-green-600 hover:text-green-700 flex items-center gap-1">
+                <button type="button" x-show="editable" @click="addRow()" class="mt-1 text-xs font-semibold text-green-600 hover:text-green-700 flex items-center gap-1">
                     <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                     Add Pack Size
                 </button>

@@ -1,8 +1,12 @@
+# transactions.models
+
 from django.db import models
 from apps.core.models import BaseModel
 from apps.parties.models import Party
 from apps.catalog.models import Item, Unit, PriceTier
 from apps.inventory.models import Warehouse
+from django.core.exceptions import ValidationError
+
 # ==========================================
 # SHARED CHOICES
 # ==========================================
@@ -134,9 +138,6 @@ class SaleInvoice(BaseModel):
 
 
     def clean(self):
-        from django.core.exceptions import ValidationError
-        from decimal import Decimal
-        
         # Only check credit limit for finalized invoices
         if self.invoice_status == 'finalized' and self.customer_id:
             # Get the customer's current balance
@@ -144,8 +145,11 @@ class SaleInvoice(BaseModel):
             
             # If editing an existing invoice, we must exclude its old total from the current balance
             if self.pk:
-                old_total = SaleInvoice.objects.get(pk=self.pk).grand_total
-                current_balance -= old_total
+                previous = SaleInvoice.objects.filter(pk=self.pk).values(
+                    'invoice_status', 'grand_total'
+                ).first()
+                if previous and previous['invoice_status'] == 'finalized':
+                    current_balance -= previous['grand_total']
             
             # Check against credit limit (0 means no limit)
             if self.customer.credit_limit > 0:

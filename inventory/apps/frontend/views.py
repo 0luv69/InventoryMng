@@ -20,6 +20,9 @@ from django.http import JsonResponse
 
 from django.core.exceptions import ValidationError
 
+
+from apps.core.utils import get_vat_rate
+
 class BaseAppView(LoginRequiredMixin, View):
     pagination_size = 30
     def get_company(self):
@@ -126,6 +129,9 @@ class ItemFormView(BaseAppView):
         cats_qs = (Category.objects.filter(company=company) | Category.all_objects.filter(id__in=referenced_cat_ids)).distinct().order_by('name')
         sups_qs = (Party.objects.filter(company=company, is_supplier=True) | Party.all_objects.filter(id__in=referenced_sup_ids, is_supplier=True)).distinct().order_by('name')
         tiers_qs = PriceTier.objects.filter(company=company)
+        carton_unit = Unit.objects.filter(company=company, name__iexact='carton').first()
+
+
 
         context = {
             'item': item,
@@ -142,6 +148,7 @@ class ItemFormView(BaseAppView):
             'unit_map_json': json.dumps({str(u.id): f"{u.name} ({u.short_name})" for u in units_qs}),
             'is_locked': item.is_locked if item else False,
             'tier_ids_json': json.dumps([t.id for t in tiers_qs]),
+            'carton_unit_id': carton_unit.id if carton_unit else '',
         }
         return render(request, 'frontend/items/_form.html', context)
 
@@ -461,7 +468,7 @@ class GoodsInFormView(BaseAppView):
         suppliers = Party.objects.filter(company=company, is_supplier=True, is_deleted=False)
         warehouses = Warehouse.objects.filter(company=company, is_active=True)
 
-        items_qs = Item.objects.filter(company=company, status='active').select_related('category', 'base_unit')
+        items_qs = Item.objects.filter(company=company, status='active').select_related('category', 'base_unit').annotate(total_stock_calc=Sum('stock_batches__quantity'))
         items_list = [{
             'id': i.id,
             'name': i.name,
@@ -492,6 +499,17 @@ class GoodsInSaveView(BaseAppView):
         
         if invoice_id:
             return JsonResponse({"success": False, "message": "Editing existing invoices is disabled. Please void the invoice and create a new one."}, status=400)
+
+        supplier_id = request.POST.get('supplier')
+        warehouse_id = request.POST.get('warehouse')
+        
+        if not supplier_id or not Party.objects.filter(id=supplier_id, company=company, is_supplier=True).exists():
+            return JsonResponse({"success": False, "message": "Invalid supplier selected."}, status=400)
+            
+        if not warehouse_id or not Warehouse.objects.filter(id=warehouse_id, company=company, is_active=True).exists():
+            return JsonResponse({"success": False, "message": "Invalid warehouse selected."}, status=400)
+
+
             
         invoice = PurchaseInvoice(company=company)
             
@@ -512,20 +530,32 @@ class GoodsInSaveView(BaseAppView):
         expiries = request.POST.getlist('expiry_date[]')
 
         items_dict = {i.id: i for i in Item.objects.filter(id__in=item_ids, company=company)}
+        vat_rate = get_vat_rate(company)
+        vat_multiplier = (vat_rate / Decimal('100')) + Decimal('1')
 
         for i in range(len(item_ids)):
             if item_ids[i]:
                 item = items_dict.get(int(item_ids[i]))
                 if not item: continue
                 
-                try: qty_val = Decimal(qtys[i])
-                except: qty_val = Decimal('0')
+                try: 
+                    qty_val = Decimal(qtys[i])
+                    if qty_val <= 0: raise ValueError
+
+                except (InvalidOperation, ValueError, TypeError):
+                    return JsonResponse({"success": False, "message": f"Invalid quantity for {item.name}."}, status=400)
                 
-                try: gross_cost = Decimal(costs[i])
-                except: gross_cost = Decimal('0')
+                try: 
+                    gross_cost = Decimal(costs[i])
+                    if gross_cost < 0: raise ValueError
+
+                except(InvalidOperation, ValueError, TypeError):
+                    return JsonResponse({"success": False, "message": f"Invalid cost price for {item.name}."}, status=400)
+         
+
 
                 if invoice.is_vat_inclusive:
-                    net_cost = (gross_cost / Decimal('1.13')).quantize(Decimal('0.01'))
+                    net_cost = (gross_cost / vat_multiplier).quantize(Decimal('0.01'))
                 else:
                     net_cost = gross_cost
 
@@ -655,11 +685,15 @@ class GoodsOutFormView(BaseAppView):
         warehouses = Warehouse.objects.filter(company=company, is_active=True)
         
         default_tier = PriceTier.objects.filter(company=company, is_default=True).first()
+        if default_tier:
+            price_qs = ItemPrice.objects.filter(price_tier=default_tier, unit=F('item__base_unit'))
+        else:
+            price_qs = ItemPrice.objects.none()
+
+        items_qs = Item.objects.filter(company=company, status='active').select_related('category', 'base_unit').annotate(
+            total_stock_calc=Sum('stock_batches__quantity')
+        ).prefetch_related(Prefetch('prices', queryset=price_qs, to_attr='default_prices'))
         
-        price_qs = ItemPrice.objects.filter(price_tier=default_tier) if default_tier else ItemPrice.objects.all()
-        items_qs = Item.objects.filter(company=company, status='active').select_related('category', 'base_unit').prefetch_related(
-            Prefetch('prices', queryset=price_qs, to_attr='default_prices')
-        )
         
         items_list = []
         for i in items_qs:
@@ -667,7 +701,7 @@ class GoodsOutFormView(BaseAppView):
             items_list.append({
                 'id': i.id, 'name': i.name, 'category_id': i.category_id,
                 'category_name': i.category.name if i.category else 'Uncategorized',
-                'selling_price': default_sell, 'stock': str(i.total_stock)
+                'selling_price': default_sell, 'stock': str(i.total_stock_calc or 0)
             })
 
         context = {
@@ -687,31 +721,52 @@ class GoodsOutSaveView(BaseAppView):
         if invoice_id:
             return JsonResponse({"success": False, "message": "Editing existing sales is disabled. Please void and create a new one."}, status=400)
 
-        grand_total = Decimal('0')
         customer_id = request.POST.get('customer')
         if not customer_id:
             return JsonResponse({"success": False, "message": "Please select a customer."}, status=400)
         
-        # FIX: Added try/except to prevent 500 on invalid customer ID
         try:
-            customer = Party.objects.get(id=customer_id, company=company)
+            Party.objects.get(id=customer_id, company=company, is_customer=True)
         except Party.DoesNotExist:
             return JsonResponse({"success": False, "message": "Invalid customer selected."}, status=400)
-        
-        if customer and customer.credit_limit > 0:
-            qtys = request.POST.getlist('qty[]')
-            prices = request.POST.getlist('selling_price[]')
-            is_vat_inclusive = request.POST.get('is_vat_inclusive') == 'true'
 
-            subtotal = sum(Decimal(q) * Decimal(p) for q, p in zip(qtys, prices))
 
-            if is_vat_inclusive:
-                grand_total = subtotal
-            else:
-                grand_total = subtotal * Decimal('1.13')
-            
-            if customer.balance + grand_total > customer.credit_limit:
-                return JsonResponse({"success": False, "message": f"Credit Limit Exceeded! Limit: Rs. {customer.credit_limit}, Current Balance: Rs. {customer.balance}."}, status=400)
+        warehouse_id = request.POST.get('warehouse')
+        if not warehouse_id or not Warehouse.objects.filter(id=warehouse_id, company=company, is_active=True).exists():
+            return JsonResponse({"success": False, "message": "Invalid warehouse selected."}, status=400)
+
+
+        item_ids = request.POST.getlist('item_id[]')
+        qtys = request.POST.getlist('qty[]')
+        prices = request.POST.getlist('selling_price[]')
+        items_dict = {i.id: i for i in Item.objects.filter(id__in=item_ids, company=company)}
+
+        # Validate every line in-memory BEFORE touching the DB (mirrors GoodsIn)
+        parsed_lines = []
+        for i in range(len(item_ids)):
+            if not item_ids[i]:
+                continue
+            item = items_dict.get(int(item_ids[i]))
+            if not item:
+                return JsonResponse({"success": False, "message": "Invalid item selected."}, status=400)
+
+            try:
+                qty_val = Decimal(qtys[i])
+                if qty_val <= 0: raise ValueError
+            except (InvalidOperation, ValueError, TypeError):
+                return JsonResponse({"success": False, "message": f"Invalid quantity for {item.name}."}, status=400)
+
+            try:
+                gross_price = Decimal(prices[i])
+                if gross_price < 0: raise ValueError
+            except (InvalidOperation, ValueError, TypeError):
+                return JsonResponse({"success": False, "message": f"Invalid price for {item.name}."}, status=400)
+
+            parsed_lines.append((item, qty_val, gross_price))
+
+        if not parsed_lines:
+            return JsonResponse({"success": False, "message": "At least one item line is required."}, status=400)
+
 
         try:
             with transaction.atomic():
@@ -724,30 +779,20 @@ class GoodsOutSaveView(BaseAppView):
                 invoice.payment_status = 'unpaid'
                 invoice.save()
 
-                warehouse_id = request.POST.get('warehouse')
+                for item, qty_val, gross_price in parsed_lines:
+                    SaleItemLine.objects.create(
+                        company=company, invoice=invoice, created_by=request.user,
+                        item=item, warehouse_id=warehouse_id, unit=item.base_unit,
+                        conversion_factor=Decimal('1.00'), quantity=qty_val, selling_price=gross_price,
+                    )
+                    # each create() above now triggers stock deduction + a totals recalc
+
+
+                # Trigger recalculation to get accurate grand_total
+                InventoryService.recalculate_invoice_totals(invoice)
                 
-                item_ids = request.POST.getlist('item_id[]')
-                qtys = request.POST.getlist('qty[]')
-                prices = request.POST.getlist('selling_price[]')
-
-                items_dict = {i.id: i for i in Item.objects.filter(id__in=item_ids, company=company)}
-
-                for i in range(len(item_ids)):
-                    if item_ids[i]:
-                        item = items_dict.get(int(item_ids[i]))
-                        if not item: continue
-                        
-                        try: qty_val = Decimal(qtys[i])
-                        except: qty_val = Decimal('0')
-                        
-                        try: gross_price = Decimal(prices[i])
-                        except: gross_price = Decimal('0')
-
-                        SaleItemLine.objects.create(
-                            company=company, invoice=invoice, created_by=request.user,
-                            item=item, warehouse_id=warehouse_id, unit=item.base_unit,
-                            conversion_factor=Decimal('1.00'), quantity=qty_val, selling_price=gross_price,
-                        )
+                invoice.full_clean()
+                
         except ValidationError as e:
             return JsonResponse({"success": False, "message": e.messages[0]}, status=400)
         except Exception as e:
