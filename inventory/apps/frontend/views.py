@@ -32,7 +32,7 @@ class DashboardView(BaseAppView):
 
 class QuickAddCategoryView(BaseAppView):
     def post(self, request):
-        name = request.POST.get('name', '').strip() # Safely get name
+        name = request.POST.get('name', '').strip()
         if name:
             cat = Category.objects.create(company=self.get_company(), name=name, created_by=request.user)
             return JsonResponse({'id': cat.id, 'name': cat.name})
@@ -55,29 +55,27 @@ class QuickAddPriceTierView(BaseAppView):
             return JsonResponse({'id': tier.id, 'name': tier.name})
         return JsonResponse({'error': 'Name required'}, status=400)
 
-
 class SetDefaultTierView(BaseAppView):
     def post(self, request, tier_id):
         company = self.get_company()
-        # Set all company tiers to False, then set the selected one to True
         PriceTier.objects.filter(company=company).update(is_default=False)
         tier = get_object_or_404(PriceTier, id=tier_id, company=company)
         tier.is_default = True
         tier.save()
         return JsonResponse({'success': True, 'id': tier.id})
 
-    
 # ==========================================
 # ITEMS
 # ==========================================
 class ItemsView(BaseAppView):
     def get(self, request):
         company = self.get_company()
+        default_tier = PriceTier.objects.filter(company=company, is_default=True).first()
         context = {
             'units': Unit.objects.filter(company=company),
             'categories': Category.objects.filter(company=company),
             'price_tiers': PriceTier.objects.filter(company=company), 
-            'default_tier_id': PriceTier.objects.filter(company=company, is_default=True).first().id if PriceTier.objects.filter(company=company, is_default=True).exists() else None,
+            'default_tier_id': default_tier.id if default_tier else None,
         }
         return render(request, 'frontend/items/items.html', context)
 
@@ -87,34 +85,47 @@ class ItemFormView(BaseAppView):
         item_id = request.GET.get('id')
         is_editable = request.GET.get('editable', '0') == '1'
         item = None
-        uom_json = '[]'
-        prices_json = '[]'
+        packaging_json = '[]'
+
+        referenced_unit_ids = set()
+        referenced_cat_ids = set()
+        referenced_sup_ids = set()
 
         if item_id:
             item = get_object_or_404(Item, id=item_id, company=company)
-            uoms = ItemUOM.objects.filter(item=item).select_related('unit')
-            uom_list = [{'unit_id': u.unit_id, 'factor': str(u.conversion_factor)} for u in uoms]
-            uom_json = json.dumps(uom_list)
+            uoms = ItemUOM.objects.filter(item=item, is_deleted=False).select_related('unit')
+            prices = ItemPrice.objects.filter(item=item, is_deleted=False).select_related('price_tier', 'unit')
             
-            prices = ItemPrice.objects.filter(item=item).select_related('price_tier')
-            prices_list = [{'tier_id': p.price_tier_id, 'price': str(p.price), 
-                            'is_default': p.is_default,
-                            'entry_unit_id': p.entry_unit_id
+            referenced_unit_ids.add(item.base_unit_id)
+            referenced_cat_ids.add(item.category_id)
+            referenced_sup_ids.add(item.default_supplier_id)
 
-                            } for p in prices]
-            prices_json = json.dumps(prices_list)
+            packaging_data = []
+            for uom in uoms:
+                referenced_unit_ids.add(uom.unit_id)
+                calc_cost = (item.cost_price * uom.conversion_factor).quantize(Decimal('0.01'))
+                packaging_data.append({
+                    'unit_id': uom.unit_id,
+                    'factor': str(uom.conversion_factor),
+                    'barcode': uom.barcode,
+                    'cost': str(calc_cost),
+                    'prices': {str(p.price_tier_id): str(p.price) for p in prices if p.unit_id == uom.unit_id}
+                })
+            
+            packaging_data.insert(0, {
+                'unit_id': item.base_unit_id,
+                'factor': '1',
+                'barcode': item.barcode,
+                'cost': str(item.cost_price.quantize(Decimal('0.01'))),
+                'prices': {str(p.price_tier_id): str(p.price) for p in prices if p.unit_id == item.base_unit_id}
+            })
+            packaging_json = json.dumps(packaging_data)
 
-        # EFFICIENCY FIX: Query once, let DB sort and slice
-        units_qs = Unit.objects.filter(company=company).order_by('name')
-        cats_qs = Category.objects.filter(company=company).order_by('name')
-        sups_qs = Party.objects.filter(company=company, is_supplier=True, is_removed=False).order_by('name')
+        # Union in soft-deleted units/categories/suppliers referenced by this item
+        units_qs = (Unit.objects.filter(company=company) | Unit.all_objects.filter(id__in=referenced_unit_ids)).distinct().order_by('name')
+        cats_qs = (Category.objects.filter(company=company) | Category.all_objects.filter(id__in=referenced_cat_ids)).distinct().order_by('name')
+        sups_qs = (Party.objects.filter(company=company, is_supplier=True) | Party.all_objects.filter(id__in=referenced_sup_ids, is_supplier=True)).distinct().order_by('name')
         tiers_qs = PriceTier.objects.filter(company=company)
-
-        recent_cats = cats_qs.order_by('-created_at')[:4]
-        recent_units = units_qs.order_by('-created_at')[:4]
-        recent_sups = sups_qs.order_by('-created_at')[:4]
-        
-        default_tier = tiers_qs.filter(is_default=True).first()
 
         context = {
             'item': item,
@@ -123,27 +134,21 @@ class ItemFormView(BaseAppView):
             'categories': cats_qs,
             'suppliers': sups_qs,
             'price_tiers': tiers_qs,
-            'uom_json': uom_json,
-            'prices_json': prices_json,
-            'recent_categories': json.dumps([{'id': c.id, 'name': c.name} for c in recent_cats]),
-            'recent_units': json.dumps([{'id': u.id, 'name': u.name} for u in recent_units]),
-            'recent_suppliers': json.dumps([{'id': s.id, 'name': s.name} for s in recent_sups]),
-            'unit_map_json': json.dumps({str(u.id): u.name for u in units_qs}),
-            'default_tier_id': default_tier.id if default_tier else None,
-            'cost_entry_unit_id': item.cost_entry_unit_id if item else None,
+            'packaging_json': packaging_json,
+            # FIX: Use standard filtered querysets for recent picks so we always get 4 active records
+            'recent_categories': json.dumps([{'id': c.id, 'name': c.name} for c in Category.objects.filter(company=company).order_by('-created_at')[:4]]),
+            'recent_units': json.dumps([{'id': u.id, 'name': u.name} for u in Unit.objects.filter(company=company).order_by('-created_at')[:4]]),
+            'recent_suppliers': json.dumps([{'id': s.id, 'name': s.name} for s in Party.objects.filter(company=company, is_supplier=True).order_by('-created_at')[:4]]),
+            'unit_map_json': json.dumps({str(u.id): f"{u.name} ({u.short_name})" for u in units_qs}),
+            'is_locked': item.is_locked if item else False,
+            'tier_ids_json': json.dumps([t.id for t in tiers_qs]),
         }
         return render(request, 'frontend/items/_form.html', context)
 
 class ItemsTableView(BaseAppView):
     def get(self, request):
         company = self.get_company()
-        
-        # EFFICIENCY FIX: select_related stops N+1 queries for category/base_unit
-        items = Item.objects.filter(company=company).exclude(status='deleted').select_related(
-            'category', 'base_unit'
-        ).annotate(
-            total_stock_calc=Sum('stock_batches__quantity')
-        )
+        items = Item.objects.filter(company=company).select_related('category', 'base_unit').annotate(total_stock_calc=Sum('stock_batches__quantity'))
 
         search = request.GET.get('search', '')
         if search:
@@ -172,182 +177,178 @@ class ItemsTableView(BaseAppView):
         paginator = Paginator(items, self.pagination_size)
         page_obj = paginator.get_page(request.GET.get('page', 1))
 
-        context = {
-            'items': page_obj.object_list,
-            'page_obj': page_obj,
-            'request': request,
-        }
+        context = {'items': page_obj.object_list, 'page_obj': page_obj, 'request': request}
         return render(request, 'frontend/items/_table.html', context)
 
 
-# 2. ItemSaveView
 class ItemSaveView(BaseAppView):
     @transaction.atomic
     def post(self, request):
         company = self.get_company()
         item_id = request.POST.get('id')
-
-
-        base_unit_id = request.POST.get('base_unit')
-        if not base_unit_id:
-            return JsonResponse({"success": False, "message": "Base Unit is required."}, status=400)
-
-
-        # Parse and Validate UOMs
-        uom_unit_ids = request.POST.getlist('uom_unit_id[]')
-        uom_factors = request.POST.getlist('uom_factor[]')
-
-        parsed_uoms = []
-        seen_uoms = set()
-
-        for i in range(len(uom_unit_ids)):
-            if uom_unit_ids[i] and uom_factors[i]:
-                if uom_unit_ids[i] == base_unit_id:
-                    return JsonResponse({"success": False, "message": "Base unit can't be added as its own UOM conversion."}, status=400)
-                if uom_unit_ids[i] in seen_uoms:
-                    return JsonResponse({"success": False, "message": "Duplicate Unit found in UOM Conversions. Please select each unit only once."}, status=400)
-
-                # Bug D Fix: Explicitly validate conversion factor
-                try:
-                    factor = Decimal(uom_factors[i])
-                    if factor <= 0:
-                        raise ValueError
-                except (InvalidOperation, ValueError):
-                    return JsonResponse({"success": False, "message": f"Invalid conversion factor: {uom_factors[i]}. Must be > 0."}, status=400)
-
-                seen_uoms.add(uom_unit_ids[i])
-                parsed_uoms.append({'unit_id': uom_unit_ids[i], 'factor': factor})
-
-
-        # Parse and Validate Prices
-        tier_ids = request.POST.getlist('price_tier_id[]')
-        tier_prices = request.POST.getlist('price_amount[]')
-        default_flags = request.POST.getlist('price_is_default[]')
-        entry_units = request.POST.getlist('price_entry_unit[]')
-
-        parsed_prices = []
-        seen_tiers = set()
-        default_count = 0
-
-        for i in range(len(tier_ids)):
-            if tier_ids[i] and tier_prices[i]:
-                if tier_ids[i] in seen_tiers:
-                    return JsonResponse({"success": False, "message": "Duplicate Price Tier found. Please select each tier only once."}, status=400)
-
-                # Fix: Explicitly validate price amount to ensure it's a valid decimal and non-negative
-                try:
-                    price = Decimal(tier_prices[i])
-                    if price < 0:
-                        raise ValueError
-                except (InvalidOperation, ValueError):
-                    return JsonResponse({"success": False, "message": f"Invalid price amount: {tier_prices[i]}."}, status=400)
-
-                is_default = (default_flags[i] == '1') if i < len(default_flags) else False
-                if is_default:
-                    default_count += 1
-
-                seen_tiers.add(tier_ids[i])
-                parsed_prices.append({
-                    'tier_id': tier_ids[i],
-                    'price': price,
-                    'is_default': is_default,
-                    'entry_unit_id': entry_units[i] if i < len(entry_units) else None
-                })
-
-
-        if default_count > 1:
-            return JsonResponse({"success": False, "message": "Multiple default prices found. Please select only one default price."}, status=400)
-
-
         
+        # 1. Server-side required check for name
+        name = request.POST.get('name', '').strip()
+        if not name:
+            return JsonResponse({"success": False, "message": "Item name is required."}, status=400)
+            
+        # 2. Parse JSON Payload
+        grid_json = request.POST.get('packaging_grid')
+        if not grid_json:
+            return JsonResponse({"success": False, "message": "Missing packaging data."}, status=400)
+        
+        try:
+            grid_data = json.loads(grid_json)
+        except json.JSONDecodeError:
+            return JsonResponse({"success": False, "message": "Invalid JSON format."}, status=400)
+
+        if not grid_data or len(grid_data) == 0:
+            return JsonResponse({"success": False, "message": "At least Base Unit is required."}, status=400)
+
+        # 3. Validate Base Unit & Lock Status (Prevent str(None) bug)
+        base_row = grid_data[0]
+        raw_base_unit_id = base_row.get('unit_id')
+        if not raw_base_unit_id:
+            return JsonResponse({"success": False, "message": "Base Unit is required."}, status=400)
+        base_unit_id = str(raw_base_unit_id)
+
         if item_id:
             item = get_object_or_404(Item, id=item_id, company=company)
+            if item.is_locked and str(item.base_unit_id) != base_unit_id:
+                return JsonResponse({"success": False, "message": "Base Unit cannot be changed because this item has existing transactions."}, status=400)
         else:
             item = Item(company=company)
             item.created_by = request.user
 
-
-        item.name = request.POST.get('name')
-        item.category_id = request.POST.get('category') or None
-        item.base_unit_id = base_unit_id
-        item.barcode = request.POST.get('barcode')
-        item.default_supplier_id = request.POST.get('default_supplier') or None
-        item.status = 'active' if request.POST.get('is_active') == 'on' else 'inactive'
-        item.cost_entry_unit_id = request.POST.get('cost_entry_unit') or None
+        # 4. Validate Grid Data In-Memory
+        parsed_uoms = []
+        parsed_prices = []
+        seen_units = set([base_unit_id])
         
         try:
-            cost_price = Decimal(request.POST.get('cost_price'))
-            if cost_price < 0:
-                raise ValueError
+            base_cost = Decimal(str(base_row.get('cost', 0)))
+            if base_cost < 0: raise ValueError
         except (InvalidOperation, ValueError, TypeError):
-            return JsonResponse({"success": False, "message": "Invalid Cost Price. Must be a positive number."}, status=400)
+            return JsonResponse({"success": False, "message": "Invalid Base Cost price."}, status=400)
 
-        # Fix: Filesystem operations deferred to on_commit
+        # Lock check for cost_price
+        if item_id and item.is_locked and base_cost != item.cost_price:
+            return JsonResponse({"success": False, "message": "Cost price can't be changed once this item has transactions."}, status=400)
 
-        old_image_path = item.image.path if item.image else None
+        for i, row in enumerate(grid_data[1:], start=1):
+            raw_unit_id = row.get('unit_id')
+            if not raw_unit_id:
+                return JsonResponse({"success": False, "message": f"Row {i} is missing a Unit."}, status=400)
+            unit_id = str(raw_unit_id)
+            
+            if unit_id in seen_units:
+                return JsonResponse({"success": False, "message": "Duplicate Unit found in grid."}, status=400)
+            seen_units.add(unit_id)
+
+            try:
+                factor = Decimal(str(row.get('factor')))
+                if factor <= 0: raise ValueError
+            except (InvalidOperation, ValueError, TypeError):
+                return JsonResponse({"success": False, "message": f"Invalid conversion factor for row {i}."}, status=400)
+
+            parsed_uoms.append({'unit_id': unit_id, 'factor': factor, 'barcode': row.get('barcode', '')})
+
+            for tier_id_str, price_val in row.get('prices', {}).items():
+                try:
+                    price = Decimal(str(price_val))
+                    if price < 0: raise ValueError
+                except (InvalidOperation, ValueError, TypeError):
+                    return JsonResponse({"success": False, "message": f"Invalid price for unit in row {i}."}, status=400)
+                parsed_prices.append({'unit_id': unit_id, 'tier_id': str(tier_id_str), 'price': price})
+
+        for tier_id_str, price_val in base_row.get('prices', {}).items():
+            try:
+                price = Decimal(str(price_val))
+                if price < 0: raise ValueError
+            except (InvalidOperation, ValueError, TypeError):
+                return JsonResponse({"success": False, "message": "Invalid base unit price."}, status=400)
+            parsed_prices.append({'unit_id': base_unit_id, 'tier_id': str(tier_id_str), 'price': price})
+
+        # 5. Multi-Tenancy Validation 
+        # FIX: values_list('id', flat=True) yields ints, not objects. Removed .id attribute access.
+        valid_unit_ids = set(str(id_) for id_ in Unit.objects.filter(company=company, id__in=seen_units).values_list('id', flat=True))
+        if not seen_units <= valid_unit_ids:
+            return JsonResponse({"success": False, "message": "Invalid unit selected."}, status=400)
+
+        referenced_tier_ids = {p['tier_id'] for p in parsed_prices}
+        # FIX: values_list('id', flat=True) yields ints, not objects. Removed .id attribute access.
+        valid_tier_ids = set(str(id_) for id_ in PriceTier.objects.filter(company=company, id__in=referenced_tier_ids).values_list('id', flat=True))
+        if not referenced_tier_ids <= valid_tier_ids:
+            return JsonResponse({"success": False, "message": "Invalid price tier selected."}, status=400)
+
+        category_id = request.POST.get('category') or None
+        if category_id and not Category.objects.filter(company=company, id=category_id).exists():
+            return JsonResponse({"success": False, "message": "Invalid category selected."}, status=400)
+
+        supplier_id = request.POST.get('default_supplier') or None
+        if supplier_id and not Party.objects.filter(company=company, id=supplier_id, is_supplier=True).exists():
+            return JsonResponse({"success": False, "message": "Invalid supplier selected."}, status=400)
+
+        # 6. Barcode Validation (Internal & Cross-Table)
+        submitted_barcodes = [b for b in ([base_row.get('barcode','')] + [r.get('barcode','') for r in grid_data[1:]]) if b]
+        if len(submitted_barcodes) != len(set(submitted_barcodes)):
+            return JsonResponse({"success": False, "message": "Duplicate barcode within this item."}, status=400)
+
+        exclude_id = item.id if item_id else None
+        if Item.objects.filter(company=company, barcode__in=submitted_barcodes).exclude(id=exclude_id).exists() or \
+           ItemUOM.objects.filter(company=company, barcode__in=submitted_barcodes).exclude(item_id=exclude_id).exists():
+            return JsonResponse({"success": False, "message": "One of these barcodes is already used by another item."}, status=400)
+
+        # 7. Mutate Database
+        item.name = name
+        item.category_id = category_id
+        item.base_unit_id = base_unit_id
+        item.barcode = base_row.get('barcode', '') or ''
+        item.default_supplier_id = supplier_id
+        item.status = 'active' if request.POST.get('is_active') == 'on' else 'inactive'
+        item.cost_price = base_cost
+
+        old_image_name = item.image.name if item.image else None
         clear_image_flag = request.POST.get('clear_image') == '1'
         new_image_uploaded = 'image' in request.FILES
         
         if new_image_uploaded:
             item.image = request.FILES['image']
         elif clear_image_flag and item.image:
-            item.image = None  # Nullify DB field
+            item.image = None
 
         try:
             item.save()
         except IntegrityError:
-            return JsonResponse({"success": False, "message": "An item with this name already exists."}, status=400)
+            return JsonResponse({"success": False, "message": "An item with this name or barcode already exists."}, status=400)
         
-        # Synchronize UOMs
         item.uom_conversions.all().delete()
         for uom in parsed_uoms:
             ItemUOM.objects.create(
                 company=company, item=item, unit_id=uom['unit_id'], 
-                conversion_factor=uom['factor'], created_by=request.user
+                conversion_factor=uom['factor'], barcode=uom['barcode'], created_by=request.user
             )
 
-        # Synchronize Prices
         item.prices.all().delete()
         for price in parsed_prices:
             ItemPrice.objects.create(
                 company=company, item=item, price_tier_id=price['tier_id'], 
-                price=price['price'], created_by=request.user,
-                entry_unit_id=price['entry_unit_id'],
-                is_default=price['is_default']
+                unit_id=price['unit_id'], price=price['price'], created_by=request.user
             )
 
-
-        # Fix for safe file deletion
-        new_image_path = item.image.path if item.image else None
-        if old_image_path and old_image_path != new_image_path:
+        new_image_name = item.image.name if item.image else None
+        if old_image_name and old_image_name != new_image_name:
             def delete_old_file():
-                if default_storage.exists(old_image_path):
-                    default_storage.delete(old_image_path)
+                if default_storage.exists(old_image_name):
+                    default_storage.delete(old_image_name)
             transaction.on_commit(delete_old_file)
         
-        # Fetch updated list for table render
-        items = Item.objects.filter(company=company).exclude(status='deleted').select_related(
-            'category', 'base_unit'
-        ).annotate(
-            total_stock_calc=Sum('stock_batches__quantity')
-        ).order_by('-created_at')
+        items = Item.objects.filter(company=company).select_related('category', 'base_unit').annotate(total_stock_calc=Sum('stock_batches__quantity')).order_by('-created_at')
         paginator = Paginator(items, self.pagination_size)
         page_obj = paginator.get_page(1)
         
         return render(request, 'frontend/items/_table.html', {'items': page_obj.object_list, 'page_obj': page_obj, 'request': request})
-        
 
-
-
-
-
-
-
-
-
-
-
-# 3. Update ItemDeleteView
 class ItemDeleteView(BaseAppView):
     def post(self, request, item_id):
         company = self.get_company()
@@ -355,16 +356,11 @@ class ItemDeleteView(BaseAppView):
         
         reason = request.POST.get('delete_reason', 'No reason provided')
         
-        item.status = 'deleted'
+        item.is_deleted = True
         item.delete_reason = reason
         item.save()
         
-        # EFFICIENCY FIX: select_related here too
-        items = Item.objects.filter(company=company).exclude(status='deleted').select_related(
-            'category', 'base_unit'
-        ).annotate(
-            total_stock_calc=Sum('stock_batches__quantity')
-        ).order_by('-created_at')
+        items = Item.objects.filter(company=company).select_related('category', 'base_unit').annotate(total_stock_calc=Sum('stock_batches__quantity')).order_by('-created_at')
         paginator = Paginator(items, self.pagination_size)
         page_obj = paginator.get_page(1)
         
@@ -378,7 +374,7 @@ class GoodsInView(BaseAppView):
         company = self.get_company()
         today = timezone.now().date()
         context = {
-            'suppliers': Party.objects.filter(company=company, is_supplier=True, is_removed=False),
+            'suppliers': Party.objects.filter(company=company, is_supplier=True, is_deleted=False),
             'today_str': today.strftime('%Y-%m-%d'),
             'yesterday_str': (today - timedelta(days=1)).strftime('%Y-%m-%d'),
             'month_start_str': today.replace(day=1).strftime('%Y-%m-%d'),
@@ -425,7 +421,7 @@ class GoodsInTableView(BaseAppView):
             'invoices': page_obj.object_list,
             'page_obj': page_obj,
             'request': request,
-            'suppliers': Party.objects.filter(company=company, is_supplier=True, is_removed=False),
+            'suppliers': Party.objects.filter(company=company, is_supplier=True, is_deleted=False),
         }
         return render(request, 'frontend/goods_in/_table.html', context)
 
@@ -442,7 +438,6 @@ class GoodsInFormView(BaseAppView):
                 'item_id': l.item_id,
                 'item_name': l.item.name,
                 'qty': str(l.quantity),
-                # Convert net cost back to gross for display if inclusive
                 'cost_price': str((l.cost_price * Decimal('1.13')).quantize(Decimal('0.01'))) if invoice.is_vat_inclusive else str(l.cost_price),
                 'batch_no': l.batch_no or '',
                 'expiry_date': l.expiry_date.strftime('%Y-%m-%d') if l.expiry_date else ''
@@ -458,13 +453,12 @@ class GoodsInFormView(BaseAppView):
                 except: num = 1
             else: num = 1
 
-
             next_ref = f"{prefix}{num:04d}"
             while PurchaseInvoice.objects.filter(company=company, reference_no=next_ref).exists():
                 num += 1
                 next_ref = f"{prefix}{num:04d}"
 
-        suppliers = Party.objects.filter(company=company, is_supplier=True, is_removed=False)
+        suppliers = Party.objects.filter(company=company, is_supplier=True, is_deleted=False)
         warehouses = Warehouse.objects.filter(company=company, is_active=True)
 
         items_qs = Item.objects.filter(company=company, status='active').select_related('category', 'base_unit')
@@ -517,7 +511,6 @@ class GoodsInSaveView(BaseAppView):
         batches = request.POST.getlist('batch_no[]')
         expiries = request.POST.getlist('expiry_date[]')
 
-        # EFFICIENCY FIX: Fetch all items in one query
         items_dict = {i.id: i for i in Item.objects.filter(id__in=item_ids, company=company)}
 
         for i in range(len(item_ids)):
@@ -550,7 +543,7 @@ class GoodsInSaveView(BaseAppView):
         paginator = Paginator(invoices, self.pagination_size)
         page_obj = paginator.get_page(1)
         
-        return render(request, 'frontend/goods_in/_table.html', {'invoices': page_obj.object_list, 'page_obj': page_obj, 'request': request, 'suppliers': Party.objects.filter(company=company, is_supplier=True, is_removed=False)})
+        return render(request, 'frontend/goods_in/_table.html', {'invoices': page_obj.object_list, 'page_obj': page_obj, 'request': request, 'suppliers': Party.objects.filter(company=company, is_supplier=True, is_deleted=False)})
 
 class GoodsInVoidView(BaseAppView):
     def post(self, request, invoice_id):
@@ -569,14 +562,10 @@ class GoodsInVoidView(BaseAppView):
         paginator = Paginator(invoices, self.pagination_size)
         page_obj = paginator.get_page(1)
         
-        return render(request, 'frontend/goods_in/_table.html', {'invoices': page_obj.object_list, 'page_obj': page_obj, 'request': request, 'suppliers': Party.objects.filter(company=company, is_supplier=True, is_removed=False)})
+        return render(request, 'frontend/goods_in/_table.html', {'invoices': page_obj.object_list, 'page_obj': page_obj, 'request': request, 'suppliers': Party.objects.filter(company=company, is_supplier=True, is_deleted=False)})
 
 class PartiesView(BaseAppView):
     template_name = "frontend/parties.html"
-
-
-
-
 
 # ==========================================
 # GOODS OUT (SALE INVOICES)
@@ -586,7 +575,7 @@ class GoodsOutView(BaseAppView):
         company = self.get_company()
         today = timezone.now().date()
         context = {
-            'customers': Party.objects.filter(company=company, is_customer=True, is_removed=False),
+            'customers': Party.objects.filter(company=company, is_customer=True, is_deleted=False),
             'today_str': today.strftime('%Y-%m-%d'),
             'yesterday_str': (today - timedelta(days=1)).strftime('%Y-%m-%d'),
             'month_start_str': today.replace(day=1).strftime('%Y-%m-%d'),
@@ -610,7 +599,6 @@ class GoodsOutTableView(BaseAppView):
         if status:
             invoices = invoices.filter(payment_status=status)
 
-        # ADDED: Date Filtering
         date_from = request.GET.get('date_from', '')
         if date_from:
             invoices = invoices.filter(date_dispatched__gte=date_from)
@@ -634,10 +622,9 @@ class GoodsOutTableView(BaseAppView):
             'invoices': page_obj.object_list,
             'page_obj': page_obj,
             'request': request,
-            'customers': Party.objects.filter(company=company, is_customer=True, is_removed=False),
+            'customers': Party.objects.filter(company=company, is_customer=True, is_deleted=False),
         }
         return render(request, 'frontend/goods_out/_table.html', context)
-
 
 class GoodsOutFormView(BaseAppView):
     def get(self, request):
@@ -664,12 +651,11 @@ class GoodsOutFormView(BaseAppView):
                 num += 1
                 next_ref = f"{prefix}{num:04d}"
 
-        customers = Party.objects.filter(company=company, is_customer=True, is_removed=False)
+        customers = Party.objects.filter(company=company, is_customer=True, is_deleted=False)
         warehouses = Warehouse.objects.filter(company=company, is_active=True)
         
         default_tier = PriceTier.objects.filter(company=company, is_default=True).first()
         
-        # EFFICIENCY FIX: Use Prefetch to get default prices in 2 queries instead of N+1
         price_qs = ItemPrice.objects.filter(price_tier=default_tier) if default_tier else ItemPrice.objects.all()
         items_qs = Item.objects.filter(company=company, status='active').select_related('category', 'base_unit').prefetch_related(
             Prefetch('prices', queryset=price_qs, to_attr='default_prices')
@@ -693,7 +679,6 @@ class GoodsOutFormView(BaseAppView):
         }
         return render(request, 'frontend/goods_out/_form.html', context)
 
-
 class GoodsOutSaveView(BaseAppView):
     def post(self, request):
         company = self.get_company()
@@ -706,7 +691,12 @@ class GoodsOutSaveView(BaseAppView):
         customer_id = request.POST.get('customer')
         if not customer_id:
             return JsonResponse({"success": False, "message": "Please select a customer."}, status=400)
-        customer = Party.objects.get(id=customer_id, company=company)
+        
+        # FIX: Added try/except to prevent 500 on invalid customer ID
+        try:
+            customer = Party.objects.get(id=customer_id, company=company)
+        except Party.DoesNotExist:
+            return JsonResponse({"success": False, "message": "Invalid customer selected."}, status=400)
         
         if customer and customer.credit_limit > 0:
             qtys = request.POST.getlist('qty[]')
@@ -740,7 +730,6 @@ class GoodsOutSaveView(BaseAppView):
                 qtys = request.POST.getlist('qty[]')
                 prices = request.POST.getlist('selling_price[]')
 
-                # EFFICIENCY FIX: Fetch all items in one query
                 items_dict = {i.id: i for i in Item.objects.filter(id__in=item_ids, company=company)}
 
                 for i in range(len(item_ids)):
@@ -768,8 +757,7 @@ class GoodsOutSaveView(BaseAppView):
         paginator = Paginator(invoices, self.pagination_size)
         page_obj = paginator.get_page(1)
         
-        return render(request, 'frontend/goods_out/_table.html', {'invoices': page_obj.object_list, 'page_obj': page_obj, 'request': request, 'customers': Party.objects.filter(company=company, is_customer=True, is_removed=False)})
-
+        return render(request, 'frontend/goods_out/_table.html', {'invoices': page_obj.object_list, 'page_obj': page_obj, 'request': request, 'customers': Party.objects.filter(company=company, is_customer=True, is_deleted=False)})
 
 class GoodsOutVoidView(BaseAppView):
     def post(self, request, invoice_id):
@@ -788,12 +776,7 @@ class GoodsOutVoidView(BaseAppView):
         paginator = Paginator(invoices, self.pagination_size)
         page_obj = paginator.get_page(1)
         
-        return render(request, 'frontend/goods_out/_table.html', {'invoices': page_obj.object_list, 'page_obj': page_obj, 'request': request, 'customers': Party.objects.filter(company=company, is_customer=True, is_removed=False)})
-
-
-
-
-
+        return render(request, 'frontend/goods_out/_table.html', {'invoices': page_obj.object_list, 'page_obj': page_obj, 'request': request, 'customers': Party.objects.filter(company=company, is_customer=True, is_deleted=False)})
 
 class SpoilageView(BaseAppView):
     template_name = "frontend/spoilage.html"

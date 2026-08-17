@@ -1,3 +1,4 @@
+import functools
 from django.db import models
 from apps.core.models import BaseModel
 import uuid
@@ -11,11 +12,12 @@ class Category(BaseModel):
     name = models.CharField(max_length=100)
     description = models.TextField(blank=True)
 
-    class Meta:
+    # FIX 1: Inherit BaseModel.Meta
+    class Meta(BaseModel.Meta):
         ordering = ['name']
         verbose_name_plural = 'Categories'
         constraints = [
-            models.UniqueConstraint(fields=['company', 'name'],  condition=~models.Q(is_deleted=True), name='uniq_category_per_company')
+            models.UniqueConstraint(fields=['company', 'name'], condition=~models.Q(is_deleted=True), name='uniq_category_per_company')
         ]
 
     def __str__(self):
@@ -29,10 +31,11 @@ class Unit(BaseModel):
     name = models.CharField(max_length=50, help_text="e.g., Pieces, Carton, Kg")
     short_name = models.CharField(max_length=10, help_text="e.g., Pcs, Ctn, Kg")
 
-    class Meta:
+    # FIX 1: Inherit BaseModel.Meta
+    class Meta(BaseModel.Meta):
         ordering = ['name']
         constraints = [
-            models.UniqueConstraint(fields=['company', 'name'], name='uniq_unit_name_per_company')
+            models.UniqueConstraint(fields=['company', 'name'], condition=~models.Q(is_deleted=True), name='uniq_unit_name_per_company')
         ]
 
     def __str__(self):
@@ -56,7 +59,6 @@ class Item(BaseModel):
     # Moving Average Cost (Auto-calculated by system during purchases)
     cost_price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
 
-    # NEW Fields:
     image = models.ImageField(upload_to='item_images/', null=True, blank=True)
     default_supplier = models.ForeignKey(
         'parties.Party', on_delete=models.SET_NULL, null=True, blank=True, 
@@ -67,11 +69,11 @@ class Item(BaseModel):
     delete_reason = models.TextField(blank=True, null=True, help_text="Reason for deleting/discontinuing the item")
     low_stock_threshold = models.PositiveIntegerField(default=10)
 
-    @property
+    # FIX 3: Changed to cached_property so it only hits the DB once per request
+    @functools.cached_property
     def is_locked(self):
         from apps.transactions.models import PurchaseItemLine, SaleItemLine
         return PurchaseItemLine.objects.filter(item=self).exists() or SaleItemLine.objects.filter(item=self).exists()
-
 
     @property
     def total_stock(self):
@@ -82,15 +84,18 @@ class Item(BaseModel):
         )['total']
         return total or 0
 
-    class Meta:
+    # FIX 1: Inherit BaseModel.Meta so base_manager_name='all_objects' doesn't get lost
+    class Meta(BaseModel.Meta):
         ordering = ['name']
         constraints = [
             models.UniqueConstraint(fields=['company', 'name'], condition=~models.Q(is_deleted=True), name='uniq_item_name_per_company'),
-            models.UniqueConstraint(fields=['company', 'barcode'], condition=~models.Q(barcode=''), name='uniq_item_barcode_per_company'),
+            # FIX 2: Added & ~models.Q(is_deleted=True) so deleted items don't block barcode reuse
+            models.UniqueConstraint(fields=['company', 'barcode'], condition=~models.Q(barcode='') & ~models.Q(is_deleted=True), name='uniq_item_barcode_per_company'),
         ]
 
     def __str__(self):
         return self.name
+
 
 # ==========================================
 # 4. ITEM UOM CONVERSIONS
@@ -101,16 +106,17 @@ class ItemUOM(BaseModel):
     unit = models.ForeignKey(Unit, on_delete=models.PROTECT, related_name='item_conversions')
     conversion_factor = models.DecimalField(
         max_digits=10, decimal_places=2, 
-        validators= [MinValueValidator(Decimal('0.01'))],
+        validators=[MinValueValidator(Decimal('0.01'))],
         help_text="e.g., If Base is Pcs and this is Carton, factor = 12"
     )
     barcode = models.CharField(max_length=100, blank=True, db_index=True)
 
-
-    class Meta:
+    # FIX 1: Inherit BaseModel.Meta
+    class Meta(BaseModel.Meta):
         constraints = [ 
             models.UniqueConstraint(fields=['item', 'unit'], name='uniq_item_uom'),
-            models.UniqueConstraint(fields=['company', 'barcode'], condition=~models.Q(barcode=''), name='uniq_itemuom_barcode_per_company'),
+            # FIX 2: Added & ~models.Q(is_deleted=True)
+            models.UniqueConstraint(fields=['company', 'barcode'], condition=~models.Q(barcode='') & ~models.Q(is_deleted=True), name='uniq_itemuom_barcode_per_company'),
         ]
 
 
@@ -122,11 +128,13 @@ class PriceTier(BaseModel):
     name = models.CharField(max_length=50)
     is_default = models.BooleanField(default=False)
 
-    class Meta:
+    # FIX 1: Inherit BaseModel.Meta
+    class Meta(BaseModel.Meta):
         ordering = ['name']
         constraints = [
             models.UniqueConstraint(fields=['company', 'name'], condition=~models.Q(is_deleted=True), name='uniq_pricetier_per_company')
         ]
+        
     def __str__(self):
         return self.name
 
@@ -137,7 +145,8 @@ class ItemPrice(BaseModel):
     unit = models.ForeignKey(Unit, on_delete=models.PROTECT, related_name='item_prices')
     price = models.DecimalField(max_digits=10, decimal_places=2)
 
-    class Meta:
+    # FIX 1: Inherit BaseModel.Meta
+    class Meta(BaseModel.Meta):
         constraints = [
-            models.UniqueConstraint(fields=['item', 'price_tier', 'unit'], name='uniq_item_pricetier')
+            models.UniqueConstraint(fields=['item', 'price_tier', 'unit'], name='uniq_item_pricetier_unit')
         ]

@@ -12,7 +12,7 @@ class Warehouse(BaseModel):
     location = models.CharField(max_length=200, blank=True)
     is_active = models.BooleanField(default=True)
 
-    class Meta:
+    class Meta(BaseModel.Meta):
         ordering = ['name']
         constraints = [
             models.UniqueConstraint(fields=['company', 'name'], name='uniq_warehouse_per_company')
@@ -50,7 +50,7 @@ class StockBatch(BaseModel):
         limit_choices_to={'is_supplier': True}
     )
 
-    class Meta:
+    class Meta(BaseModel.Meta):
         ordering = ['expiry_date'] # FEFO: First Expired, First Out ordering
         constraints = [
             # Prevent duplicate batch entries for the same item in the same warehouse
@@ -97,7 +97,7 @@ class StockMovement(BaseModel):
     
     notes = models.TextField(blank=True)
 
-    class Meta:
+    class Meta(BaseModel.Meta):
         ordering = ['-created_at']
         indexes = [
             models.Index(fields=['company', 'item', '-created_at']),

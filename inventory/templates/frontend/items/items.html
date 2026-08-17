@@ -270,82 +270,163 @@ async function setDefaultTier(tierId) {
 }
 
 
-function itemForm(itemId, isEditable) {
+function itemForm(itemId, isEditable, isLocked) {
     return {
         changed: false, 
         editable: itemId ? isEditable : true,
         name: document.getElementById('item-name-input')?.value || '',
-        baseUnit: document.getElementById('item-base-unit-select')?.value || '',
         category: document.getElementById('item-category-select')?.value || '',
         defaultSupplier: document.getElementById('item-supplier-select')?.value || '',
+        isLocked: isLocked,
         imagePreview: document.getElementById('item-image-preview-src')?.textContent.trim() || '',
         imageRemoved: false,
-        uoms: [], prices: [], recentCategories: [], recentUnits: [], recentSuppliers: [], unitMap: {},
-        defaultTierId: document.getElementById('default-tier-id')?.value || null,
-        costEntryUnit: '', costEntryAmount: '', costPrice: '0',
-        defaultPriceTierId: null, 
+        recentCategories: [], recentUnits: [], recentSuppliers: [], unitMap: {},
         cropModal: false, cropper: null, croppedFile: null,
-        
+        grid: [],
+        overrideTracker: {}, // now keyed by `${row.id}_${tierId}`, not `${index}_${tierId}`
+        allTierIds: [],
+        _idCounter: 0,
+
+        genId() {
+            this._idCounter += 1;
+            return `row_${Date.now()}_${this._idCounter}`;
+        },
+
         init() {
             this.changed = false; 
-            try { this.uoms = JSON.parse(document.getElementById('uom-data')?.textContent || '[]'); } catch(e) {}
-            try { this.recentCategories = JSON.parse(document.getElementById('recent-cats-data')?.textContent || '[]'); } catch(e) {}
-            try { this.recentUnits = JSON.parse(document.getElementById('recent-units-data')?.textContent || '[]'); } catch(e) {}
-            try { this.recentSuppliers = JSON.parse(document.getElementById('recent-sups-data')?.textContent || '[]'); } catch(e) {}
-            try { this.unitMap = JSON.parse(document.getElementById('unit-map-data')?.textContent || '{}'); } catch(e) {}
-            
-            // Cost price — reverse-populate entry amount from stored base-unit price
-            this.costEntryUnit = document.getElementById('cost-entry-unit-input')?.value || this.baseUnit;
-            this.costPrice = parseFloat(document.getElementById('item-cost-price-input')?.value || '0').toFixed(2);
-            this.costEntryAmount = (parseFloat(this.costPrice) * this.getUnitFactor(this.costEntryUnit)).toFixed(2);
-
-            // Prices — same reverse-populate per row
             try {
-                const rawPrices = JSON.parse(document.getElementById('prices-data')?.textContent || '[]');
-                this.prices = rawPrices.map(p => {
-                    const entry_unit = p.entry_unit_id || this.baseUnit;
-                    const factor = this.getUnitFactor(entry_unit);
-                    return { ...p, entry_unit, entry_amount: (parseFloat(p.price) * factor).toFixed(2) };
-                });
+                this.recentCategories = JSON.parse(document.getElementById('recent-cats-data')?.textContent || '[]');
+                this.recentUnits = JSON.parse(document.getElementById('recent-units-data')?.textContent || '[]');
+                this.recentSuppliers = JSON.parse(document.getElementById('recent-sups-data')?.textContent || '[]');
+                this.unitMap = JSON.parse(document.getElementById('unit-map-data')?.textContent || '{}');
+                this.allTierIds = JSON.parse(document.getElementById('all-tier-ids-data')?.textContent || '[]');
             } catch(e) {}
 
-
-            const defPrice = this.prices.find(p => p.is_default);
-            if (defPrice) this.defaultPriceTierId = defPrice.tier_id;
-
-            if (!itemId) {
-                if (this.uoms.length === 0) this.addUom();
-                if (this.prices.length === 0) this.addPrice();
+            const dataEl = document.getElementById('packaging-data');
+            if (dataEl && dataEl.textContent.trim() !== '[]') {
+                this.grid = JSON.parse(dataEl.textContent);
+                this.grid.forEach((row) => {
+                    row.id = this.genId(); // FIX: assign stable id to every loaded row
+                    if (!row.prices) row.prices = {};
+                    for (const tierId in row.prices) {
+                        this.overrideTracker[`${row.id}_${tierId}`] = true;
+                    }
+                });
+            } else {
+                this.grid = [{ id: this.genId(), unit_id: '', factor: 1, barcode: '', cost: '', prices: {} }];
             }
+        },
 
-            this.$watch('baseUnit', (value) => {
-                this.uoms = this.uoms.filter(u => u.unit_id !== value);
+        addRow() {
+            this.grid.push({ id: this.genId(), unit_id: '', factor: 1, barcode: '', cost: '', prices: {} });
+            this.changed = true;
+        },
+
+        removeRow(index) {
+            const row = this.grid[index];
+            if (row) {
+                this.allTierIds.forEach(tierId => {
+                    delete this.overrideTracker[`${row.id}_${tierId}`];
+                });
+            }
+            this.grid.splice(index, 1);
+            this.changed = true;
+        },
+
+        updateGridRow(row) {
+            row.factor = 1;
+            row.cost = '';
+            row.barcode = '';
+            if (!row.prices) row.prices = {};
+            this.allTierIds.forEach(tierId => {
+                row.prices[tierId] = '';
+                delete this.overrideTracker[`${row.id}_${tierId}`];
+            });
+            this.changed = true;
+        },
+
+        recalculateCost(changedIndex) {
+            const changedRow = this.grid[changedIndex];
+            const changedCost = parseFloat(changedRow.cost) || 0;
+            const changedFactor = parseFloat(changedRow.factor) || 1;
+            
+            const baseCost = changedIndex === 0 ? changedCost : changedCost / changedFactor;
+            this.grid[0].cost = baseCost.toFixed(2);
+            
+            this.grid.forEach((row, idx) => {
+                // FIX: skip the cell being typed into, so rounding doesn't jitter it
+                if (idx === 0 || idx === changedIndex) return;
+                const factor = parseFloat(row.factor) || 1;
+                row.cost = (baseCost * factor).toFixed(2);
+            });
+            this.changed = true;
+        },
+
+        recalculateFromBase() {
+            const baseCost = parseFloat(this.grid[0].cost) || 0;
+            this.grid.forEach((row, idx) => {
+                if (idx === 0) return; 
+                const factor = parseFloat(row.factor) || 1;
+                
+                row.cost = (baseCost * factor).toFixed(2);
+                
+                if (!row.prices) row.prices = {};
+                this.allTierIds.forEach(tierId => {
+                    const k = `${row.id}_${tierId}`; // FIX: id-based key
+                    if (!this.overrideTracker[k]) {
+                        const baseTierPrice = parseFloat(this.grid[0].prices?.[tierId] || 0);
+                        row.prices[tierId] = (baseTierPrice * factor).toFixed(2);
+                    }
+                });
+            });
+            this.changed = true;
+        },
+
+        recalculateTier(changedIndex, tierId) {
+            const changedRow = this.grid[changedIndex];
+            if (!changedRow.prices) changedRow.prices = {};
+            const changedPrice = parseFloat(changedRow.prices[tierId]) || 0;
+            const changedFactor = parseFloat(changedRow.factor) || 1;
+            
+            this.overrideTracker[`${changedRow.id}_${tierId}`] = true; // FIX: id-based key
+
+            const basePrice = changedIndex === 0 ? changedPrice : changedPrice / changedFactor;
+            
+            this.grid.forEach((row, idx) => {
+                if (idx === changedIndex) return; 
+                if (!row.prices) row.prices = {};
+                const k = `${row.id}_${tierId}`; // FIX: id-based key
+                
+                if (!this.overrideTracker[k]) {
+                    const factor = parseFloat(row.factor) || 1;
+                    row.prices[tierId] = (basePrice * factor).toFixed(2);
+                }
+            });
+            this.changed = true;
+        },
+
+        // FIX: explicitly pick fields instead of spreading `...row`,
+        // so the internal client-side `id` never leaks into the POST payload
+        gridData() {
+            return this.grid.map(row => {
+                const cleanPrices = {};
+                if (row.prices) {
+                    for (const tierId in row.prices) {
+                        if (row.prices[tierId] !== '' && row.prices[tierId] !== null) {
+                            cleanPrices[tierId] = row.prices[tierId];
+                        }
+                    }
+                }
+                return {
+                    unit_id: row.unit_id,
+                    factor: row.factor,
+                    barcode: row.barcode,
+                    cost: row.cost,
+                    prices: cleanPrices
+                };
             });
         },
-        
-        // UX FIX: Dynamic Base Unit Name text
-        get baseUnitName() { 
-            return this.unitMap[this.baseUnit] ? this.unitMap[this.baseUnit] : 'Base Units'; 
-        },
 
-        getUnitFactor(unitId) {
-            if (!unitId || unitId === this.baseUnit) return 1;
-            const u = this.uoms.find(u => u.unit_id === unitId);
-            return (u && u.factor) ? parseFloat(u.factor) : 1;
-        },
-
-        syncCostPrice() {
-            const factor = this.getUnitFactor(this.costEntryUnit);
-            this.costPrice = ((parseFloat(this.costEntryAmount) || 0) / factor).toFixed(2);
-            this.changed = true;
-        },
-
-        syncPrice(i) {
-            const factor = this.getUnitFactor(this.prices[i].entry_unit);
-            this.prices[i].price = ((parseFloat(this.prices[i].entry_amount) || 0) / factor).toFixed(2);
-            this.changed = true;
-        },
-        
         handleFileSelect(event) {
             const file = event.target.files[0];
             if (file) {
@@ -372,44 +453,10 @@ function itemForm(itemId, isEditable) {
             });
             this.cropper.destroy(); 
             this.cropModal = false; 
-            this.imageRemoved = false; // NEW: We added an image, so ensure removal flag is false
+            this.imageRemoved = false;
             this.changed = true;
         },
-        cancelCrop() { this.cropper.destroy(); this.cropModal = false; document.getElementById('image-upload-input').value = ''; },
-        
-        addUom() { this.uoms.push({ unit_id: '', factor: '' }); this.changed = true; },
-        removeUom(i) { this.uoms.splice(i, 1); this.changed = true; },
-        
-        // UX FIX: Auto-select default tier when adding a price
-        addPrice() { 
-            // Check if the default tier is already used in an existing row
-            const isDefaultUsed = this.defaultTierId && this.prices.some(p => p.tier_id === this.defaultTierId);
-            
-            // If it's already used, leave the tier_id blank. If not, use the default.
-            const tierId = isDefaultUsed ? '' : (this.defaultTierId || '');
-            
-            this.prices.push({ tier_id: tierId, price: '', entry_unit: this.baseUnit, entry_amount: '', is_default: false });
-            
-            // If this is the first price added and we successfully auto-selected the default tier
-            if (this.prices.length === 1 && tierId) {
-                this.defaultPriceTierId = this.defaultTierId;
-            }
-            this.changed = true; 
-        },
-        removePrice(i) { this.prices.splice(i, 1); this.changed = true; },
-        setDefaultPrice(tierId) { this.defaultPriceTierId = tierId; this.changed = true; },
-
-        unitOptionLabel(unitId, baseLabel, index) {
-            if (unitId === this.baseUnit) return `${baseLabel} — Base Unit`;
-            const taken = this.uoms.some((o, idx) => idx !== index && o.unit_id === unitId);
-            return taken ? `${baseLabel} — Taken` : baseLabel;
-        },
-
-        unitOptionStyle(unitId, index) {
-            if (unitId === this.baseUnit) return 'color:#16a34a;font-weight:600;';
-            const taken = this.uoms.some((o, idx) => idx !== index && o.unit_id === unitId);
-            return taken ? 'color:#9ca3af;' : '';
-        },
+        cancelCrop() { this.cropper.destroy(); this.cropModal = false; document.getElementById('image-upload-input').value = ''; }
     }
 }
 

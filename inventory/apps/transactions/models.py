@@ -48,7 +48,7 @@ class PurchaseInvoice(BaseModel):
     
     notes = models.TextField(blank=True)
 
-    class Meta:
+    class Meta(BaseModel.Meta):
         ordering = ['-date_received', '-created_at']
         constraints = [
             models.UniqueConstraint(fields=['company', 'reference_no'], name='uniq_purchase_ref_per_company')
@@ -126,7 +126,7 @@ class SaleInvoice(BaseModel):
     
     notes = models.TextField(blank=True)
 
-    class Meta:
+    class Meta(BaseModel.Meta):
         ordering = ['-date_dispatched', '-created_at']
         constraints = [
             models.UniqueConstraint(fields=['company', 'reference_no'], name='uniq_sale_ref_per_company')
@@ -220,7 +220,7 @@ class Payment(BaseModel):
     method = models.CharField(max_length=20, default='cash') # cash, online, cheque
     notes = models.TextField(blank=True)
 
-    class Meta:
+    class Meta(BaseModel.Meta):
         ordering = ['-date_paid', '-created_at']
         constraints = [
             models.UniqueConstraint(fields=['company', 'reference_no'], name='uniq_payment_ref_per_company')
@@ -267,7 +267,7 @@ class SalesReturn(BaseModel):
     grand_total = models.DecimalField(max_digits=12, decimal_places=2, default=0, help_text="Value of returned goods")
     notes = models.TextField(blank=True)
 
-    class Meta:
+    class Meta(BaseModel.Meta):
         ordering = ['-date_returned', '-created_at']
         constraints = [
             models.UniqueConstraint(fields=['company', 'reference_no'], name='uniq_salesreturn_ref_per_company')
@@ -308,7 +308,7 @@ class SpoilageLoss(BaseModel):
     total_loss_value = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     notes = models.TextField(blank=True)
 
-    class Meta:
+    class Meta(BaseModel.Meta):
         ordering = ['-date_reported', '-created_at']
         constraints = [
             models.UniqueConstraint(fields=['company', 'reference_no'], name='uniq_spoilage_ref_per_company')
