@@ -5,6 +5,7 @@ from django.core.exceptions import ValidationError
 from decimal import Decimal
 from django.db.models import F
 from apps.inventory.models import StockBatch, StockMovement
+from .models import PurchaseItemLine, SaleItemLine, SaleItemLineBatch
 from apps.catalog.models import Item
 from apps.core.utils import get_vat_rate
 class InventoryService:
@@ -104,7 +105,6 @@ class InventoryService:
         line.assigned_batch_no = "MULTI" if assigned_batches_count > 1 else (batch.batch_no if assigned_batches_count == 1 else "N/A")
         line.save(update_fields=['assigned_batch_no'])
 
-
     @staticmethod
     @transaction.atomic
     def reverse_purchase_line(line):
@@ -126,8 +126,6 @@ class InventoryService:
             batch_no=line.batch_no, movement_type='adjustment', quantity=-base_qty,
             notes=f"Reversal of Purchase Line for Invoice {line.invoice_id}"
         )
-
-
 
     @staticmethod
     @transaction.atomic
@@ -187,6 +185,7 @@ class InventoryService:
             invoice.grand_total = (taxable_amount + invoice.tax_amount).quantize(Decimal('0.01'))
         
         invoice.save(update_fields=['subtotal', 'tax_amount', 'grand_total', 'updated_at'])
+
     @staticmethod
     @transaction.atomic
     def process_payment_allocation(allocation):
@@ -262,8 +261,6 @@ class InventoryService:
             reference_model='SpoilageLoss', reference_id=str(spoilage.id)
         )
 
-
-
     @staticmethod
     @transaction.atomic
     def apply_invoice_to_party_balance(invoice, party_field, sign):
@@ -277,7 +274,6 @@ class InventoryService:
         Party.objects.filter(pk=party.pk).update(
             balance=F('balance') + (sign * invoice.grand_total)
         )
-
 
     @staticmethod
     @transaction.atomic

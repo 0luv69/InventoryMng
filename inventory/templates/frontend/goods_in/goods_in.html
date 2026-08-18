@@ -207,32 +207,23 @@
 
 <!-- MOVE THE SCRIPT HERE SO ALPINE ALWAYS SEES IT -->
 <script>
-function invoiceForm(invoiceId, initialVatInclusive) {
+function invoiceForm(invoiceId, initialVatInclusive, vatRate) {
     return {
         items: [],
         lines: [],
-        isVatInclusive: initialVatInclusive || false, // Initialize from DB
-        itemPicker: {
-            open: false,
-            search: '',
-            category: '',
-            activeIndex: null
-        },
+        isVatInclusive: initialVatInclusive || false,
+        vatRate: vatRate || 13,
+        itemPicker: { open: false, search: '', category: '', activeIndex: null },
+        invDiscountType: 'fixed',
+        invDiscountAmount: 0,
         
         init() {
             const dataEl = document.getElementById('items-data');
-            if (dataEl) {
-                try { this.items = JSON.parse(dataEl.textContent); } catch (e) { console.error("Error parsing items JSON:", e); }
-            }
+            if (dataEl) { try { this.items = JSON.parse(dataEl.textContent); } catch (e) {} }
             
             const linesEl = document.getElementById('invoice-lines-data');
             if (linesEl && linesEl.textContent.trim() !== '[]') {
-                try {
-                    this.lines = JSON.parse(linesEl.textContent);
-                } catch (e) {
-                    console.error("Error parsing lines JSON:", e);
-                    this.addLine();
-                }
+                try { this.lines = JSON.parse(linesEl.textContent); } catch (e) { this.addLine(); }
             } else {
                 this.addLine();
             }
@@ -240,18 +231,11 @@ function invoiceForm(invoiceId, initialVatInclusive) {
         
         addLine() {
             this.lines.push({
-                item_id: null,
-                item_name: '',
-                qty: 1,
-                cost_price: 0,
-                batch_no: '',
-                expiry_date: ''
+                item_id: null, item_name: '', qty: 1, cost_price: 0, batch_no: '', expiry_date: '',
+                uoms: [], base_unit_id: null, base_unit_name: '', unit_id: '', conversion_factor: 1
             });
         },
-        
-        removeLine(index) {
-            this.lines.splice(index, 1);
-        },
+        removeLine(index) { this.lines.splice(index, 1); },
         
         get filteredItems() {
             return this.items.filter(item => {
@@ -260,7 +244,6 @@ function invoiceForm(invoiceId, initialVatInclusive) {
                 return matchSearch && matchCat;
             });
         },
-        
         openItemPicker(index) {
             this.itemPicker.activeIndex = index;
             this.itemPicker.open = true;
@@ -273,35 +256,82 @@ function invoiceForm(invoiceId, initialVatInclusive) {
             const index = this.itemPicker.activeIndex;
             this.lines[index].item_id = item.id;
             this.lines[index].item_name = item.name;
-            this.lines[index].cost_price = item.cost_price;
+            this.lines[index].uoms = item.uoms;
+            this.lines[index].base_unit_id = String(item.base_unit_id);
+            this.lines[index].base_unit_name = item.base_unit_name;
+            this.lines[index].unit_id = String(item.base_unit_id);
+            this.lines[index].conversion_factor = 1;
+            
+            // FIX: VAT-inclusive cost bug. Gross up the net cost if inclusive is on.
+            let cost = parseFloat(item.cost_price);
+            if (this.isVatInclusive) {
+                cost = cost * (1 + (this.vatRate / 100));
+            }
+            this.lines[index].cost_price = cost.toFixed(2);
+            
             this.itemPicker.open = false;
             this.$nextTick(() => {
                 const qtyInput = document.getElementById('qty-input-' + index);
                 if(qtyInput) qtyInput.focus();
             });
         },
+
+        // FIX: Handle UOM change and auto-calc cost
+        setUnit(line) {
+            if (!line.unit_id) return;
+            if (line.unit_id == line.base_unit_id) {
+                line.conversion_factor = 1;
+            } else {
+                const uom = line.uoms.find(u => String(u.unit_id) === String(line.unit_id));
+                if (uom) {
+                    line.conversion_factor = parseFloat(uom.factor);
+                    const item = this.items.find(i => i.id === line.item_id);
+                    if (item) {
+                        let baseCost = parseFloat(item.cost_price);
+                        // Gross up if VAT inclusive
+                        if (this.isVatInclusive) {
+                            baseCost = baseCost * (1 + (this.vatRate / 100));
+                        }
+                        line.cost_price = (baseCost * line.conversion_factor).toFixed(2);
+                    }
+                }
+            }
+        },
+        
+        // Helper for Item Picker table
+        getItemUnitsString(item) {
+            if (!item.uoms || item.uoms.length === 0) return item.base_unit_name;
+            const shortNames = item.uoms.map(u => `${u.name}×${u.factor}`).join(' · ');
+            return `${item.base_unit_name} · ${shortNames}`;
+        },
         
         lineTotal(line) {
             return parseFloat(line.qty) * parseFloat(line.cost_price || 0);
         },
-        
         get subtotal() {
             return this.lines.reduce((sum, line) => sum + this.lineTotal(line), 0);
         },
-        
+        get invDiscountValue() {
+            if (this.invDiscountType === 'percentage') {
+                return (this.subtotal * (parseFloat(this.invDiscountAmount) || 0)) / 100;
+            }
+            return parseFloat(this.invDiscountAmount) || 0;
+        },
+        get taxableAmount() {
+            return Math.max(0, this.subtotal - this.invDiscountValue);
+        },
         get vatAmount() {
             if (this.isVatInclusive) {
-                return this.subtotal * (13 / 113);
+                return this.taxableAmount * (this.vatRate / (100 + this.vatRate));
             } else {
-                return this.subtotal * 0.13;
+                return this.taxableAmount * (this.vatRate / 100);
             }
         },
-        
         get grandTotal() {
             if (this.isVatInclusive) {
-                return this.subtotal;
+                return this.taxableAmount;
             } else {
-                return this.subtotal + this.vatAmount;
+                return this.taxableAmount + this.vatAmount;
             }
         }
     }

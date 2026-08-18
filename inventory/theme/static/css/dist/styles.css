@@ -326,6 +326,9 @@
   .col-span-4 {
     grid-column: span 4 / span 4;
   }
+  .col-span-6 {
+    grid-column: span 6 / span 6;
+  }
   .col-span-12 {
     grid-column: span 12 / span 12;
   }
@@ -406,6 +409,9 @@
   }
   .inline-flex {
     display: inline-flex;
+  }
+  .table {
+    display: table;
   }
   .h-1\.5 {
     height: calc(var(--spacing) * 1.5);
@@ -1567,9 +1573,24 @@
       line-height: var(--tw-leading, var(--text-xl--line-height));
     }
   }
+  .md\:col-span-1 {
+    @media (width >= 48rem) {
+      grid-column: span 1 / span 1;
+    }
+  }
   .md\:col-span-2 {
     @media (width >= 48rem) {
       grid-column: span 2 / span 2;
+    }
+  }
+  .md\:col-span-3 {
+    @media (width >= 48rem) {
+      grid-column: span 3 / span 3;
+    }
+  }
+  .md\:col-span-5 {
+    @media (width >= 48rem) {
+      grid-column: span 5 / span 5;
     }
   }
   .md\:col-span-6 {

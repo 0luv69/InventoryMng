@@ -6,7 +6,7 @@
 {{ lines_json|safe }}
 </script>
 
-<form x-data="invoiceForm({{ invoice.id|default:'null' }}, {{ is_vat_inclusive|yesno:'true,false' }})" 
+<form x-data="invoiceForm({{ invoice.id|default:'null' }}, {{ is_vat_inclusive|yesno:'true,false' }}, {{ vat_rate|default:'0' }})" 
       hx-post="{% url 'frontend:goods_in_save' %}" 
       hx-target="#goodsin-table" 
       hx-swap="innerHTML" 
@@ -89,7 +89,7 @@
                     </button>
                     {% endif %}
 
-                    <div class="col-span-12 md:col-span-6 relative">
+                    <div class="col-span-12 md:col-span-5 relative">
                         <label class="block text-[0.65rem] font-semibold text-neutral-500 mb-1">Item *</label>
                         <div x-show="!line.item_id" @click="openItemPicker(index)">
                             <div class="w-full px-3 py-2 text-sm text-neutral-400 bg-white border border-dashed border-neutral-300 rounded-lg cursor-pointer hover:border-green-500 hover:text-green-600 flex items-center gap-2">
@@ -102,6 +102,21 @@
                             {% if not invoice %}<button type="button" @click="openItemPicker(index)" class="ml-2 text-xs text-blue-500 hover:text-blue-600">Change</button>{% endif %}
                         </div>
                         <input type="hidden" name="item_id[]" :value="line.item_id">
+                    </div>
+
+                    <!-- UOM Dropdown -->
+                    <div class="col-span-4 md:col-span-3">
+                        <label class="block text-[0.65rem] font-semibold text-neutral-500 mb-1">UOM *</label>
+                        <select x-model="line.unit_id" @change="setUnit(line)" 
+                                class="w-full px-2 py-2 text-sm border border-neutral-200 rounded-lg h-[38px] focus:outline-none focus:ring-1 focus:ring-green-500 {% if invoice %}bg-neutral-50 text-neutral-500 cursor-not-allowed{% else %}bg-white{% endif %}"
+                                {% if invoice %}disabled{% else %}:disabled="!line.item_id"{% endif %}>
+                            <option value="">Select</option>
+                            <option :value="line.base_unit_id" x-text="line.base_unit_name + ' (Base)'"></option>
+                            <template x-for="uom in line.uoms" :key="uom.unit_id">
+                                <option :value="uom.unit_id" x-text="uom.name + ' (' + uom.factor + 'x)'"></option>
+                            </template>
+                        </select>
+                        <input type="hidden" name="unit_id[]" :value="line.unit_id">
                     </div>
 
                     <div class="col-span-4 md:col-span-2">
@@ -118,21 +133,22 @@
                                {% if invoice %}readonly{% endif %}>
                     </div>
 
-                    <div class="col-span-4 md:col-span-2">
+                    <div class="col-span-6 md:col-span-3">
                         <label class="block text-[0.65rem] font-semibold text-neutral-500 mb-1">Batch</label>
                         <input type="text" x-model="line.batch_no" name="batch_no[]" 
                                class="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-green-500 {% if invoice %}bg-neutral-50 text-neutral-500 cursor-not-allowed{% endif %}" 
                                {% if invoice %}readonly{% endif %}>
                     </div>
 
-                    <div class="col-span-12 md:col-span-6 flex items-end gap-4">
-                        <div class="flex-1">
-                            <label class="block text-[0.65rem] font-semibold text-neutral-500 mb-1">Expiry Date</label>
-                            <input type="date" x-model="line.expiry_date" name="expiry_date[]" 
-                                   class="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-green-500 {% if invoice %}bg-neutral-50 text-neutral-500 cursor-not-allowed{% endif %}" 
-                                   {% if invoice %}readonly{% endif %}>
-                        </div>
-                        <div class="text-right pb-2">
+                    <div class="col-span-6 md:col-span-3">
+                        <label class="block text-[0.65rem] font-semibold text-neutral-500 mb-1">Expiry Date</label>
+                        <input type="date" x-model="line.expiry_date" name="expiry_date[]" 
+                               class="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-green-500 {% if invoice %}bg-neutral-50 text-neutral-500 cursor-not-allowed{% endif %}" 
+                               {% if invoice %}readonly{% endif %}>
+                    </div>
+                    
+                    <div class="col-span-12 md:col-span-1 flex items-end justify-end pb-2">
+                        <div class="text-right">
                             <div class="text-[0.65rem] font-semibold text-neutral-500 mb-1">Total</div>
                             <div class="text-sm font-bold text-neutral-800">
                                 Rs. <span x-text="lineTotal(line).toFixed(2)"></span>
@@ -153,20 +169,12 @@
         <div class="w-full md:w-1/2 space-y-3 bg-neutral-50 p-4 rounded-xl border border-neutral-100">
             
             {% if not invoice %}
-            <!-- VAT Segmented Control (Hidden in View Mode) -->
+            <!-- VAT Segmented Control -->
             <div class="flex items-center justify-between pb-2 border-b border-neutral-200">
                 <span class="text-sm font-semibold text-neutral-700">VAT Calculation</span>
                 <div class="flex gap-1 p-1 bg-neutral-200 rounded-lg">
-                    <button type="button" @click="isVatInclusive = false" 
-                            class="px-3 py-1 text-xs font-semibold rounded-md transition-all"
-                            :class="!isVatInclusive ? 'bg-white shadow text-green-600' : 'text-neutral-500 hover:text-neutral-700'">
-                        Exclusive
-                    </button>
-                    <button type="button" @click="isVatInclusive = true" 
-                            class="px-3 py-1 text-xs font-semibold rounded-md transition-all"
-                            :class="isVatInclusive ? 'bg-white shadow text-green-600' : 'text-neutral-500 hover:text-neutral-700'">
-                        Inclusive
-                    </button>
+                    <button type="button" @click="isVatInclusive = false" class="px-3 py-1 text-xs font-semibold rounded-md transition-all" :class="!isVatInclusive ? 'bg-white shadow text-green-600' : 'text-neutral-500 hover:text-neutral-700'">Exclusive</button>
+                    <button type="button" @click="isVatInclusive = true" class="px-3 py-1 text-xs font-semibold rounded-md transition-all" :class="isVatInclusive ? 'bg-white shadow text-green-600' : 'text-neutral-500 hover:text-neutral-700'">Inclusive</button>
                 </div>
             </div>
             {% else %}
@@ -181,8 +189,26 @@
                 <span class="text-neutral-500">Subtotal</span>
                 <span class="font-semibold text-neutral-800">Rs. <span x-text="subtotal.toFixed(2)"></span></span>
             </div>
+
+            {% if not invoice %}
+            <!-- Invoice Level Discount -->
+            <div class="flex justify-between items-center text-sm">
+                <div class="flex items-center gap-2">
+                    <span class="text-neutral-500">Invoice Discount</span>
+                    <select x-model="invDiscountType" class="text-xs px-1 py-0.5 border border-neutral-200 rounded-md bg-white">
+                        <option value="fixed">Rs</option>
+                        <option value="percentage">%</option>
+                    </select>
+                </div>
+                <input type="number" x-model="invDiscountAmount" min="0" step="0.01" class="w-24 px-2 py-1 text-sm text-right border border-neutral-200 rounded-md bg-white">
+            </div>
+            <!-- Hidden inputs to send discount to Django -->
+            <input type="hidden" name="discount_type" :value="invDiscountType">
+            <input type="hidden" name="discount_amount" :value="invDiscountAmount || 0">
+            {% endif %}
+
             <div class="flex justify-between text-sm">
-                <span class="text-neutral-500">VAT (13%)</span>
+                <span class="text-neutral-500">VAT (<span x-text="vatRate"></span>%)</span>
                 <span class="font-semibold text-neutral-800">Rs. <span x-text="vatAmount.toFixed(2)"></span></span>
             </div>
             <div class="flex justify-between text-base pt-2 border-t border-neutral-200">
@@ -247,8 +273,8 @@
                         <thead class="sticky top-0 bg-neutral-50 border-b border-neutral-100">
                             <tr>
                                 <th class="px-6 py-3 text-xs font-bold uppercase tracking-wider text-neutral-400">Item Name</th>
-                                <th class="px-6 py-3 text-xs font-bold uppercase tracking-wider text-neutral-400">Category</th>
-                                <th class="px-6 py-3 text-xs font-bold uppercase tracking-wider text-neutral-400 text-right">Cost Price</th>
+                                <th class="px-6 py-3 text-xs font-bold uppercase tracking-wider text-neutral-400">Available Units</th>
+                                <th class="px-6 py-3 text-xs font-bold uppercase tracking-wider text-neutral-400 text-right">Base Cost</th>
                                 <th class="px-6 py-3 text-xs font-bold uppercase tracking-wider text-neutral-400 text-right">In Stock</th>
                             </tr>
                         </thead>
@@ -256,7 +282,7 @@
                             <template x-for="item in filteredItems" :key="item.id">
                                 <tr @click="selectItem(item)" class="border-b border-neutral-50 hover:bg-green-50 cursor-pointer transition-colors">
                                     <td class="px-6 py-3 text-sm font-semibold text-neutral-800" x-text="item.name"></td>
-                                    <td class="px-6 py-3 text-sm text-neutral-500" x-text="item.category_name"></td>
+                                    <td class="px-6 py-3 text-xs text-neutral-500" x-text="getItemUnitsString(item)"></td>
                                     <td class="px-6 py-3 text-sm text-neutral-600 text-right" x-text="'Rs. ' + item.cost_price"></td>
                                     <td class="px-6 py-3 text-sm text-neutral-600 text-right" x-text="item.stock + ' units'"></td>
                                 </tr>

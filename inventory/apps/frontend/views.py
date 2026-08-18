@@ -480,11 +480,16 @@ class GoodsInFormView(BaseAppView):
             'category_id': i.category_id,
             'category_name': i.category.name if i.category else 'Uncategorized',
             'cost_price': str(i.cost_price),
+            'base_unit_id': i.base_unit_id,
+            'base_unit_name': i.base_unit.name,
+            'uoms': [{'unit_id': u.unit_id, 'factor': str(u.conversion_factor), 'name': u.unit.name} for u in i.uom_conversions.all()],
             'stock': str(i.total_stock_calc or 0)
         } for i in items_qs]
 
+        vat_rate = get_vat_rate(company)
+
         context = {
-            'invoice': invoice,
+             'invoice': invoice,
             'suppliers': suppliers,
             'warehouses': warehouses,
             'today_str': timezone.now().date().strftime('%Y-%m-%d'),
@@ -493,6 +498,7 @@ class GoodsInFormView(BaseAppView):
             'lines_json': lines_json,
             'next_ref': next_ref,
             'is_vat_inclusive': invoice.is_vat_inclusive if invoice else False,
+            'vat_rate': str(vat_rate),
         }
         return render(request, 'frontend/goods_in/_form.html', context)
 
@@ -520,6 +526,7 @@ class GoodsInSaveView(BaseAppView):
         costs = request.POST.getlist('cost_price[]')
         batches = request.POST.getlist('batch_no[]')
         expiries = request.POST.getlist('expiry_date[]')
+        unit_ids = request.POST.getlist('unit_id[]')
 
         items_dict = {i.id: i for i in Item.objects.filter(id__in=item_ids, company=company)}
         vat_rate = get_vat_rate(company)
@@ -545,13 +552,26 @@ class GoodsInSaveView(BaseAppView):
                 except (InvalidOperation, ValueError, TypeError):
                     return JsonResponse({"success": False, "message": f"Invalid cost price for {item.name}."}, status=400)
 
+                try:
+                    unit_id = int(unit_ids[i])
+                    if unit_id == item.base_unit_id:
+                        conversion_factor = Decimal('1.00')
+                    else:
+                        uom = ItemUOM.objects.get(item=item, unit_id=unit_id, company=company)
+                        conversion_factor = uom.conversion_factor
+                except (ValueError, ItemUOM.DoesNotExist):
+                    return JsonResponse({"success": False, "message": f"'{item.name}' is not configured for that unit."}, status=400)
+
+
+
                 batch_no = batches[i].strip() if batches[i] else ''
                 if not batch_no:
                     batch_no = f"AUTO-{request.POST.get('reference_no')}-B{i+1}"
 
                 parsed_lines.append({
                     'item': item, 'qty_val': qty_val, 'gross_cost': gross_cost,
-                    'batch_no': batch_no, 'expiry_date': expiries[i] or None
+                    'batch_no': batch_no, 'expiry_date': expiries[i] or None,
+                    'unit_id': unit_id, 'factor': conversion_factor
                 })
         except (ValueError, IndexError, TypeError, InvalidOperation):
             return JsonResponse({"success": False, "message": "Invalid data format in invoice lines."}, status=400)
