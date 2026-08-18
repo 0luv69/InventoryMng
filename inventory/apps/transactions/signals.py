@@ -1,3 +1,5 @@
+# transactions.signals.py
+
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 from .models import PaymentAllocation, PurchaseItemLine, SaleItemLine
@@ -51,4 +53,5 @@ def sale_line_deleted(sender, instance, **kwargs):
 
 @receiver(post_save, sender=PaymentAllocation)
 def allocation_saved(sender, instance, created, **kwargs):
-    InventoryService.process_payment_allocation(instance)
+    if created:
+        InventoryService.process_payment_allocation(instance)

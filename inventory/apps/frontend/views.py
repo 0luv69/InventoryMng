@@ -59,6 +59,7 @@ class QuickAddPriceTierView(BaseAppView):
         return JsonResponse({'error': 'Name required'}, status=400)
 
 class SetDefaultTierView(BaseAppView):
+    @transaction.atomic
     def post(self, request, tier_id):
         company = self.get_company()
         PriceTier.objects.filter(company=company).update(is_default=False)
@@ -277,14 +278,14 @@ class ItemSaveView(BaseAppView):
             parsed_prices.append({'unit_id': base_unit_id, 'tier_id': str(tier_id_str), 'price': price})
 
         # 5. Multi-Tenancy Validation 
-        # FIX: values_list('id', flat=True) yields ints, not objects. Removed .id attribute access.
-        valid_unit_ids = set(str(id_) for id_ in Unit.objects.filter(company=company, id__in=seen_units).values_list('id', flat=True))
+        # 5. Multi-Tenancy Validation (FIX: Use all_objects so soft-deleted units don't fail the check)
+        valid_unit_ids = set(str(id_) for id_ in Unit.all_objects.filter(company=company, id__in=seen_units).values_list('id', flat=True))
         if not seen_units <= valid_unit_ids:
             return JsonResponse({"success": False, "message": "Invalid unit selected."}, status=400)
 
         referenced_tier_ids = {p['tier_id'] for p in parsed_prices}
         # FIX: values_list('id', flat=True) yields ints, not objects. Removed .id attribute access.
-        valid_tier_ids = set(str(id_) for id_ in PriceTier.objects.filter(company=company, id__in=referenced_tier_ids).values_list('id', flat=True))
+        valid_tier_ids = set(str(id_) for id_ in PriceTier.all_objects.filter(company=company, id__in=referenced_tier_ids).values_list('id', flat=True))
         if not referenced_tier_ids <= valid_tier_ids:
             return JsonResponse({"success": False, "message": "Invalid price tier selected."}, status=400)
 
@@ -441,11 +442,15 @@ class GoodsInFormView(BaseAppView):
 
         if invoice_id:
             invoice = get_object_or_404(PurchaseInvoice, id=invoice_id, company=company)
+
+            vat_rate = get_vat_rate(company)
+            vat_multiplier = (vat_rate / Decimal('100')) + Decimal('1')
+            
             lines_list = [{
                 'item_id': l.item_id,
                 'item_name': l.item.name,
                 'qty': str(l.quantity),
-                'cost_price': str((l.cost_price * Decimal('1.13')).quantize(Decimal('0.01'))) if invoice.is_vat_inclusive else str(l.cost_price),
+                'cost_price': str((l.cost_price * vat_multiplier).quantize(Decimal('0.01'))) if invoice.is_vat_inclusive else str(l.cost_price),
                 'batch_no': l.batch_no or '',
                 'expiry_date': l.expiry_date.strftime('%Y-%m-%d') if l.expiry_date else ''
             } for l in invoice.lines.all()]
@@ -475,7 +480,7 @@ class GoodsInFormView(BaseAppView):
             'category_id': i.category_id,
             'category_name': i.category.name if i.category else 'Uncategorized',
             'cost_price': str(i.cost_price),
-            'stock': str(i.total_stock)
+            'stock': str(i.total_stock_calc or 0)
         } for i in items_qs]
 
         context = {
@@ -492,7 +497,6 @@ class GoodsInFormView(BaseAppView):
         return render(request, 'frontend/goods_in/_form.html', context)
 
 class GoodsInSaveView(BaseAppView):
-    @transaction.atomic
     def post(self, request):
         company = self.get_company()
         invoice_id = request.POST.get('id')
@@ -500,6 +504,7 @@ class GoodsInSaveView(BaseAppView):
         if invoice_id:
             return JsonResponse({"success": False, "message": "Editing existing invoices is disabled. Please void the invoice and create a new one."}, status=400)
 
+        # 1. Multi-Tenancy Validation
         supplier_id = request.POST.get('supplier')
         warehouse_id = request.POST.get('warehouse')
         
@@ -509,20 +514,7 @@ class GoodsInSaveView(BaseAppView):
         if not warehouse_id or not Warehouse.objects.filter(id=warehouse_id, company=company, is_active=True).exists():
             return JsonResponse({"success": False, "message": "Invalid warehouse selected."}, status=400)
 
-
-            
-        invoice = PurchaseInvoice(company=company)
-            
-        invoice.supplier_id = request.POST.get('supplier')
-        invoice.date_received = request.POST.get('date_received')
-        invoice.reference_no = request.POST.get('reference_no')
-        invoice.is_vat_inclusive = request.POST.get('is_vat_inclusive') == 'true'
-        invoice.invoice_status = 'finalized'
-        invoice.payment_status = 'unpaid'
-        invoice.save()
-
-        warehouse_id = request.POST.get('warehouse')
-        
+        # 2. Parse & Validate Lines In-Memory (BEFORE touching DB)
         item_ids = request.POST.getlist('item_id[]')
         qtys = request.POST.getlist('qty[]')
         costs = request.POST.getlist('cost_price[]')
@@ -533,41 +525,93 @@ class GoodsInSaveView(BaseAppView):
         vat_rate = get_vat_rate(company)
         vat_multiplier = (vat_rate / Decimal('100')) + Decimal('1')
 
-        for i in range(len(item_ids)):
-            if item_ids[i]:
+        parsed_lines = []
+        try:
+            for i in range(len(item_ids)):
+                if not item_ids[i]: continue
                 item = items_dict.get(int(item_ids[i]))
-                if not item: continue
-                
-                try: 
+                if not item:
+                    return JsonResponse({"success": False, "message": "Invalid item selected."}, status=400)
+
+                try:
                     qty_val = Decimal(qtys[i])
                     if qty_val <= 0: raise ValueError
-
                 except (InvalidOperation, ValueError, TypeError):
                     return JsonResponse({"success": False, "message": f"Invalid quantity for {item.name}."}, status=400)
-                
-                try: 
+
+                try:
                     gross_cost = Decimal(costs[i])
                     if gross_cost < 0: raise ValueError
-
-                except(InvalidOperation, ValueError, TypeError):
+                except (InvalidOperation, ValueError, TypeError):
                     return JsonResponse({"success": False, "message": f"Invalid cost price for {item.name}."}, status=400)
-         
-
-
-                if invoice.is_vat_inclusive:
-                    net_cost = (gross_cost / vat_multiplier).quantize(Decimal('0.01'))
-                else:
-                    net_cost = gross_cost
 
                 batch_no = batches[i].strip() if batches[i] else ''
                 if not batch_no:
-                    batch_no = f"AUTO-{invoice.reference_no}-B{i+1}"
+                    batch_no = f"AUTO-{request.POST.get('reference_no')}-B{i+1}"
 
-                PurchaseItemLine.objects.create(
-                    company=company, invoice=invoice, item=item, created_by=request.user,
-                    warehouse_id=warehouse_id, unit=item.base_unit, conversion_factor=Decimal('1.00'),
-                    quantity=qty_val, cost_price=net_cost, batch_no=batch_no, expiry_date=expiries[i] or None
-                )
+                parsed_lines.append({
+                    'item': item, 'qty_val': qty_val, 'gross_cost': gross_cost,
+                    'batch_no': batch_no, 'expiry_date': expiries[i] or None
+                })
+        except (ValueError, IndexError, TypeError, InvalidOperation):
+            return JsonResponse({"success": False, "message": "Invalid data format in invoice lines."}, status=400)
+
+
+        if not parsed_lines:
+            return JsonResponse({"success": False, "message": "At least one item line is required."}, status=400)
+
+
+        discount_type = request.POST.get('discount_type', 'fixed')
+        try:
+            discount_amount = Decimal(request.POST.get('discount_amount', '0') or '0').quantize(Decimal('0.01'))
+            if discount_amount < 0: raise ValueError
+        except (InvalidOperation, ValueError, TypeError):
+            return JsonResponse({"success": False, "message": "Invalid discount amount."}, status=400)
+
+
+        # 3. Mutate DB inside Atomic Block
+        try:
+            with transaction.atomic():
+                invoice = PurchaseInvoice(company=company)
+                invoice.supplier_id = supplier_id
+                invoice.date_received = request.POST.get('date_received')
+                invoice.reference_no = request.POST.get('reference_no')
+                invoice.is_vat_inclusive = request.POST.get('is_vat_inclusive') == 'true'
+                invoice.invoice_status = 'finalized'
+                invoice.payment_status = 'unpaid'
+                invoice.discount_type = discount_type
+                invoice.discount_amount = discount_amount
+                invoice.created_by = request.user  
+
+                try:
+                    invoice.full_clean()
+                    invoice.save()
+                except IntegrityError:
+                    raise ValidationError("Invoice with this reference no already exists.")
+
+                for p in parsed_lines:
+                    if invoice.is_vat_inclusive:
+                        net_cost = (p['gross_cost'] / vat_multiplier).quantize(Decimal('0.01'))
+                    else:
+                        net_cost = p['gross_cost']
+
+                    PurchaseItemLine.objects.create(
+                        company=company, invoice=invoice, item=p['item'], created_by=request.user,
+                        warehouse_id=warehouse_id, unit=p['item'].base_unit, conversion_factor=Decimal('1.00'),
+                        quantity=p['qty_val'], cost_price=net_cost, batch_no=p['batch_no'], expiry_date=p['expiry_date']
+                    )
+
+                InventoryService.recalculate_invoice_totals(invoice)
+                invoice.full_clean()
+
+                InventoryService.apply_invoice_to_party_balance(invoice, 'supplier', sign=-1)
+
+
+
+        except ValidationError as e:
+            return JsonResponse({"success": False, "message": e.messages[0]}, status=400)
+        except Exception:
+            return JsonResponse({"success": False, "message": "An unexpected server error occurred."}, status=400)
         
         invoices = PurchaseInvoice.objects.filter(company=company).exclude(invoice_status='void').order_by('-date_received')
         paginator = Paginator(invoices, self.pagination_size)
@@ -578,15 +622,37 @@ class GoodsInSaveView(BaseAppView):
 class GoodsInVoidView(BaseAppView):
     def post(self, request, invoice_id):
         company = self.get_company()
-        invoice = get_object_or_404(PurchaseInvoice, id=invoice_id, company=company)
         reason = request.POST.get('void_reason', 'No reason provided')
-        
-        for line in invoice.lines.all():
-            InventoryService.reverse_purchase_line(line)
-        
-        invoice.invoice_status = 'void'
-        invoice.void_reason = reason
-        invoice.save()
+
+        try:
+            with transaction.atomic():
+                invoice = get_object_or_404(
+                    PurchaseInvoice.objects.select_for_update(), 
+                    id=invoice_id, 
+                    company=company
+                )
+                
+                # FIX 2: Idempotency guard - if it's already voided, do nothing and return error
+                if invoice.invoice_status != 'finalized':
+                    return JsonResponse(
+                        {"success": False, "message": "Only finalized invoices can be voided."}, 
+                        status=400
+                    )
+
+                # Reverse stock
+                for line in invoice.lines.all():
+                    InventoryService.reverse_purchase_line(line)
+
+                # Reverse AP balance safely
+                InventoryService.reverse_invoice_on_party_balance(invoice, 'supplier', sign=-1)
+
+                # Void the invoice
+                invoice.invoice_status = 'void'
+                invoice.void_reason = reason
+                invoice.save()
+                
+        except Exception as e:
+            return JsonResponse({"success": False, "message": "An unexpected server error occurred."}, status=400)
         
         invoices = PurchaseInvoice.objects.filter(company=company).exclude(invoice_status='void').order_by('-date_received')
         paginator = Paginator(invoices, self.pagination_size)
@@ -594,8 +660,7 @@ class GoodsInVoidView(BaseAppView):
         
         return render(request, 'frontend/goods_in/_table.html', {'invoices': page_obj.object_list, 'page_obj': page_obj, 'request': request, 'suppliers': Party.objects.filter(company=company, is_supplier=True, is_deleted=False)})
 
-class PartiesView(BaseAppView):
-    template_name = "frontend/parties.html"
+    
 
 # ==========================================
 # GOODS OUT (SALE INVOICES)
@@ -662,6 +727,8 @@ class GoodsOutFormView(BaseAppView):
         invoice_id = request.GET.get('id')
         invoice = None
         lines_json = '[]'
+        next_ref = ''
+
 
         if invoice_id:
             invoice = get_object_or_404(SaleInvoice, id=invoice_id, company=company)
@@ -726,7 +793,7 @@ class GoodsOutSaveView(BaseAppView):
             return JsonResponse({"success": False, "message": "Please select a customer."}, status=400)
         
         try:
-            Party.objects.get(id=customer_id, company=company, is_customer=True)
+            customer = Party.objects.get(id=customer_id, company=company, is_customer=True)
         except Party.DoesNotExist:
             return JsonResponse({"success": False, "message": "Invalid customer selected."}, status=400)
 
@@ -743,29 +810,41 @@ class GoodsOutSaveView(BaseAppView):
 
         # Validate every line in-memory BEFORE touching the DB (mirrors GoodsIn)
         parsed_lines = []
-        for i in range(len(item_ids)):
-            if not item_ids[i]:
-                continue
-            item = items_dict.get(int(item_ids[i]))
-            if not item:
-                return JsonResponse({"success": False, "message": "Invalid item selected."}, status=400)
+        try:
+            for i in range(len(item_ids)):
+                if not item_ids[i]:
+                    continue
+                item = items_dict.get(int(item_ids[i]))
+                if not item:
+                    return JsonResponse({"success": False, "message": "Invalid item selected."}, status=400)
 
-            try:
-                qty_val = Decimal(qtys[i])
-                if qty_val <= 0: raise ValueError
-            except (InvalidOperation, ValueError, TypeError):
-                return JsonResponse({"success": False, "message": f"Invalid quantity for {item.name}."}, status=400)
+                try:
+                    qty_val = Decimal(qtys[i])
+                    if qty_val <= 0: raise ValueError
+                except (InvalidOperation, ValueError, TypeError):
+                    return JsonResponse({"success": False, "message": f"Invalid quantity for {item.name}."}, status=400)
 
-            try:
-                gross_price = Decimal(prices[i])
-                if gross_price < 0: raise ValueError
-            except (InvalidOperation, ValueError, TypeError):
-                return JsonResponse({"success": False, "message": f"Invalid price for {item.name}."}, status=400)
+                try:
+                    gross_price = Decimal(prices[i])
+                    if gross_price < 0: raise ValueError
+                except (InvalidOperation, ValueError, TypeError):
+                    return JsonResponse({"success": False, "message": f"Invalid price for {item.name}."}, status=400)
 
-            parsed_lines.append((item, qty_val, gross_price))
+                parsed_lines.append((item, qty_val, gross_price))
+
+        except (ValueError, IndexError, TypeError, InvalidOperation):
+            return JsonResponse({"success": False, "message": "Invalid data format in invoice lines."}, status=400)
 
         if not parsed_lines:
             return JsonResponse({"success": False, "message": "At least one item line is required."}, status=400)
+
+
+        discount_type = request.POST.get('discount_type', 'fixed')
+        try:
+            discount_amount = Decimal(request.POST.get('discount_amount', '0') or '0')
+            if discount_amount < 0: raise ValueError
+        except (InvalidOperation, ValueError, TypeError):
+            return JsonResponse({"success": False, "message": "Invalid discount amount."}, status=400)
 
 
         try:
@@ -777,7 +856,16 @@ class GoodsOutSaveView(BaseAppView):
                 invoice.is_vat_inclusive = request.POST.get('is_vat_inclusive') == 'true'
                 invoice.invoice_status = 'finalized'
                 invoice.payment_status = 'unpaid'
-                invoice.save()
+                invoice.discount_type = discount_type
+                invoice.discount_amount = discount_amount
+                invoice.created_by = request.user  # FIX: was missing
+
+                try:
+                    invoice.full_clean() # Validate header fields
+                    invoice.save()
+                except IntegrityError:
+                    raise ValidationError("Invoice with this reference no already exists.")
+
 
                 for item, qty_val, gross_price in parsed_lines:
                     SaleItemLine.objects.create(
@@ -785,18 +873,19 @@ class GoodsOutSaveView(BaseAppView):
                         item=item, warehouse_id=warehouse_id, unit=item.base_unit,
                         conversion_factor=Decimal('1.00'), quantity=qty_val, selling_price=gross_price,
                     )
-                    # each create() above now triggers stock deduction + a totals recalc
-
 
                 # Trigger recalculation to get accurate grand_total
                 InventoryService.recalculate_invoice_totals(invoice)
-                
                 invoice.full_clean()
-                
+
+                # FIX: locked, race-safe balance update — moved out of the view and into
+                # the service layer, fetched+locked fresh here rather than pre-atomic-block
+                InventoryService.apply_invoice_to_party_balance(invoice, 'customer', sign=+1)
+
         except ValidationError as e:
             return JsonResponse({"success": False, "message": e.messages[0]}, status=400)
         except Exception as e:
-            return JsonResponse({"success": False, "message": f"An unexpected error occurred: {str(e)}"}, status=400)
+            return JsonResponse({"success": False, "message": "An unexpected server error occurred."}, status=400)
         
         invoices = SaleInvoice.objects.filter(company=company).exclude(invoice_status='void').order_by('-date_dispatched')
         paginator = Paginator(invoices, self.pagination_size)
@@ -807,21 +896,50 @@ class GoodsOutSaveView(BaseAppView):
 class GoodsOutVoidView(BaseAppView):
     def post(self, request, invoice_id):
         company = self.get_company()
-        invoice = get_object_or_404(SaleInvoice, id=invoice_id, company=company)
         reason = request.POST.get('void_reason', 'No reason provided')
         
-        for line in invoice.lines.all():
-            InventoryService.reverse_sale_line(line)
-        
-        invoice.invoice_status = 'void'
-        invoice.void_reason = reason
-        invoice.save()
+        try:
+            with transaction.atomic():
+                # FIX 1: Lock the invoice row to prevent double-void race conditions
+                invoice = get_object_or_404(
+                    SaleInvoice.objects.select_for_update(), 
+                    id=invoice_id, 
+                    company=company
+                )
+                
+                # FIX 2: Idempotency guard
+                if invoice.invoice_status != 'finalized':
+                    return JsonResponse(
+                        {"success": False, "message": "Only finalized invoices can be voided."}, 
+                        status=400
+                    )
+
+                # Reverse stock
+                for line in invoice.lines.all():
+                    InventoryService.reverse_sale_line(line)
+
+                # Reverse AR balance safely
+                InventoryService.reverse_invoice_on_party_balance(invoice, 'customer', sign=+1)
+
+                # Void the invoice
+                invoice.invoice_status = 'void'
+                invoice.void_reason = reason
+                invoice.save()
+                
+        except Exception as e:
+            return JsonResponse({"success": False, "message": "An unexpected server error occurred."}, status=400)
         
         invoices = SaleInvoice.objects.filter(company=company).exclude(invoice_status='void').order_by('-date_dispatched')
         paginator = Paginator(invoices, self.pagination_size)
         page_obj = paginator.get_page(1)
         
         return render(request, 'frontend/goods_out/_table.html', {'invoices': page_obj.object_list, 'page_obj': page_obj, 'request': request, 'customers': Party.objects.filter(company=company, is_customer=True, is_deleted=False)})
+
+
+
+
+class PartiesView(BaseAppView):
+    template_name = "frontend/parties.html"
 
 class SpoilageView(BaseAppView):
     template_name = "frontend/spoilage.html"

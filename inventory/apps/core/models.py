@@ -30,3 +30,4 @@ class BaseModel(models.Model):
 
     class Meta:
         abstract = True
+        base_manager_name = 'all_objects'

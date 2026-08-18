@@ -25,6 +25,8 @@ class DiscountType(models.TextChoices):
     FIXED = 'fixed', 'Fixed Amount'
 
 
+
+
 # ==========================================
 # 1. PURCHASE INVOICE (Goods In)
 # ==========================================
@@ -205,7 +207,16 @@ class SaleItemLine(BaseModel):
         super().save(*args, **kwargs)
 
 
-
+class SaleItemLineBatch(BaseModel):
+    """ Records exactly which batches were deducted for a single sale line """
+    sale_line = models.ForeignKey(SaleItemLine, on_delete=models.PROTECT, related_name='batch_allocations')
+    stock_batch = models.ForeignKey('inventory.StockBatch', on_delete=models.PROTECT, related_name='sale_allocations')
+    quantity = models.DecimalField(max_digits=12, decimal_places=2)
+    
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['sale_line', 'stock_batch'], name='uniq_saleline_batch')
+        ]
 
 # ==========================================
 # 3. PAYMENTS & ALLOCATIONS
