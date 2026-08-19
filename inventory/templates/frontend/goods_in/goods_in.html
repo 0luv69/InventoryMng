@@ -1,3 +1,5 @@
+<!-- inventory/templates/frontend/goods_in/goods_in.html -->
+
 {% extends 'base.html' %}
 
 {% block title %}Goods In — InventoryChamps{% endblock %}
@@ -213,6 +215,7 @@ function invoiceForm(invoiceId, initialVatInclusive, vatRate) {
         lines: [],
         isVatInclusive: initialVatInclusive || false,
         vatRate: vatRate || 13,
+        isViewMode: invoiceId !== null, // FIX: Clean flag for disabling inputs in view mode
         itemPicker: { open: false, search: '', category: '', activeIndex: null },
         invDiscountType: 'fixed',
         invDiscountAmount: 0,
@@ -232,9 +235,11 @@ function invoiceForm(invoiceId, initialVatInclusive, vatRate) {
         addLine() {
             this.lines.push({
                 item_id: null, item_name: '', qty: 1, cost_price: 0, batch_no: '', expiry_date: '',
-                uoms: [], base_unit_id: null, base_unit_name: '', unit_id: '', conversion_factor: 1
+                uoms: [], base_unit_id: null, base_unit_name: '', unit_id: '', conversion_factor: 1,
+                discount_type: 'fixed', discount_amount: 0   // NEW
             });
         },
+
         removeLine(index) { this.lines.splice(index, 1); },
         
         get filteredItems() {
@@ -298,6 +303,14 @@ function invoiceForm(invoiceId, initialVatInclusive, vatRate) {
             }
         },
         
+
+        lineDiscountValue(line) {
+            const gross = parseFloat(line.qty || 0) * parseFloat(line.cost_price || 0);
+            const amt = parseFloat(line.discount_amount || 0);
+            const value = line.discount_type === 'percentage' ? gross * (amt / 100) : amt;
+            return Math.min(value, gross);   // preview never implies a negative line
+        },
+
         // Helper for Item Picker table
         getItemUnitsString(item) {
             if (!item.uoms || item.uoms.length === 0) return item.base_unit_name;
@@ -306,7 +319,8 @@ function invoiceForm(invoiceId, initialVatInclusive, vatRate) {
         },
         
         lineTotal(line) {
-            return parseFloat(line.qty) * parseFloat(line.cost_price || 0);
+            const gross = parseFloat(line.qty || 0) * parseFloat(line.cost_price || 0);
+            return Math.max(gross - this.lineDiscountValue(line), 0);
         },
         get subtotal() {
             return this.lines.reduce((sum, line) => sum + this.lineTotal(line), 0);

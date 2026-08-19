@@ -1,76 +1,116 @@
 dir /s /b /a-d | findstr /v /i "\\__pycache__\\ \\.git\\ \\venv\\ \\static\\ \\media\\"
-
-Exchange System/
+Exchange system/
+│
 ├── .gitignore
+├── report
 ├── requirements.txt
-├── report/
+├── test.py
+├── test.txt
 ├── _info.txt
+│
 └── inventory/
     ├── .env
     ├── db.sqlite3
     ├── manage.py
     │
-    ├── config/
-    │   ├── settings.py
-    │   ├── urls.py
-    │   ├── asgi.py
-    │   └── wsgi.py
-    │
     ├── apps/
+    │   ├── __init__.py
+    │   │
     │   ├── accounts/
+    │   │   ├── __init__.py
     │   │   ├── admin.py
     │   │   ├── apps.py
     │   │   ├── context_processors.py
     │   │   ├── models.py
+    │   │   ├── tests.py
     │   │   ├── views.py
-    │   │   └── migrations/ (0001,0002)
+    │   │   │
+    │   │   └── migrations/
+    │   │       ├── __init__.py
+    │   │       ├── 0001_initial.py
+    │   │       └── 0002_initial.py
     │   │
     │   ├── catalog/
+    │   │   ├── __init__.py
     │   │   ├── admin.py
     │   │   ├── api_views.py
     │   │   ├── apps.py
     │   │   ├── models.py
     │   │   ├── serializers.py
+    │   │   ├── test.py
+    │   │   ├── tests.py
     │   │   ├── views.py
-    │   │   └── migrations/ (0001-0006)
+    │   │   │
+    │   │   └── migrations/
+    │   │       ├── __init__.py
+    │   │       ├── 0001_initial.py
+    │   │       ├── 0002_remove_item_uniq_item_barcode_per_company_and_more.py
+    │   │       └── 0003_alter_category_options_alter_item_options_and_more.py
     │   │
     │   ├── core/
+    │   │   ├── __init__.py
     │   │   ├── admin.py
     │   │   ├── api.py
     │   │   ├── apps.py
     │   │   ├── models.py
+    │   │   ├── tests.py
+    │   │   ├── utils.py
     │   │   └── views.py
     │   │
     │   ├── frontend/
+    │   │   ├── __init__.py
     │   │   ├── admin.py
     │   │   ├── apps.py
     │   │   ├── models.py
+    │   │   ├── tests.py
     │   │   ├── urls.py
     │   │   └── views.py
     │   │
+    │   │   └── migrations/
+    │   │       └── __init__.py
+    │   │
     │   ├── inventory/
+    │   │   ├── __init__.py
     │   │   ├── admin.py
     │   │   ├── apps.py
     │   │   ├── models.py
+    │   │   ├── tests.py
     │   │   ├── views.py
-    │   │   └── migrations/ (0001)
+    │   │   │
+    │   │   └── migrations/
+    │   │       ├── __init__.py
+    │   │       ├── 0001_initial.py
+    │   │       └── 0002_alter_stockbatch_options_alter_stockmovement_options_and_more.py
     │   │
     │   ├── parties/
+    │   │   ├── __init__.py
     │   │   ├── admin.py
     │   │   ├── api_views.py
     │   │   ├── apps.py
     │   │   ├── models.py
     │   │   ├── serializers.py
+    │   │   ├── tests.py
     │   │   ├── views.py
-    │   │   └── migrations/ (0001)
+    │   │   │
+    │   │   └── migrations/
+    │   │       ├── __init__.py
+    │   │       ├── 0001_initial.py
+    │   │       ├── 0002_remove_party_uniq_party_name_per_company_and_more.py
+    │   │       └── 0003_alter_party_options_alter_party_managers.py
     │   │
     │   ├── reports/
+    │   │   ├── __init__.py
     │   │   ├── admin.py
     │   │   ├── apps.py
     │   │   ├── models.py
-    │   │   └── views.py
+    │   │   ├── tests.py
+    │   │   ├── views.py
+    │   │   │
+    │   │   └── migrations/
+    │   │       └── __init__.py
     │   │
     │   └── transactions/
+    │       ├── __init__.py
     │       ├── admin.py
     │       ├── api_views.py
     │       ├── apps.py
@@ -78,33 +118,53 @@ Exchange System/
     │       ├── serializers.py
     │       ├── services.py
     │       ├── signals.py
+    │       ├── tests.py
     │       ├── views.py
-    │       └── migrations/ (0001)
+    │       │
+    │       └── migrations/
+    │           ├── __init__.py
+    │           ├── 0001_initial.py
+    │           └── 0002_alter_payment_options_and_more.py
+    │
+    ├── config/
+    │   ├── __init__.py
+    │   ├── asgi.py
+    │   ├── settings.py
+    │   ├── urls.py
+    │   └── wsgi.py
     │
     ├── templates/
     │   ├── base.html
     │   ├── test.html
+    │   │
     │   └── frontend/
     │       ├── dashboard.html
+    │       │
     │       ├── goods_in/
     │       │   ├── goods_in.html
+    │       │   ├── test.html
     │       │   ├── _form.html
     │       │   ├── _item_search.html
-    │       │   ├── _table.html
-    │       │   └── test.html
+    │       │   └── _table.html
+    │       │
     │       ├── goods_out/
     │       │   ├── goods_out.html
     │       │   ├── _form.html
     │       │   └── _table.html
+    │       │
     │       └── items/
     │           ├── items.html
+    │           ├── test.html
     │           ├── _form.html
     │           └── _table.html
     │
     └── theme/
+        ├── __init__.py
         ├── apps.py
-        ├── templates/
-        │   └── base.html
-        └── static_src/
-            └── src/
-                └── styles.css
+        │
+        ├── static_src/
+        │   └── src/
+        │       └── styles.css
+        │
+        └── templates/
+            └── base.html

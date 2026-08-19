@@ -1,3 +1,4 @@
+# inventory.apps.catalog.serializers
 from rest_framework import serializers
 from .models import Category, Unit, Item, ItemUOM, PriceTier, ItemPrice
 

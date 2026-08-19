@@ -1,3 +1,4 @@
+# accounts.context_processors
 from .models import UserProfile
 
 def global_user_profile(request):

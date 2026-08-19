@@ -1,3 +1,4 @@
+<!-- inventory/templates/frontend/goods_in/_form.html -->
 <!-- Pass JSON safely via script tags -->
 <script id="items-data" type="application/json">
 {{ items_json|safe }}
@@ -10,7 +11,19 @@
       hx-post="{% url 'frontend:goods_in_save' %}" 
       hx-target="#goodsin-table" 
       hx-swap="innerHTML" 
-      hx-on::after-request="if(event.detail.successful) { toast.success('Purchase saved! Stock updated.'); window.dispatchEvent(new CustomEvent('close-modal')); }"
+      hx-on::after-request="
+        if(event.detail.successful) { 
+            toast.success('Purchase saved! Stock updated.'); 
+            window.dispatchEvent(new CustomEvent('close-modal')); 
+        } else {
+            try {
+                let res = JSON.parse(event.detail.xhr.response);
+                toast.error(res.message || 'Failed to save purchase.');
+            } catch(e) {
+                toast.error('An unexpected error occurred.');
+            }
+        }
+      "
       class="space-y-6">
       
     {% csrf_token %}
@@ -108,8 +121,9 @@
                     <div class="col-span-4 md:col-span-3">
                         <label class="block text-[0.65rem] font-semibold text-neutral-500 mb-1">UOM *</label>
                         <select x-model="line.unit_id" @change="setUnit(line)" 
-                                class="w-full px-2 py-2 text-sm border border-neutral-200 rounded-lg h-[38px] focus:outline-none focus:ring-1 focus:ring-green-500 {% if invoice %}bg-neutral-50 text-neutral-500 cursor-not-allowed{% else %}bg-white{% endif %}"
-                                {% if invoice %}disabled{% else %}:disabled="!line.item_id"{% endif %}>
+                                :disabled="!line.item_id || isViewMode" 
+                                class="w-full px-2 py-2 text-sm border border-neutral-200 rounded-lg h-[38px] focus:outline-none focus:ring-1 focus:ring-green-500"
+                                :class="isViewMode ? 'bg-neutral-50 text-neutral-500 cursor-not-allowed' : 'bg-white'">
                             <option value="">Select</option>
                             <option :value="line.base_unit_id" x-text="line.base_unit_name + ' (Base)'"></option>
                             <template x-for="uom in line.uoms" :key="uom.unit_id">
@@ -117,6 +131,11 @@
                             </template>
                         </select>
                         <input type="hidden" name="unit_id[]" :value="line.unit_id">
+                        <p class="text-[0.65rem] text-green-600 font-medium mt-1" 
+                        x-show="line.unit_id && String(line.unit_id) !== String(line.base_unit_id)">
+                            = <span x-text="(parseFloat(line.qty||0) * line.conversion_factor).toFixed(2)"></span>
+                            <span x-text="line.base_unit_name"></span> added to stock
+                        </p>
                     </div>
 
                     <div class="col-span-4 md:col-span-2">
@@ -133,9 +152,32 @@
                                {% if invoice %}readonly{% endif %}>
                     </div>
 
+                    <!-- Discount -->
+                    <div class="col-span-6 md:col-span-3">
+                        <label class="block text-[0.65rem] font-semibold text-neutral-500 mb-1">Discount</label>
+                        <div class="flex gap-1">
+                            <input type="number" x-model="line.discount_amount" name="discount_amount[]" min="0" 
+                                :max="line.discount_type === 'percentage' ? 100 : null" step="0.01" placeholder="0"
+                                title="Discount applied to this line only, separate from the invoice-level discount."
+                                class="w-full px-2 py-2 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-green-500 {% if invoice %}bg-neutral-50 text-neutral-500 cursor-not-allowed{% endif %}"
+                                {% if invoice %}readonly{% endif %}>
+                            <select x-model="line.discount_type" name="discount_type[]"
+                                    class="w-16 px-1 py-2 text-xs border border-neutral-200 rounded-lg bg-white {% if invoice %}bg-neutral-50 text-neutral-500 cursor-not-allowed{% endif %}"
+                                    {% if invoice %}disabled{% endif %}>
+                                <option value="fixed">Rs</option>
+                                <option value="percentage">%</option>
+                            </select>
+                        </div>
+                        <p class="text-[0.65rem] text-neutral-400 mt-1" x-show="parseFloat(line.discount_amount||0) > 0">
+                            − Rs. <span x-text="lineDiscountValue(line).toFixed(2)"></span> off
+                        </p>
+                    </div>
+
                     <div class="col-span-6 md:col-span-3">
                         <label class="block text-[0.65rem] font-semibold text-neutral-500 mb-1">Batch</label>
                         <input type="text" x-model="line.batch_no" name="batch_no[]" 
+                               title="Batch number is optional. If left blank, it will be auto-generated."
+                               placeholder="Auto-generated if left blank"
                                class="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-green-500 {% if invoice %}bg-neutral-50 text-neutral-500 cursor-not-allowed{% endif %}" 
                                {% if invoice %}readonly{% endif %}>
                     </div>
@@ -150,6 +192,9 @@
                     <div class="col-span-12 md:col-span-1 flex items-end justify-end pb-2">
                         <div class="text-right">
                             <div class="text-[0.65rem] font-semibold text-neutral-500 mb-1">Total</div>
+                            <div class="text-[0.65rem] text-neutral-400 line-through" 
+                                x-show="parseFloat(line.discount_amount||0) > 0"
+                                x-text="'Rs. ' + (parseFloat(line.qty||0)*parseFloat(line.cost_price||0)).toFixed(2)"></div>
                             <div class="text-sm font-bold text-neutral-800">
                                 Rs. <span x-text="lineTotal(line).toFixed(2)"></span>
                             </div>
@@ -173,8 +218,8 @@
             <div class="flex items-center justify-between pb-2 border-b border-neutral-200">
                 <span class="text-sm font-semibold text-neutral-700">VAT Calculation</span>
                 <div class="flex gap-1 p-1 bg-neutral-200 rounded-lg">
-                    <button type="button" @click="isVatInclusive = false" class="px-3 py-1 text-xs font-semibold rounded-md transition-all" :class="!isVatInclusive ? 'bg-white shadow text-green-600' : 'text-neutral-500 hover:text-neutral-700'">Exclusive</button>
-                    <button type="button" @click="isVatInclusive = true" class="px-3 py-1 text-xs font-semibold rounded-md transition-all" :class="isVatInclusive ? 'bg-white shadow text-green-600' : 'text-neutral-500 hover:text-neutral-700'">Inclusive</button>
+                    <button type="button" @click="isVatInclusive = false" class="px-3 py-1 text-xs font-semibold rounded-md transition-all" :class="!isVatInclusive ? 'bg-white shadow text-green-600' : 'text-neutral-500 hover:text-neutral-700'">VAT Not Included</button>
+                    <button type="button" @click="isVatInclusive = true" class="px-3 py-1 text-xs font-semibold rounded-md transition-all" :class="isVatInclusive ? 'bg-white shadow text-green-600' : 'text-neutral-500 hover:text-neutral-700'">VAT Included</button>
                 </div>
             </div>
             {% else %}

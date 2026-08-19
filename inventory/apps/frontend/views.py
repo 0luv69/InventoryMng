@@ -1,3 +1,6 @@
+# frontend.views
+
+
 from django.views import View
 from datetime import timedelta
 from django.shortcuts import redirect, render, get_object_or_404
@@ -16,7 +19,7 @@ from apps.transactions.models import PurchaseInvoice, PurchaseItemLine, SaleInvo
 from apps.parties.models import Party
 from apps.inventory.models import Warehouse
 from apps.transactions.services import InventoryService
-from django.http import JsonResponse
+from django.http import JsonResponse, request
 
 from django.core.exceptions import ValidationError
 
@@ -445,6 +448,8 @@ class GoodsInFormView(BaseAppView):
 
             vat_rate = get_vat_rate(company)
             vat_multiplier = (vat_rate / Decimal('100')) + Decimal('1')
+
+            lines_qs = invoice.lines.select_related('item__base_unit', 'unit').prefetch_related('item__uom_conversions__unit').all()
             
             lines_list = [{
                 'item_id': l.item_id,
@@ -452,8 +457,13 @@ class GoodsInFormView(BaseAppView):
                 'qty': str(l.quantity),
                 'cost_price': str((l.cost_price * vat_multiplier).quantize(Decimal('0.01'))) if invoice.is_vat_inclusive else str(l.cost_price),
                 'batch_no': l.batch_no or '',
-                'expiry_date': l.expiry_date.strftime('%Y-%m-%d') if l.expiry_date else ''
-            } for l in invoice.lines.all()]
+                'expiry_date': l.expiry_date.strftime('%Y-%m-%d') if l.expiry_date else '',
+                'unit_id': l.unit_id,
+                'base_unit_id': l.item.base_unit_id,
+                'base_unit_name': l.item.base_unit.name,
+                'uoms': [{'unit_id': u.unit_id, 'factor': str(u.conversion_factor), 'name': u.unit.name} 
+                         for u in l.item.uom_conversions.all()]
+            } for l in lines_qs]
             lines_json = json.dumps(lines_list, cls=DjangoJSONEncoder)
 
         next_ref = ''
@@ -527,6 +537,8 @@ class GoodsInSaveView(BaseAppView):
         batches = request.POST.getlist('batch_no[]')
         expiries = request.POST.getlist('expiry_date[]')
         unit_ids = request.POST.getlist('unit_id[]')
+        line_discount_types = request.POST.getlist('discount_type[]')     
+        line_discount_amounts = request.POST.getlist('discount_amount[]') 
 
         items_dict = {i.id: i for i in Item.objects.filter(id__in=item_ids, company=company)}
         vat_rate = get_vat_rate(company)
@@ -562,6 +574,17 @@ class GoodsInSaveView(BaseAppView):
                 except (ValueError, ItemUOM.DoesNotExist):
                     return JsonResponse({"success": False, "message": f"'{item.name}' is not configured for that unit."}, status=400)
 
+                raw_disc_type = line_discount_types[i] if i < len(line_discount_types) else 'fixed'
+                line_disc_type = raw_disc_type if raw_disc_type in ('fixed', 'percentage') else 'fixed'
+
+                try:
+                    line_disc_amount = Decimal(line_discount_amounts[i] or '0') if i < len(line_discount_amounts) else Decimal('0')
+                    if line_disc_amount < 0:
+                        raise ValueError
+                    if line_disc_type == 'percentage' and line_disc_amount > 100:
+                        raise ValueError
+                except (InvalidOperation, ValueError, TypeError):
+                    return JsonResponse({"success": False, "message": f"Invalid discount for {item.name}."}, status=400)
 
 
                 batch_no = batches[i].strip() if batches[i] else ''
@@ -571,7 +594,8 @@ class GoodsInSaveView(BaseAppView):
                 parsed_lines.append({
                     'item': item, 'qty_val': qty_val, 'gross_cost': gross_cost,
                     'batch_no': batch_no, 'expiry_date': expiries[i] or None,
-                    'unit_id': unit_id, 'factor': conversion_factor
+                    'unit_id': unit_id, 'factor': conversion_factor,
+                    'discount_type': line_disc_type, 'discount_amount': line_disc_amount,
                 })
         except (ValueError, IndexError, TypeError, InvalidOperation):
             return JsonResponse({"success": False, "message": "Invalid data format in invoice lines."}, status=400)
@@ -615,10 +639,17 @@ class GoodsInSaveView(BaseAppView):
                     else:
                         net_cost = p['gross_cost']
 
+
+                    line_subtotal_net = (p['qty_val'] * net_cost).quantize(Decimal('0.01'))
+                    if p['discount_type'] == 'fixed' and p['discount_amount'] > line_subtotal_net:
+                        raise ValidationError(f"Discount exceeds line total for {p['item'].name}.")
+
+
                     PurchaseItemLine.objects.create(
                         company=company, invoice=invoice, item=p['item'], created_by=request.user,
-                        warehouse_id=warehouse_id, unit=p['item'].base_unit, conversion_factor=Decimal('1.00'),
-                        quantity=p['qty_val'], cost_price=net_cost, batch_no=p['batch_no'], expiry_date=p['expiry_date']
+                        warehouse_id=warehouse_id, unit_id=p['unit_id'], conversion_factor=p['factor'],
+                        quantity=p['qty_val'], cost_price=net_cost, batch_no=p['batch_no'], expiry_date=p['expiry_date'],
+                        discount_type=p['discount_type'], discount_amount=p['discount_amount'],
                     )
 
                 InventoryService.recalculate_invoice_totals(invoice)

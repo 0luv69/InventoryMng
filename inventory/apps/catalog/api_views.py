@@ -1,3 +1,4 @@
+# inventory.apps.catalog.api_views
 from rest_framework import viewsets
 from rest_framework.filters import SearchFilter
 from .models import Category, Unit, Item
