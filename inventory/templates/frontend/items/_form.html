@@ -59,16 +59,24 @@
         <div class="grid grid-cols-3 gap-6 items-start">
             <div class="col-span-1">
                 <label class="block text-xs font-semibold text-neutral-600 mb-1.5">Item Image</label>
-                <div class="w-full h-[124px] rounded-xl border-2 border-dashed border-neutral-200 flex items-center justify-center overflow-hidden bg-neutral-50 relative cursor-pointer hover:border-green-400 transition-colors" @click="!editable ? null : document.getElementById('image-upload-input').click()">
+                <div class="w-full h-[124px] rounded-xl border-2 border-dashed border-neutral-200 flex items-center justify-center overflow-hidden bg-neutral-50 relative transition-colors"
+                    :class="imagePreview ? 'cursor-zoom-in' : 'cursor-pointer hover:border-green-400'"
+                    @click="imagePreview ? $dispatch('open-lightbox', { url: imagePreview }) : (!editable ? null : document.getElementById('image-upload-input').click())">
                     <img x-show="imagePreview" :src="imagePreview" class="w-full h-full object-cover">
                     <div x-show="!imagePreview" class="text-center p-4">
                         <svg class="w-8 h-8 text-neutral-300 mx-auto mb-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                        <p class="text-xs text-neutral-400">Click to upload</p>
+                        <p class="text-xs text-neutral-400" x-text="editable ? 'Click to upload' : 'No image'"></p>
                     </div>
                 </div>
                 <input type="file" id="image-upload-input" name="image" accept="image/*" class="hidden" :disabled="!editable" @change="handleFileSelect($event)">
                 <input type="hidden" name="clear_image" :value="imageRemoved ? '1' : '0'">
-                <button type="button" x-show="imagePreview && editable" @click="imagePreview = ''; document.getElementById('image-upload-input').value = ''; imageRemoved = true; changed = true" class="mt-2 text-xs font-semibold text-red-500 hover:text-red-600 cursor-pointer">Remove Image</button>
+                
+                <!-- Separate buttons for View/Change/Remove -->
+                <div class="mt-2 flex items-center gap-2" x-show="imagePreview && editable">
+                    <button type="button" @click="document.getElementById('image-upload-input').click()" class="text-xs font-semibold text-blue-500 hover:text-blue-600 cursor-pointer">Change Image</button>
+                    <span class="text-neutral-300">|</span>
+                    <button type="button" @click="imagePreview = ''; document.getElementById('image-upload-input').value = ''; imageRemoved = true; changed = true" class="text-xs font-semibold text-red-500 hover:text-red-600 cursor-pointer">Remove</button>
+                </div>
             </div>
             <div class="col-span-2 space-y-4">
                 <div>

@@ -1,27 +1,34 @@
-from rest_framework.decorators import api_view
-from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.decorators import permission_classes
 from datetime import timedelta
 from django.utils import timezone
-from django.db.models import Sum, Count
+from django.contrib.auth.decorators import login_required
+from django.http import JsonResponse
+from django.db.models import Sum
 from apps.transactions.models import SaleInvoice, PurchaseInvoice
 from apps.catalog.models import Item
 
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
+
+@login_required
 def dashboard_data_api(request):
-    company = request.user.profile.company
+    # Guard: users without a company profile get a clean 403, not a 500
+    profile = getattr(request.user, 'profile', None)
+    company = profile.company if profile else None
+    if not company:
+        return JsonResponse({"success": False, "error": "No company linked to this account."}, status=403)
+
     today = timezone.now().date()
-    
-    # Basic Stats
+
     total_items = Item.objects.filter(company=company).count()
-    total_sales_today = SaleInvoice.objects.filter(company=company, date_dispatched=today).aggregate(total=Sum('grand_total'))['total'] or 0
-    
-    # Dummy data structure to match frontend expectations
+    total_sales_today = (SaleInvoice.objects
+                         .filter(company=company, date_dispatched=today)
+                         .aggregate(total=Sum('grand_total'))['total'] or 0)
+
+    # Time-aware greeting (was hardcoded "Good morning")
+    hour = timezone.now().hour
+    greeting = "Good morning" if hour < 12 else "Good afternoon" if hour < 17 else "Good evening"
+
     data = {
         "success": True,
-        "greeting": "Good morning",
+        "greeting": greeting,
         "stat_cards": [
             {"label": "Total Items", "value": total_items, "badge": "Active", "badge_type": "green"},
             {"label": "Sales Today", "value": f"Rs. {total_sales_today}", "badge": "Today", "badge_type": "blue"},
@@ -29,16 +36,11 @@ def dashboard_data_api(request):
         "charts": {
             "trend": {
                 "labels": [str(today - timedelta(days=i)) for i in range(30, 0, -1)],
-                "sales": [0]*30,
-                "purchases": [0]*30,
-                "spoilage": [0]*30
+                "sales": [0]*30, "purchases": [0]*30, "spoilage": [0]*30,
             },
-            "payment_status": {
-                "labels": ["Paid", "Partial", "Unpaid"],
-                "data": [0, 0, 0]
-            }
+            "payment_status": {"labels": ["Paid", "Partial", "Unpaid"], "data": [0, 0, 0]},
         },
         "activity": [],
-        "low_stock_alerts": []
+        "low_stock_alerts": [],
     }
-    return Response(data)
+    return JsonResponse(data)

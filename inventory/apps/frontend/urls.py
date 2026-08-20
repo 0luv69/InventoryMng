@@ -1,11 +1,14 @@
-# frontend.urls
+# apps/frontend/urls.py
 from django.urls import path
 from . import views
+from apps.reports.views import dashboard_data_api
 
 app_name = 'frontend' # This allows us to use frontend:dashboard
 
+
 urlpatterns = [
     path('', views.DashboardView.as_view(), name='dashboard'),
+    path('dashboard/data/', dashboard_data_api, name='dashboard_data'),
 
     path('settings/quick-add-category/', views.QuickAddCategoryView.as_view(), name='quick_add_category'),
     path('settings/quick-add-unit/', views.QuickAddUnitView.as_view(), name='quick_add_unit'),

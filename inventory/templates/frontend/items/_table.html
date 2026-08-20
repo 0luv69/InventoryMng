@@ -36,15 +36,15 @@
     </thead>
     <tbody>
         {% for item in items %}
-        <!-- Removed row-level hx-get/click. Kept group class for tooltip hover state -->
         <tr class="border-b border-neutral-50 hover:bg-neutral-50/50 transition-colors group">
             
             <td class="px-6 py-4 text-sm text-neutral-500">{{ page_obj.start_index|add:forloop.counter0 }}</td>
             
-            <td class="px-6 py-4">
+            <!-- NAME CELL: Entire cell is clickable to open View Modal -->
+            <td class="px-6 py-4 cursor-pointer" hx-get="{% url 'frontend:item_form' %}?id={{ item.id }}" hx-target="#formContainer" hx-swap="innerHTML" @click="$dispatch('open-modal')">
                 <div class="flex items-center gap-3">
-                    <!-- Image: Opens Lightbox on click -->
                     {% if item.image %}
+                    <!-- Image stops propagation so it opens lightbox instead of view modal -->
                     <img loading="lazy" src="{{ item.image.url }}" 
                          @click.stop="$dispatch('open-lightbox', { url: '{{ item.image.url }}' })" 
                          class="w-10 h-10 rounded-lg object-cover border border-neutral-200 cursor-zoom-in hover:opacity-80 transition-opacity">
@@ -53,9 +53,9 @@
                         <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
                     </div>
                     {% endif %}
-                    <!-- Name: Opens View Modal on click (Styled as a link) -->
                     <div>
-                        <div hx-get="{% url 'frontend:item_form' %}?id={{ item.id }}" hx-target="#formContainer" hx-swap="innerHTML" @click="$dispatch('open-modal')" class="text-sm font-semibold text-neutral-900 hover:text-green-600 cursor-pointer transition-colors">
+                        <!-- Text turns green on row hover to indicate it's clickable -->
+                        <div class="text-sm font-semibold text-neutral-900 group-hover:text-green-600 transition-colors">
                             {{ item.name }}
                         </div>
                         <div class="text-xs text-neutral-400">{{ item.barcode|default:"No barcode" }}</div>
@@ -65,19 +65,19 @@
             
             <td class="px-6 py-4 text-sm text-neutral-600">{{ item.category.name|default:"-" }}</td>
             
-            <!-- COST PRICE WITH UOM HOVER/CLICK TOOLTIP -->
-            <td class="px-6 py-4 text-sm text-neutral-600 relative" x-data="{ showCost: false }">
-                <div class="flex items-center gap-1" @mouseenter="showCost = true" @mouseleave="showCost = false">
+            <!-- COST PRICE WITH UOM CLICK-ONLY TOOLTIP -->
+            <td class="px-6 py-4 text-sm text-neutral-600 relative" x-data="{ showCost: false }" @click.away="showCost = false">
+                <div class="flex items-center gap-1 w-fit">
                     <span>Rs. {{ item.cost_price }} <span class="text-xs text-neutral-400">/ {{ item.base_unit.short_name }}</span></span>
                     {% if item.uom_conversions.all %}
-                        <!-- (i) Icon for Mobile Click / Desktop Hover -->
-                        <svg @click.stop="showCost = !showCost" class="w-3.5 h-3.5 text-neutral-400 hover:text-neutral-600 cursor-pointer" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+                        <!-- Click (i) to open, click anywhere else to close -->
+                        <svg title="Click to view other UOM costs"
+                           @click.stop="showCost = !showCost" class="w-3.5 h-3.5 text-neutral-400 hover:text-neutral-600 cursor-pointer" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
                     {% endif %}
                 </div>
                 
                 {% if item.uom_conversions.all %}
-                    <!-- Tooltip -->
-                    <div x-show="showCost" x-transition.opacity @click.stop="showCost = false" style="display: none;" class="absolute right-0 top-full mt-1 z-30 bg-white border border-neutral-100 rounded-xl shadow-xl p-2 w-max min-w-[150px]">
+                    <div x-show="showCost" x-transition.opacity style="display: none;" class="absolute right-0 top-[75%] mt-0 z-30 bg-white border border-neutral-100 rounded-xl shadow-xl p-2 w-max min-w-[150px]">
                         <div class="text-[0.65rem] font-bold text-neutral-400 uppercase mb-1 px-1">Other UOM Costs</div>
                         {% for uom in item.uom_conversions.all %}
                             <div class="flex items-center justify-between gap-4 px-2 py-1 text-xs hover:bg-neutral-50 rounded-md">
@@ -89,12 +89,10 @@
                 {% endif %}
             </td>
             
-            <!-- STOCK -->
             <td class="px-6 py-4 text-sm font-semibold {% if item.total_stock_calc|default:0 <= item.low_stock_threshold %}text-red-600{% else %}text-neutral-800{% endif %}">
                 {{ item.total_stock_calc|default:0 }} <span class="text-xs {% if item.total_stock_calc|default:0 <= item.low_stock_threshold %}text-red-400{% else %}text-neutral-400{% endif %}">{{ item.base_unit.short_name }}</span>
             </td>
 
-            <!-- THRESHOLD -->
             <td class="px-6 py-4 text-sm text-neutral-500">
                 {{ item.low_stock_threshold }} <span class="text-xs text-neutral-400">{{ item.base_unit.short_name }}</span>
             </td>
@@ -109,15 +107,12 @@
             
             <td class="px-6 py-4" @click.stop>
                 <div class="flex items-center justify-end gap-3">
-                    <!-- View Button -->
                     <button hx-get="{% url 'frontend:item_form' %}?id={{ item.id }}" hx-target="#formContainer" hx-swap="innerHTML" @click="$dispatch('open-modal')" class="text-neutral-400 hover:text-green-600 transition-colors" title="View">
                         <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                     </button>
-                    <!-- Edit Button -->
                     <button hx-get="{% url 'frontend:item_form' %}?id={{ item.id }}&editable=1" hx-target="#formContainer" hx-swap="innerHTML" @click="$dispatch('open-modal')" class="text-neutral-400 hover:text-blue-600 transition-colors" title="Edit">
                         <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                     </button>
-                    <!-- Delete Button -->
                     <button @click="deleteId = {{ item.id }}; deleteModal = true" class="text-neutral-400 hover:text-red-600 transition-colors" title="Delete">
                         <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                     </button>
