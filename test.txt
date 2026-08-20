@@ -1,400 +1,302 @@
-# inventory.models
+<style>
+  .pkg-grid-scroll::-webkit-scrollbar { width: 8px; height: 8px; }
+  .pkg-grid-scroll::-webkit-scrollbar-track { background: #f8fafc; border-radius: 10px; }
+  .pkg-grid-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+  .pkg-grid-scroll::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+  .pkg-grid-scroll { scrollbar-width: thin; scrollbar-color: #cbd5e1 #f8fafc; touch-action: pan-x pan-y; }
+  .pkg-grid-scroll input[type=number]::-webkit-inner-spin-button,
+  .pkg-grid-scroll input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+  .pkg-grid-scroll input[type=number] { -moz-appearance: textfield; }
+</style>
 
-from django.db import models
-from apps.core.models import BaseModel
-from apps.catalog.models import Item 
-from apps.parties.models import Party
+<!-- HIDDEN SCRIPT TAGS FOR SAFE JSON PASSING -->
+<script id="packaging-data" type="application/json">{{ packaging_json|safe }}</script>
+<script id="recent-cats-data" type="application/json">{{ recent_categories|safe }}</script>
+<script id="recent-units-data" type="application/json">{{ recent_units|safe }}</script>
+<script id="recent-sups-data" type="application/json">{{ recent_suppliers|safe }}</script>
+<script id="unit-map-data" type="application/json">{{ unit_map_json|safe }}</script>
+<script id="all-tier-ids-data" type="application/json">{{ tier_ids_json|safe }}</script>
 
-# ==========================================
-# 1. WAREHOUSE (GODOWN)
-# ==========================================
-class Warehouse(BaseModel):
-    """ Represents a physical location where stock is kept """
-    name = models.CharField(max_length=100, help_text="e.g., Main Godown, Counter")
-    location = models.CharField(max_length=200, blank=True)
-    is_active = models.BooleanField(default=True)
-
-    class Meta(BaseModel.Meta):
-        ordering = ['name']
-        constraints = [
-            models.UniqueConstraint(fields=['company', 'name'], name='uniq_warehouse_per_company')
-        ]
-
-    def __str__(self):
-        return self.name
-
-
-# ==========================================
-# 2. STOCK BATCH (THE ACTUAL PHYSICAL STOCK)
-# ==========================================
-class StockBatch(BaseModel):
-    """
-    Tracks the exact quantity of an Item in a specific Warehouse 
-    with a specific Batch No and Expiry Date.
-    """
-    item = models.ForeignKey(Item, on_delete=models.PROTECT, related_name='stock_batches')
-    warehouse = models.ForeignKey(Warehouse, on_delete=models.PROTECT, related_name='stock_batches')
-    
-    batch_no = models.CharField(max_length=50, blank=True, null=True, help_text="Leave blank if item has no batch")
-    expiry_date = models.DateField(null=True, blank=True)
-    
-    # This is the ACTUAL stock. The Item.quantity_in_stock will be a cached sum of this.
-    quantity = models.DecimalField(max_digits=12, decimal_places=2, default=0)
-    
-    # The cost price at which THIS specific batch was bought (For accurate profit calculation)
-    landing_cost = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-
-    supplier = models.ForeignKey(
-        Party, 
-        on_delete=models.SET_NULL, 
-        null=True, blank=True, 
-        related_name='stock_batches',
-        limit_choices_to={'is_supplier': True}
-    )
-
-    class Meta(BaseModel.Meta):
-        ordering = ['expiry_date'] # FEFO: First Expired, First Out ordering
-        constraints = [
-            # Prevent duplicate batch entries for the same item in the same warehouse
-            models.UniqueConstraint(
-                fields=['company', 'item', 'warehouse', 'batch_no'], 
-                name='uniq_stockbatch_per_warehouse',
-                condition=models.Q(batch_no__isnull=False) & ~models.Q(batch_no='') # Only apply if batch_no is not null
-            )
-        ]
-
-    def __str__(self):
-        return f"{self.item.name} - {self.warehouse.name} (Batch: {self.batch_no or 'N/A'})"
-
-
-# ==========================================
-# 3. STOCK MOVEMENT (THE AUDIT TRAIL)
-# ==========================================
-class StockMovement(BaseModel):
-    """
-    An immutable ledger of every single time stock was added, removed, or moved.
-    This is how we track "Who did what and when".
-    """
-    class MovementType(models.TextChoices):
-        PURCHASE = 'purchase', 'Purchase (Goods In)'
-        SALE = 'sale', 'Sale (Goods Out)'
-        SALE_RETURN = 'sale_return', 'Sale Return'
-        SPOILAGE = 'spoilage', 'Spoilage / Loss'
-        OPENING = 'opening', 'Opening Stock'
-        ADJUSTMENT = 'adjustment', 'Manual Adjustment'
-
-    item = models.ForeignKey(Item, on_delete=models.PROTECT, related_name='movements')
-    warehouse = models.ForeignKey(Warehouse, on_delete=models.PROTECT, related_name='movements')
-    batch_no = models.CharField(max_length=50, blank=True, null=True)
-    
-    movement_type = models.CharField(max_length=15, choices=MovementType.choices)
-    quantity = models.DecimalField(max_digits=12, decimal_places=2, help_text="Positive for IN, Negative for OUT")
-    
-    # Snapshot of the balance right after this movement (useful for reports)
-    balance_after = models.DecimalField(max_digits=12, decimal_places=2, default=0)
-    
-    # Link to the transaction that caused this movement (e.g., the Invoice ID)
-    reference_model = models.CharField(max_length=50, blank=True, help_text="e.g., 'SaleInvoice'")
-    reference_id = models.CharField(max_length=50, blank=True)
-    
-    notes = models.TextField(blank=True)
-
-    class Meta(BaseModel.Meta):
-        ordering = ['-created_at']
-        indexes = [
-            models.Index(fields=['company', 'item', '-created_at']),
-            models.Index(fields=['company', 'warehouse', '-created_at']),
-        ]
-
-    def __str__(self):
-        return f"{self.movement_type} - {self.item.name} - Qty: {self.quantity}"
-
-
-
-# transaction.services
-
-from django.db import transaction, models
-from django.core.exceptions import ValidationError
-from decimal import Decimal
-from django.db.models import F
-from apps.inventory.models import StockBatch, StockMovement
-from .models import PurchaseItemLine, SaleItemLine, SaleItemLineBatch
-from apps.catalog.models import Item
-from apps.core.utils import get_vat_rate
-class InventoryService:
-    """ Handles all stock movements, MAC calculations, and validations """
-    @staticmethod
-    @transaction.atomic
-    def process_purchase_line(line):
-        base_qty = line.quantity * line.conversion_factor
-        total_cost = line.line_total
-
-        # FIX 1: Lock and snapshot stock BEFORE batch mutation
-        item = Item.objects.select_for_update().get(id=line.item_id)
-        old_stock_qty = item.total_stock
-        old_cost_price = item.cost_price
-
-        # 1. Find or Create StockBatch
-        batch, created = StockBatch.objects.get_or_create(
-            company=line.company,
-            item=line.item,
-            warehouse=line.warehouse,
-            batch_no=line.batch_no,
-            defaults={
-                'expiry_date': line.expiry_date,
-                'landing_cost': line.cost_price,
-                'supplier': line.invoice.supplier,
-                'created_by': line.invoice.created_by,
-                'quantity': base_qty
+<form x-data="itemForm({{ item.id|default:'null' }}, {% if is_editable %}true{% else %}false{% endif %}, {% if is_locked %}true{% else %}false{% endif %})" 
+      @input="changed = true"
+      hx-post="{% url 'frontend:item_save' %}" 
+      hx-target="#items-table" 
+      hx-swap="innerHTML" 
+      hx-encoding="multipart/form-data"
+      hx-on::after-request="
+        if(event.detail.successful) { 
+            toast.success('Item saved successfully!'); 
+            window.dispatchEvent(new CustomEvent('close-modal')); 
+        } else {
+            try {
+                let res = JSON.parse(event.detail.xhr.response);
+                toast.error(res.message || 'Failed to save item.');
+            } catch(e) {
+                toast.error('An unexpected error occurred.');
             }
-        )
-        
-        if not created:
-            # FIX 2: Atomic DB-level increment to prevent race conditions
-            StockBatch.objects.filter(pk=batch.pk).update(quantity=F('quantity') + base_qty)
+        }
+      "
+      class="space-y-6">
 
-        # 2. Create Stock Movement
-        StockMovement.objects.create(
-            company=line.company, item=line.item, warehouse=line.warehouse,
-            batch_no=line.batch_no, movement_type='purchase', quantity=base_qty,
-            reference_model='PurchaseInvoice', reference_id=str(line.invoice_id),
-            created_by=line.invoice.created_by
-        )
+    {% csrf_token %}
+    <input type="hidden" name="id" value="{{ item.id|default:'' }}">
+    <input type="hidden" name="packaging_grid" :value="JSON.stringify(gridData())">
+    <input type="hidden" id="item-name-input" value="{{ item.name|default:'' }}">
+    <input type="hidden" id="item-category-select" value="{{ item.category_id|default:'' }}">
+    <input type="hidden" id="item-supplier-select" value="{{ item.default_supplier_id|default:'' }}">
+    <input type="hidden" id="carton-unit-id" value="{{ carton_unit_id|default:'' }}">
+    <script type="text/template" id="item-image-preview-src">{% if item and item.image %}{{ item.image.url }}{% endif %}</script>
 
-        # 3. Update MAC using old snapshot
-        new_stock_qty = old_stock_qty + base_qty
-        if new_stock_qty > 0:
-            new_stock_value = (old_stock_qty * old_cost_price) + total_cost
-            item.cost_price = new_stock_value / new_stock_qty
-            item.save(update_fields=['cost_price', 'updated_at'])
+    {% if item and not is_editable %}
+    <div x-show="!editable" class="p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-center justify-between">
+        <p class="text-xs font-medium text-amber-700">You are viewing a read-only item.</p>
+        <button type="button" @click="editable = true" class="px-3 py-1.5 text-xs font-semibold text-white bg-amber-500 rounded-lg hover:bg-amber-600">Edit Item</button>
+    </div>
+    {% endif %}
 
-    @staticmethod
-    @transaction.atomic
-    def process_sale_line(line):
-        base_qty = line.quantity * line.conversion_factor
+    <!-- Wrapper to prevent UI breaking on Fullscreen -->
+    <div class="max-w-3xl mx-auto space-y-6">
 
-        batches = StockBatch.objects.select_for_update().filter(
-            company=line.company, item=line.item, warehouse=line.warehouse, quantity__gt=0
-        ).order_by('expiry_date', 'created_at')
+        <!-- Row 1 (Fixed Alignment) -->
+        <div class="grid grid-cols-3 gap-6 items-start">
+            <div class="col-span-1">
+                <label class="block text-xs font-semibold text-neutral-600 mb-1.5">Item Image</label>
+                <div class="w-full h-[124px] rounded-xl border-2 border-dashed border-neutral-200 flex items-center justify-center overflow-hidden bg-neutral-50 relative cursor-pointer hover:border-green-400 transition-colors" @click="!editable ? null : document.getElementById('image-upload-input').click()">
+                    <img x-show="imagePreview" :src="imagePreview" class="w-full h-full object-cover">
+                    <div x-show="!imagePreview" class="text-center p-4">
+                        <svg class="w-8 h-8 text-neutral-300 mx-auto mb-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                        <p class="text-xs text-neutral-400">Click to upload</p>
+                    </div>
+                </div>
+                <input type="file" id="image-upload-input" name="image" accept="image/*" class="hidden" :disabled="!editable" @change="handleFileSelect($event)">
+                <input type="hidden" name="clear_image" :value="imageRemoved ? '1' : '0'">
+                
+                <button type="button" x-show="imagePreview && editable" 
+                        @click="imagePreview = ''; document.getElementById('image-upload-input').value = ''; imageRemoved = true; changed = true" 
+                        class="mt-2 text-xs font-semibold text-red-500 hover:text-red-600 cursor-pointer">
+                    Remove Image
+                </button>
+            </div>
+            <div class="col-span-2 space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-neutral-600 mb-1.5">Item Name *</label>
+                    <input type="text" name="name" x-model="name" required :readonly="!editable" class="w-full px-4 py-2.5 text-sm border border-neutral-200 rounded-xl transition-all" :class="!editable ? 'bg-neutral-50 cursor-not-allowed' : 'bg-white focus:ring-2 focus:ring-green-500/20'">
+                </div>
+            </div>
+        </div>
 
-        available_stock = batches.aggregate(total=models.Sum('quantity'))['total'] or 0
-        if base_qty > available_stock:
-            raise ValidationError(f"Insufficient stock for {line.item.name}. Available: {available_stock} {line.item.base_unit.short_name}")
+        <!-- Row 2 (Category + Supplier with Pills) -->
+        <div class="grid grid-cols-2 gap-4">
+            <div>
+                <label class="block text-xs font-semibold text-neutral-600 mb-1.5">Category</label>
+                <div class="flex flex-wrap gap-1 mb-2" x-show="editable">
+                    <template x-for="cat in recentCategories" :key="cat.id">
+                        <button type="button" @click="category = (category == String(cat.id) ? '' : String(cat.id))" :class="category == cat.id ? 'bg-green-500 text-white' : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'" class="px-2.5 py-1 text-xs font-semibold rounded-full transition-colors" x-text="cat.name"></button>
+                    </template>
+                </div>
+                <select name="category" x-model="category" :disabled="!editable" class="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white" :class="!editable ? 'bg-neutral-50 cursor-not-allowed' : ''">
+                    <option value="">None</option>{% for c in categories %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-neutral-600 mb-1.5">Default Supplier</label>
+                <div class="flex flex-wrap gap-1 mb-2" x-show="editable">
+                    <template x-for="sup in recentSuppliers" :key="sup.id">
+                        <button type="button" @click="defaultSupplier = (defaultSupplier == String(sup.id) ? '' : String(sup.id))" :class="defaultSupplier == sup.id ? 'bg-green-500 text-white' : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'" class="px-2.5 py-1 text-xs font-semibold rounded-full transition-colors" x-text="sup.name"></button>
+                    </template>
+                </div>
+                <select name="default_supplier" x-model="defaultSupplier" :disabled="!editable" class="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white" :class="!editable ? 'bg-neutral-50 cursor-not-allowed' : ''">
+                    <option value="">None</option>{% for s in suppliers %}<option value="{{ s.id }}">{{ s.name }}</option>{% endfor %}
+                </select>
+            </div>
+        </div>
 
-        qty_to_deduct = base_qty
-        assigned_batches_count = 0
+        <!-- Row 3 inline items add -->
+        <div class="border-t border-neutral-100 pt-6">
+            <div class="flex items-center justify-between mb-3">
+                <h3 class="text-sm font-bold text-neutral-800">Packaging, Cost & Pricing Grid</h3>
+                <span class="text-[0.65rem] text-neutral-400 bg-neutral-100 px-2 py-1 rounded-full flex items-center gap-1">
+                    <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+                    Auto-calculates based on Base Unit
+                </span>
+            </div>
 
-        for batch in batches:
-            if qty_to_deduct <= 0: break
+            <!-- GLOBAL BASE UNIT SELECTOR -->
+            <div class="mb-4 p-4 bg-neutral-50/50 rounded-xl border border-neutral-200">
+                <label class="block text-xs font-bold text-neutral-700 mb-2 uppercase tracking-wide">Primary Base Unit (Inventory Tracked Here) *</label>
+                <div class="flex flex-wrap gap-1.5 mb-3" x-show="editable && !isLocked">
+                    <template x-for="unt in recentUnits" :key="unt.id">
+                        <button type="button" @click="grid[0].unit_id = String(unt.id); handleBaseUnitChange()" :class="grid[0].unit_id == String(unt.id) ? 'bg-green-500 text-white shadow-sm' : 'bg-white text-neutral-600 border border-neutral-200 hover:border-green-300'" class="px-3 py-1.5 text-xs font-semibold rounded-full transition-all" x-text="unt.name"></button>
+                    </template>
+                </div>
+                <select x-model="grid[0].unit_id" @change="handleBaseUnitChange()" required :disabled="!editable || isLocked" class="w-full max-w-xs px-4 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white focus:ring-2 focus:ring-green-500/20 font-medium" :class="!editable || isLocked ? 'bg-neutral-100 cursor-not-allowed' : ''">
+                    <option value="">Select Base Unit</option>{% for u in units %}<option value="{{ u.id }}">{{ u.name }} ({{ u.short_name }})</option>{% endfor %}
+                </select>
+                <p x-show="isLocked" class="text-[0.65rem] text-amber-600 font-medium mt-2 flex items-center gap-1">
+                    <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    Base unit is locked because this item has existing transactions.
+                </p>
+            </div>
             
-            if batch.quantity >= qty_to_deduct:
-                deducted_qty = qty_to_deduct
-                StockBatch.objects.filter(pk=batch.pk).update(quantity=F('quantity') - deducted_qty)
-                qty_to_deduct = 0
-            else:
-                deducted_qty = batch.quantity
-                qty_to_deduct -= batch.quantity
-                StockBatch.objects.filter(pk=batch.pk).update(quantity=0)
+            <!-- THE SPREADSHEET TABLE -->
+            <div class="border border-neutral-200 rounded-xl overflow-hidden shadow-sm bg-white">
+                <div class="pkg-grid-scroll overflow-auto" style="max-height: calc(100vh - 350px);">
+                    <!-- Fix 3: Reduced Barcode width from minmax(150px, 1fr) to 130px -->
+                    <div class="min-w-max" style="--pkg-cols: 140px 130px 130px 120px repeat({{ price_tiers|length }}, 110px) 40px;">
+                        
+                        <!-- TABLE HEADER -->
+                        <div class="grid items-center text-[0.65rem] font-bold text-neutral-500 uppercase tracking-wider bg-neutral-50 border-b border-neutral-200 sticky top-0 z-20" style="grid-template-columns: var(--pkg-cols);">
+                            <div class="px-4 h-10 flex items-center sticky left-0 z-10 bg-neutral-50 border-r border-neutral-200">Unit</div>
+                            <div class="px-4 h-10 flex items-center border-r border-neutral-200">Contains</div>
+                            <div class="px-4 h-10 flex items-center border-r border-neutral-200">Barcode / SKU</div>
+                            <div class="px-4 h-10 flex items-center justify-end border-r border-neutral-200">Cost (Rs)</div>
+                            {% for tier in price_tiers %}
+                            <div class="px-4 h-10 flex items-center justify-end border-r border-neutral-200 truncate" title="{{ tier.name }}">{{ tier.name }}</div>
+                            {% endfor %}
+                            <div class="px-4 h-10 flex items-center justify-center sticky right-0 z-10 bg-neutral-50 border-l border-neutral-200"></div>
+                        </div>
 
-            # Record the exact allocation (added created_by)
-            SaleItemLineBatch.objects.create(
-                company=line.company,
-                sale_line=line,
-                stock_batch=batch,
-                quantity=deducted_qty,
-                created_by=line.invoice.created_by
-            )
+                        <!-- TABLE ROWS -->
+                        <template x-for="(row, index) in grid" :key="row.id">
+                            <div class="grid items-center border-b border-neutral-100 last:border-b-0 group transition-colors"
+                                 :class="index === 0 ? 'bg-emerald-50/40' : 'bg-white hover:bg-neutral-50'"
+                                 style="grid-template-columns: var(--pkg-cols);">
+                                
+                                <!-- 1. UNIT CELL -->
+                                <div class="sticky left-0 z-10 flex items-center justify-between px-3 h-12 border-r border-neutral-100 transition-colors"
+                                     :class="index === 0 ? 'bg-emerald-50/40 group-hover:bg-emerald-50' : 'bg-white group-hover:bg-neutral-50'">
+                                    <template x-if="index === 0">
+                                        <div class="flex items-center gap-2 w-full">
+                                            <!-- Fix 2: Properly resolves base unit short name after selection -->
+                                            <span class="text-sm font-semibold text-neutral-800 truncate" 
+                                                  x-text="unitMap[grid[0].unit_id]?.short_name || 'Select Base'"
+                                                  :title="unitMap[grid[0].unit_id]?.name || ''"></span>
+                                            <span class="text-[0.6rem] font-bold text-emerald-700 bg-emerald-200/60 px-1.5 py-0.5 rounded shrink-0">BASE</span>
+                                        </div>
+                                    </template>
+                                    <template x-if="index > 0">
+                                        <select x-model="row.unit_id" @change="updateGridRow(row)" :disabled="!editable" class="w-full bg-transparent text-sm font-medium text-neutral-700 focus:outline-none cursor-pointer truncate disabled:opacity-60 disabled:cursor-not-allowed">
+                                            <option value="">Select Unit</option>
+                                            {% for u in units %}
+                                            <option value="{{ u.id }}" :disabled="grid.some((r, idx) => idx !== index && r.unit_id === '{{ u.id }}')">{{ u.name }} ({{ u.short_name }})</option>
+                                            {% endfor %}
+                                        </select>
+                                    </template>
+                                </div>
 
-            # Create a StockMovement PER BATCH touched
-            StockMovement.objects.create(
-                company=line.company, item=line.item, warehouse=line.warehouse, batch_no=batch.batch_no,
-                movement_type='sale', quantity=-deducted_qty, reference_model='SaleInvoice',
-                reference_id=str(line.invoice_id), created_by=line.invoice.created_by
-            )
+                                <!-- 2. CONTAINS CELL -->
+                                <div class="flex items-center px-3 h-12 border-r border-neutral-100">
+                                    <template x-if="index === 0">
+                                        <span class="text-xs text-neutral-400 italic font-medium">— Base Unit —</span>
+                                    </template>
+                                    <template x-if="index > 0">
+                                        <div class="flex items-center gap-1.5 w-full text-sm">
+                                            <span class="text-neutral-400 font-mono font-bold">=</span>
+                                            <!-- Fix 1: Properly shows base unit short name. Also added tab focus & scroll fixes -->
+                                            <input type="number" x-model="row.factor" @input="recalculateFromBase(index)" 
+                                                   @blur="row.factor = fmt(row.factor)"
+                                                   step="any" min="0.01" placeholder="1" :disabled="!editable" 
+                                                   @wheel.prevent @focus="scrollIntoView($event)"
+                                                   class="w-16 px-1.5 py-1 bg-transparent border border-transparent rounded text-sm text-neutral-800 text-center font-medium hover:bg-white focus:bg-white focus:border-green-400 focus:ring-2 focus:ring-green-500/20 outline-none transition-all disabled:opacity-60 disabled:cursor-not-allowed">
+                                            <span class="text-neutral-500 truncate max-w-[60px] text-xs font-medium" 
+                                                  x-text="unitMap[grid[0].unit_id]?.short_name || 'unit'"
+                                                  :title="unitMap[grid[0].unit_id]?.name || ''"></span>
+                                        </div>
+                                    </template>
+                                </div>
 
-            assigned_batches_count += 1
+                                <!-- 3. BARCODE CELL -->
+                                <div class="flex items-center px-3 h-12 border-r border-neutral-100">
+                                    <input type="text" x-model="row.barcode" :disabled="!editable" placeholder="Scan or type..." 
+                                           @focus="scrollIntoView($event)"
+                                           class="w-full px-2 py-1.5 bg-transparent border border-transparent rounded-md text-sm text-neutral-800 placeholder-neutral-300 hover:bg-white/80 focus:bg-white focus:border-green-400 focus:ring-2 focus:ring-green-500/20 outline-none transition-all disabled:opacity-60 disabled:cursor-not-allowed">
+                                </div>
 
-        # Clean up legacy field for UI display
-        line.assigned_batch_no = "MULTI" if assigned_batches_count > 1 else (batch.batch_no if assigned_batches_count == 1 else "N/A")
-        line.save(update_fields=['assigned_batch_no'])
+                                <!-- 4. COST CELL -->
+                                <div class="flex items-center justify-end px-3 h-12 border-r border-neutral-100">
+                                    <div class="relative w-full max-w-[100px]">
+                                        <span class="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-neutral-400 pointer-events-none">Rs</span>
+                                        <!-- Fix 4: step="any" to prevent decimal scrolling. Fix 5: @focus to scroll into view on Tab -->
+                                        <input type="number" x-model="row.cost" @input="recalculateCost(index)" 
+                                               @blur="row.cost = fmt(row.cost)"
+                                               step="any" min="0" :disabled="!editable" placeholder="0.00"
+                                               @wheel.prevent @focus="scrollIntoView($event)"
+                                               class="w-full pl-7 pr-2 py-1.5 bg-transparent border border-transparent rounded-md text-sm text-neutral-800 text-right hover:bg-white/80 focus:bg-white focus:border-green-400 focus:ring-2 focus:ring-green-500/20 outline-none transition-all disabled:opacity-60 disabled:cursor-not-allowed">
+                                    </div>
+                                </div>
 
-    @staticmethod
-    @transaction.atomic
-    def reverse_purchase_line(line):
-        base_qty = line.quantity * line.conversion_factor
+                                <!-- 5. TIER CELLS -->
+                                {% for tier in price_tiers %}
+                                <div class="flex items-center justify-end px-3 h-12 border-r border-neutral-100">
+                                    <div class="relative w-full max-w-[100px]">
+                                        <span class="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-neutral-400 pointer-events-none">Rs</span>
+                                        <input type="number" x-model="row.prices[{{ tier.id }}]" @input="recalculateTier(index, '{{ tier.id }}')" 
+                                               @blur="row.prices['{{ tier.id }}'] = fmt(row.prices['{{ tier.id }}'])"
+                                               step="any" min="0" :disabled="!editable" placeholder="0.00"
+                                               @wheel.prevent @focus="scrollIntoView($event)"
+                                               class="w-full pl-7 pr-2 py-1.5 bg-transparent border border-transparent rounded-md text-sm text-neutral-800 text-right hover:bg-white/80 focus:bg-white focus:border-green-400 focus:ring-2 focus:ring-green-500/20 outline-none transition-all disabled:opacity-60 disabled:cursor-not-allowed">
+                                    </div>
+                                </div>
+                                {% endfor %}
 
-        updated = StockBatch.objects.filter(
-            company=line.company, item=line.item, warehouse=line.warehouse, batch_no=line.batch_no
-        ).update(quantity=F('quantity') - base_qty)
-        
-        if not updated:
-            # Fallback if the batch was hard-deleted somehow
-            StockBatch.objects.create(
-                company=line.company, item=line.item, warehouse=line.warehouse,
-                batch_no=line.batch_no, quantity=-base_qty # Negative stock to flag the anomaly
-            )
+                                <!-- 6. ACTIONS CELL -->
+                                <div class="sticky right-0 z-10 flex items-center justify-center h-12 border-l border-neutral-100 transition-colors"
+                                     :class="index === 0 ? 'bg-emerald-50/40 group-hover:bg-emerald-50' : 'bg-white group-hover:bg-neutral-50'">
+                                    <button type="button" x-show="index > 0 && editable" @click="removeRow(index)"
+                                            class="opacity-40 group-hover:opacity-100 text-neutral-400 hover:text-red-500 transition-all p-1.5 rounded-md hover:bg-red-50" title="Delete Row">
+                                        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                                    </button>
+                                    <template x-if="index === 0">
+                                       <span class="text-[0.6rem] text-neutral-400 font-bold uppercase tracking-wider">Base</span>
+                                    </template>
+                                </div>
 
-        StockMovement.objects.create(
-            company=line.company, item=line.item, warehouse=line.warehouse,
-            batch_no=line.batch_no, movement_type='adjustment', quantity=-base_qty,
-            notes=f"Reversal of Purchase Line for Invoice {line.invoice_id}"
-        )
+                            </div>
+                        </template>
 
-    @staticmethod
-    @transaction.atomic
-    def reverse_sale_line(line):
-        # Query the allocation table instead of trusting a single batch string
-        allocations = SaleItemLineBatch.objects.filter(sale_line=line).select_related('stock_batch')
-        
-        for alloc in allocations:
-            # Restore the exact quantity to the exact batch
-            StockBatch.objects.filter(pk=alloc.stock_batch_id).update(quantity=F('quantity') + alloc.quantity)
-            
-            # Create a reversal movement for this specific batch
-            StockMovement.objects.create(
-                company=line.company, item=line.item, warehouse=line.warehouse, 
-                batch_no=alloc.stock_batch.batch_no,
-                movement_type='sale_return', quantity=alloc.quantity, 
-                reference_model='SaleInvoice',
-                reference_id=str(line.invoice_id),
-                notes=f"Reversal of Sale Line for Invoice {line.invoice_id}",
-                created_by=line.invoice.created_by
-            )
-            
-            # Delete the allocation record since the reversal is complete
-            alloc.delete()
+                        <!-- ADD ROW FOOTER -->
+                        <div class="grid border-t border-neutral-100 bg-neutral-50/50" style="grid-template-columns: var(--pkg-cols);">
+                            <button type="button" x-show="editable" @click="addRow()" class="col-span-full py-3 text-sm font-semibold text-neutral-500 hover:text-green-600 hover:bg-green-50/50 transition-all flex items-center justify-center gap-2">
+                                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                                Add Pack Size Row
+                            </button>
+                        </div>
 
-    @staticmethod
-    @transaction.atomic
-    def delete_sale_line(line):
-        """ Explicit wrapper to safely reverse and delete a sale line.
-        Required because SaleItemLineBatch.sale_line is PROTECT. """
-        InventoryService.reverse_sale_line(line)
-        line.delete()
+                    </div>
+                </div>
+                <p class="text-[0.65rem] text-neutral-400 text-center py-2 bg-neutral-50 border-t border-neutral-100">Tip: Use <kbd class="px-1 bg-white border rounded text-[0.6rem]">Tab</kbd> key to move smoothly between cells without scrolling.</p>
+            </div>
+        </div>
 
-    @staticmethod
-    def recalculate_invoice_totals(invoice):
-        from decimal import Decimal, ROUND_HALF_UP
-        
-        subtotal = sum(line.line_total for line in invoice.lines.all())
-        
-        if invoice.discount_type == 'percentage':
-            inv_discount = subtotal * (invoice.discount_amount / Decimal('100'))
-        else:
-            inv_discount = invoice.discount_amount
-            
-        taxable_amount = max(subtotal - inv_discount, Decimal('0'))
-        vat_rate = get_vat_rate(invoice.company)
+        <div>
+            <label class="block text-xs font-semibold text-neutral-600 mb-1.5">Low Stock Alert Threshold</label>
+            <input type="number" name="low_stock_threshold" min="0" value="{{ item.low_stock_threshold|default:'10' }}" :readonly="!editable" class="w-full px-4 py-2.5 text-sm border border-neutral-200 rounded-xl transition-all" :class="!editable ? 'bg-neutral-50 cursor-not-allowed' : 'bg-white focus:ring-2 focus:ring-green-500/20'">
+            <p class="text-[0.65rem] text-neutral-400 mt-1">System will warn you on the dashboard when stock falls to or below this number.</p>
+        </div>
 
-        
-        # FIX: Lines always store NET cost_price. We no longer branch on is_vat_inclusive.
-        invoice.subtotal = taxable_amount.quantize(Decimal('0.01'))
-        invoice.tax_amount = (taxable_amount * (vat_rate / Decimal('100'))).quantize(Decimal('0.01'))
-        invoice.grand_total = (invoice.subtotal + invoice.tax_amount).quantize(Decimal('0.01'))
-        
-        invoice.save(update_fields=['subtotal', 'tax_amount', 'grand_total', 'updated_at'])
-    @staticmethod
-    @transaction.atomic
-    def process_payment_allocation(allocation):
-        payment = allocation.payment
-        party = payment.party
-        
-        if payment.payment_type == 'received':
-            party.balance -= allocation.allocated_amount
-        else:
-            party.balance += allocation.allocated_amount
-        
-        party.save(update_fields=['balance', 'updated_at'])
+        <div class="flex items-center justify-between p-4 bg-neutral-50 rounded-xl border border-neutral-100">
+            <div class="text-sm font-semibold text-neutral-700">Active Item</div>
+            <input type="checkbox" name="is_active" class="w-5 h-5 rounded text-green-500" :disabled="!editable" {% if not item or item.status == 'active' %}checked{% endif %}>
+        </div>
 
-        invoice = allocation.sale_invoice or allocation.purchase_invoice
-        if invoice:
-            total_paid = invoice.allocations.aggregate(total=models.Sum('allocated_amount'))['total'] or 0
-            if total_paid >= invoice.grand_total:
-                invoice.payment_status = 'paid'
-            elif total_paid > 0:
-                invoice.payment_status = 'partial'
-            else:
-                invoice.payment_status = 'unpaid'
-            invoice.save(update_fields=['payment_status', 'updated_at'])
+        <div class="pt-4 border-t border-neutral-100">
+            <button type="submit" :disabled="!editable || !changed || !name || !grid[0].unit_id" :class="(!editable || !changed || !name || !grid[0].unit_id) ? 'bg-neutral-300 cursor-not-allowed' : 'bg-green-500 hover:bg-green-600'" class="w-full px-4 py-2.5 text-sm font-semibold text-white rounded-xl transition-all flex items-center justify-center gap-2">
+                <span x-show="!editable" class="flex items-center gap-2"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>Switch to Edit Mode</span>
+                <span x-show="editable && (!changed || !name || !grid[0].unit_id)" class="flex items-center gap-2"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>Fill required fields to save</span>
+                <span x-show="editable && changed && name && grid[0].unit_id" class="flex items-center gap-2"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Save Item</span>
+            </button>
+        </div>
+    </div>
 
-    @staticmethod
-    @transaction.atomic
-    def process_sales_return_line(line):
-        """ Handles customer returns. Updates stock and customer balance. """
-        base_qty = line.quantity * line.conversion_factor
-        
-        party = line.return_invoice.customer
-        party.balance -= line.line_total
-        party.save(update_fields=['balance', 'updated_at'])
-
-        if line.is_spoiled:
-            StockMovement.objects.create(
-                company=line.company, item=line.item, warehouse=line.warehouse,
-                batch_no=line.batch_no, movement_type='spoilage', quantity=-base_qty,
-                reference_model='SalesReturn', reference_id=str(line.return_invoice_id)
-            )
-        else:
-            batch, created = StockBatch.objects.get_or_create(
-                company=line.company, item=line.item, warehouse=line.warehouse, batch_no=line.batch_no,
-                defaults={'landing_cost': line.cost_price}
-            )
-            if not created:
-                StockBatch.objects.filter(pk=batch.pk).update(quantity=F('quantity') + base_qty)
-
-            StockMovement.objects.create(
-                company=line.company, item=line.item, warehouse=line.warehouse,
-                batch_no=line.batch_no, movement_type='sale_return', quantity=base_qty,
-                reference_model='SalesReturn', reference_id=str(line.return_invoice_id)
-            )
-
-    @staticmethod
-    @transaction.atomic
-    def process_spoilage(spoilage):
-        """ Deducts stock directly from warehouse due to damage/expiry """
-        base_qty = spoilage.quantity
-        
-        try:
-            batch = StockBatch.objects.get(
-                company=spoilage.company, item=spoilage.item, 
-                warehouse=spoilage.warehouse, batch_no=spoilage.batch_no
-            )
-            StockBatch.objects.filter(pk=batch.pk).update(quantity=F('quantity') - base_qty)
-        except StockBatch.DoesNotExist:
-            pass
-            
-        StockMovement.objects.create(
-            company=spoilage.company, item=spoilage.item, warehouse=spoilage.warehouse,
-            batch_no=spoilage.batch_no, movement_type='spoilage', quantity=-base_qty,
-            reference_model='SpoilageLoss', reference_id=str(spoilage.id)
-        )
-
-    @staticmethod
-    @transaction.atomic
-    def apply_invoice_to_party_balance(invoice, party_field, sign):
-        """
-        Locks the party row and atomically adjusts balance.
-        sign=+1 for Sale (customer owes more), sign=-1 for Purchase (we owe supplier more,
-        i.e. balance moves negative per the documented convention).
-        """
-        from apps.parties.models import Party
-        party = Party.objects.select_for_update().get(pk=getattr(invoice, f"{party_field}_id"))
-        Party.objects.filter(pk=party.pk).update(
-            balance=F('balance') + (sign * invoice.grand_total)
-        )
-
-    @staticmethod
-    @transaction.atomic
-    def reverse_invoice_on_party_balance(invoice, party_field, sign):
-        """
-        Reverses the balance adjustment when an invoice is voided.
-        sign=+1 for Sale (decreases customer balance), sign=-1 for Purchase (increases supplier balance).
-        """
-        from apps.parties.models import Party
-        party_id = getattr(invoice, f"{party_field}_id")
-        if party_id:
-            Party.objects.select_for_update().filter(pk=party_id).update(
-                balance=F('balance') - (sign * invoice.grand_total)
-            )
-
-
-            
+    <!-- IMAGE CROPPER MODAL -->
+    <div x-show="cropModal" x-transition.opacity class="fixed inset-0 bg-black/50 z-[80] flex items-center justify-center" style="display: none;">
+        <div class="bg-white rounded-2xl shadow-xl p-4 max-w-md w-full">
+            <h3 class="text-sm font-bold text-neutral-700 mb-3">Crop Image</h3>
+            <div class="max-h-[60vh] overflow-hidden rounded-lg"><img x-ref="cropImage" src="" class="max-w-full"></div>
+            <div class="flex gap-3 mt-4">
+                <button type="button" @click="cancelCrop" class="flex-1 px-4 py-2 text-sm font-semibold text-neutral-600 bg-neutral-100 rounded-lg hover:bg-neutral-200">Cancel</button>
+                <button type="button" @click="saveCrop" class="flex-1 px-4 py-2 text-sm font-semibold text-white bg-green-500 rounded-lg hover:bg-green-600">Crop &amp; Save</button>
+            </div>
+        </div>
+    </div>
+</form>

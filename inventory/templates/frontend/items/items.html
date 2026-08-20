@@ -11,8 +11,10 @@
         deleteModal: false, 
         deleteId: null, 
         deleteReason: '',
-        settingsModal: false
-    }" @open-modal.window="slideOver = true" @close-modal.window="slideOver = false" class="space-y-6">
+        settingsModal: false,
+        lightboxOpen: false,
+        lightboxImage: ''
+    }" @open-modal.window="slideOver = true" @close-modal.window="slideOver = false" @open-lightbox.window="lightboxImage = event.detail.url; lightboxOpen = true" class="space-y-6">
 
     <!-- Page Header -->
     <div class="flex items-center justify-between">
@@ -228,6 +230,14 @@
         </div>
     </div>
 
+    <!-- LIGHTBOX MODAL -->
+    <div x-show="lightboxOpen" 
+         x-transition.opacity 
+         @click="lightboxOpen = false" 
+         class="fixed inset-0 bg-black/90 z-[90] flex items-center justify-center p-8 cursor-zoom-out" 
+         style="display: none;">
+        <img :src="lightboxImage" class="max-w-full max-h-full rounded-xl shadow-2xl object-contain" alt="Full size image">
+    </div>
 </div>
 
 <script>
@@ -288,9 +298,23 @@ function itemForm(itemId, isEditable, isLocked) {
         cartonUnitId: '',
         _idCounter: 0,
 
-        genId() {
+        genID() {
             this._idCounter += 1;
             return `row_${Date.now()}_${this._idCounter}`;
+        },
+
+        fmt(val) {
+            return parseFloat(val || 0).toFixed(2);
+        },
+
+        // FIX 1 & 2: Reactive getters to perfectly track Base Unit changes
+        get baseUnitShort() { 
+            const id = this.grid[0]?.unit_id;
+            return id && this.unitMap[id] ? this.unitMap[id].short_name : 'Select above'; 
+        },
+        get baseUnitName() { 
+            const id = this.grid[0]?.unit_id;
+            return id && this.unitMap[id] ? this.unitMap[id].name : 'First Select a base unit'; 
         },
 
         init() {
@@ -309,22 +333,28 @@ function itemForm(itemId, isEditable, isLocked) {
             if (dataEl && dataEl.textContent.trim() !== '[]') {
                 this.grid = JSON.parse(dataEl.textContent);
                 this.grid.forEach((row) => {
-                    row.id = this.genId();
+                    row.id = this.genID();
+                    row.unit_id = String(row.unit_id || ''); 
+                    
                     if (!row.prices) row.prices = {};
+                    if (row.cost) this.overrideTracker[`${row.id}_cost`] = true;
+                    
                     for (const tierId in row.prices) {
-                        this.overrideTracker[`${row.id}_${tierId}`] = true;
+                        const strTierId = String(tierId);
+                        row.prices[strTierId] = row.prices[tierId];
+                        this.overrideTracker[`${row.id}_${strTierId}`] = true;
                     }
                 });
             } else {
-                this.grid = [{ id: this.genId(), unit_id: '', factor: 1, barcode: '', cost: '', prices: {} }];
+                this.grid = [{ id: this.genID(), unit_id: '', factor: 1, barcode: '', cost: '', prices: {} }];
                 if (this.cartonUnitId) {
-                    this.grid.push({ id: this.genId(), unit_id: this.cartonUnitId, factor: '', barcode: '', cost: '', prices: {} });
+                    this.grid.push({ id: this.genID(), unit_id: String(this.cartonUnitId), factor: '', barcode: '', cost: '', prices: {} });
                 }
             }
         },
 
         addRow() {
-            this.grid.push({ id: this.genId(), unit_id: '', factor: 1, barcode: '', cost: '', prices: {} });
+            this.grid.push({ id: this.genID(), unit_id: '', factor: 1, barcode: '', cost: '', prices: {} });
             this.changed = true;
         },
 
@@ -334,6 +364,7 @@ function itemForm(itemId, isEditable, isLocked) {
                 this.allTierIds.forEach(tierId => {
                     delete this.overrideTracker[`${row.id}_${tierId}`];
                 });
+                delete this.overrideTracker[`${row.id}_cost`];
             }
             this.grid.splice(index, 1);
             this.changed = true;
@@ -348,6 +379,7 @@ function itemForm(itemId, isEditable, isLocked) {
                 row.prices[tierId] = '';
                 delete this.overrideTracker[`${row.id}_${tierId}`];
             });
+            delete this.overrideTracker[`${row.id}_cost`];
             this.changed = true;
         },
 
@@ -367,24 +399,35 @@ function itemForm(itemId, isEditable, isLocked) {
             const changedCost = parseFloat(changedRow.cost) || 0;
             const changedFactor = parseFloat(changedRow.factor) || 1;
             
+            this.overrideTracker[`${changedRow.id}_cost`] = true;
+
             const baseCost = changedIndex === 0 ? changedCost : changedCost / changedFactor;
             this.grid[0].cost = baseCost.toFixed(2);
             
             this.grid.forEach((row, idx) => {
                 if (idx === 0 || idx === changedIndex) return;
                 const factor = parseFloat(row.factor) || 1;
-                row.cost = (baseCost * factor).toFixed(2);
+                if (!this.overrideTracker[`${row.id}_cost`]) {
+                    row.cost = (baseCost * factor).toFixed(2);
+                }
             });
             this.changed = true;
         },
 
-        recalculateFromBase() {
+        recalculateFromBase(changedIndex = -1) {
             const baseCost = parseFloat(this.grid[0].cost) || 0;
             this.grid.forEach((row, idx) => {
                 if (idx === 0) return; 
                 const factor = parseFloat(row.factor) || 1;
                 
-                row.cost = (baseCost * factor).toFixed(2);
+                if (idx === changedIndex) {
+                    delete this.overrideTracker[`${row.id}_cost`];
+                    this.allTierIds.forEach(tierId => delete this.overrideTracker[`${row.id}_${tierId}`]);
+                }
+
+                if (!this.overrideTracker[`${row.id}_cost`]) {
+                    row.cost = (baseCost * factor).toFixed(2);
+                }
                 
                 if (!row.prices) row.prices = {};
                 this.allTierIds.forEach(tierId => {
@@ -473,6 +516,5 @@ function itemForm(itemId, isEditable, isLocked) {
         cancelCrop() { this.cropper.destroy(); this.cropModal = false; document.getElementById('image-upload-input').value = ''; }
     }
 }
-
 </script>
 {% endblock %}

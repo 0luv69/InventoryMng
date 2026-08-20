@@ -145,11 +145,11 @@ class ItemFormView(BaseAppView):
             'suppliers': sups_qs,
             'price_tiers': tiers_qs,
             'packaging_json': packaging_json,
-            # FIX: Use standard filtered querysets for recent picks so we always get 4 active records
             'recent_categories': json.dumps([{'id': c.id, 'name': c.name} for c in Category.objects.filter(company=company).order_by('-created_at')[:4]]),
             'recent_units': json.dumps([{'id': u.id, 'name': u.name} for u in Unit.objects.filter(company=company).order_by('-created_at')[:4]]),
             'recent_suppliers': json.dumps([{'id': s.id, 'name': s.name} for s in Party.objects.filter(company=company, is_supplier=True).order_by('-created_at')[:4]]),
-            'unit_map_json': json.dumps({str(u.id): f"{u.name} ({u.short_name})" for u in units_qs}),
+
+            'unit_map_json': json.dumps({str(u.id): {'name': u.name, 'short_name': u.short_name} for u in units_qs}),
             'is_locked': item.is_locked if item else False,
             'tier_ids_json': json.dumps([t.id for t in tiers_qs]),
             'carton_unit_id': carton_unit.id if carton_unit else '',
@@ -159,7 +159,11 @@ class ItemFormView(BaseAppView):
 class ItemsTableView(BaseAppView):
     def get(self, request):
         company = self.get_company()
-        items = Item.objects.filter(company=company).select_related('category', 'base_unit').annotate(total_stock_calc=Sum('stock_batches__quantity'))
+        items = Item.objects.filter(company=company).select_related(
+            'category', 'base_unit'
+        ).prefetch_related(
+            Prefetch('uom_conversions', queryset=ItemUOM.objects.select_related('unit'))
+        ).annotate(total_stock_calc=Sum('stock_batches__quantity'))
 
         search = request.GET.get('search', '')
         if search:
@@ -260,7 +264,7 @@ class ItemSaveView(BaseAppView):
                 factor = Decimal(str(row.get('factor')))
                 if factor <= 0: raise ValueError
             except (InvalidOperation, ValueError, TypeError):
-                return JsonResponse({"success": False, "message": f"Invalid conversion factor for row {i}."}, status=400)
+                return JsonResponse({"success": False, "message": f"Invalid conversion factor for row {i}. It must be a positive number."}, status=400)
 
             parsed_uoms.append({'unit_id': unit_id, 'factor': factor, 'barcode': row.get('barcode', '')})
 

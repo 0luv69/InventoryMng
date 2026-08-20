@@ -1,3 +1,14 @@
+<style>
+  .pkg-grid-scroll::-webkit-scrollbar { width: 8px; height: 8px; }
+  .pkg-grid-scroll::-webkit-scrollbar-track { background: #f8fafc; border-radius: 10px; }
+  .pkg-grid-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+  .pkg-grid-scroll::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+  .pkg-grid-scroll { scrollbar-width: thin; scrollbar-color: #cbd5e1 #f8fafc; touch-action: pan-x pan-y; }
+  .pkg-grid-scroll input[type=number]::-webkit-inner-spin-button,
+  .pkg-grid-scroll input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+  .pkg-grid-scroll input[type=number] { -moz-appearance: textfield; }
+</style>
+
 <!-- HIDDEN SCRIPT TAGS FOR SAFE JSON PASSING -->
 <script id="packaging-data" type="application/json">{{ packaging_json|safe }}</script>
 <script id="recent-cats-data" type="application/json">{{ recent_categories|safe }}</script>
@@ -43,10 +54,8 @@
     </div>
     {% endif %}
 
-    <!-- Wrapper to prevent UI breaking on Fullscreen -->
     <div class="max-w-3xl mx-auto space-y-6">
-
-        <!-- Row 1 (Fixed Alignment) -->
+        <!-- Row 1 -->
         <div class="grid grid-cols-3 gap-6 items-start">
             <div class="col-span-1">
                 <label class="block text-xs font-semibold text-neutral-600 mb-1.5">Item Image</label>
@@ -59,12 +68,7 @@
                 </div>
                 <input type="file" id="image-upload-input" name="image" accept="image/*" class="hidden" :disabled="!editable" @change="handleFileSelect($event)">
                 <input type="hidden" name="clear_image" :value="imageRemoved ? '1' : '0'">
-                
-                <button type="button" x-show="imagePreview && editable" 
-                        @click="imagePreview = ''; document.getElementById('image-upload-input').value = ''; imageRemoved = true; changed = true" 
-                        class="mt-2 text-xs font-semibold text-red-500 hover:text-red-600 cursor-pointer">
-                    Remove Image
-                </button>
+                <button type="button" x-show="imagePreview && editable" @click="imagePreview = ''; document.getElementById('image-upload-input').value = ''; imageRemoved = true; changed = true" class="mt-2 text-xs font-semibold text-red-500 hover:text-red-600 cursor-pointer">Remove Image</button>
             </div>
             <div class="col-span-2 space-y-4">
                 <div>
@@ -74,7 +78,7 @@
             </div>
         </div>
 
-        <!-- Row 2 (Category + Supplier with Pills) -->
+        <!-- Row 2 -->
         <div class="grid grid-cols-2 gap-4">
             <div>
                 <label class="block text-xs font-semibold text-neutral-600 mb-1.5">Category</label>
@@ -100,96 +104,162 @@
             </div>
         </div>
 
-        <!-- PACKAGING, COST & SELLING PRICE GRID -->
+        <!-- Row 3 -->
         <div class="border-t border-neutral-100 pt-6">
-            <h3 class="text-xs font-bold text-neutral-600 uppercase tracking-wider mb-3">Packaging, Cost & Selling Price</h3>
-            
-            <!-- Base Unit Dropdown (Locked if is_locked) -->
-            <div class="mb-4">
-                <label class="block text-xs font-semibold text-neutral-600 mb-1.5">Base Unit (Stock Tracked Here) *</label>
-                <div class="flex flex-wrap gap-1 mb-2" x-show="editable && !isLocked">
-                    <template x-for="unt in recentUnits" :key="unt.id">
-                        <button type="button" @click="grid[0].unit_id = String(unt.id); handleBaseUnitChange()" :class="grid[0].unit_id == String(unt.id) ? 'bg-green-500 text-white' : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'" class="px-2.5 py-1 text-xs font-semibold rounded-full transition-colors" x-text="unt.name"></button>
-                    </template>
-                </div>
-                <select x-model="grid[0].unit_id" @change="handleBaseUnitChange()" required :disabled="!editable || isLocked" class="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white" :class="!editable || isLocked ? 'bg-neutral-50 cursor-not-allowed' : ''">
-                    <option value="">Select Base Unit</option>{% for u in units %}<option value="{{ u.id }}">{{ u.name }} ({{ u.short_name }})</option>{% endfor %}
-                </select>
-                <p x-show="isLocked" class="text-[0.65rem] text-amber-500 mt-1">Base unit is locked because this item has existing transactions.</p>
+            <div class="flex items-center justify-between mb-3">
+                <h3 class="text-sm font-bold text-neutral-800">Packaging, Cost & Pricing Grid</h3>
+                <span class="text-[0.65rem] text-neutral-400 bg-neutral-100 px-2 py-1 rounded-full flex items-center gap-1">
+                    <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+                    Auto-calculates based on Base Unit
+                </span>
             </div>
 
-            <!-- The Grid -->
-            <div class="overflow-x-auto bg-neutral-50 p-4 rounded-xl border border-neutral-100"
-                 style="--pkg-cols: 200px 130px 150px 130px repeat({{ price_tiers|length }}, 110px);">
-
-                <div class="grid gap-3 items-center text-xs font-bold text-neutral-500 uppercase tracking-wider mb-3 w-max px-1" style="grid-template-columns: var(--pkg-cols);">
-                    <div>Unit</div>
-                    <div>Contains</div>
-                    <div>Barcode</div>
-                    <div class="text-right">Cost (Rs)</div>
-                    {% for tier in price_tiers %}
-                    <div class="text-right truncate" title="{{ tier.name }}">{{ tier.name }}</div>
-                    {% endfor %}
+            <div class="mb-4 p-4 bg-neutral-50/50 rounded-xl border border-neutral-200">
+                <label class="block text-xs font-bold text-neutral-700 mb-2 uppercase tracking-wide">Primary Base Unit (Inventory Tracked Here) *</label>
+                <div class="flex flex-wrap gap-1.5 mb-3" x-show="editable && !isLocked">
+                    <template x-for="unt in recentUnits" :key="unt.id">
+                        <button type="button" @click="grid[0].unit_id = String(unt.id); handleBaseUnitChange()" :class="grid[0].unit_id == String(unt.id) ? 'bg-green-500 text-white shadow-sm' : 'bg-white text-neutral-600 border border-neutral-200 hover:border-green-300'" class="px-3 py-1.5 text-xs font-semibold rounded-full transition-all" x-text="unt.name"></button>
+                    </template>
                 </div>
+                <select x-model="grid[0].unit_id" @change="handleBaseUnitChange()" required :disabled="!editable || isLocked" class="w-full max-w-xs px-4 py-2.5 text-sm border border-neutral-200 rounded-xl bg-white focus:ring-2 focus:ring-green-500/20 font-medium" :class="!editable || isLocked ? 'bg-neutral-100 cursor-not-allowed' : ''">
+                    <option value="">Select Base Unit</option>{% for u in units %}<option value="{{ u.id }}">{{ u.name }} ({{ u.short_name }})</option>{% endfor %}
+                </select>
+                <p x-show="isLocked" class="text-[0.65rem] text-amber-600 font-medium mt-2 flex items-center gap-1">
+                    <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    Base unit is locked because this item has existing transactions.
+                </p>
+            </div>
+            
+            <!-- THE SPREADSHEET TABLE -->
+            <div class="border border-neutral-200 rounded-xl overflow-hidden shadow-sm bg-white">
+                <div class="pkg-grid-scroll overflow-auto" style="max-height: calc(100vh - 350px);">
+                    <!-- FIX 3: Barcode column reduced to 120px -->
+                    <div class="min-w-max" style="--pkg-cols: 140px 130px 120px 110px repeat({{ price_tiers|length }}, 110px) 40px;">
+                        
+                        <!-- TABLE HEADER -->
+                        <div class="grid items-center text-[0.65rem] font-bold text-neutral-500 uppercase tracking-wider bg-neutral-50 border-b border-neutral-200 sticky top-0 z-20" style="grid-template-columns: var(--pkg-cols);">
+                            <!-- FIX 6: Non-sticky on mobile -->
+                            <div class="px-4 h-10 flex items-center static md:sticky md:left-0 md:z-10 bg-neutral-50 border-r border-neutral-200">Unit</div>
+                            <div class="px-4 h-10 flex items-center border-r border-neutral-200">Contains</div>
+                            <div class="px-4 h-10 flex items-center border-r border-neutral-200">Barcode / SKU</div>
+                            <div class="px-4 h-10 flex items-center justify-end border-r border-neutral-200">Cost (Rs)</div>
+                            {% for tier in price_tiers %}
+                            <div class="px-4 h-10 flex items-center justify-end border-r border-neutral-200 truncate" title="{{ tier.name }}">{{ tier.name }}</div>
+                            {% endfor %}
+                            <div class="px-4 h-10 flex items-center justify-center static md:sticky md:right-0 md:z-10 bg-neutral-50 border-l border-neutral-200"></div>
+                        </div>
 
-                <template x-for="(row, index) in grid" :key="row.id">
-                    <div class="relative grid gap-3 items-center mb-4 w-max p-3 rounded-xl border shadow-sm"
-                         :class="index === 0 ? 'bg-emerald-50/60 border-emerald-200' : 'bg-white border-neutral-200'"
-                         style="grid-template-columns: var(--pkg-cols);">
-
-                        <!-- Corner delete button: half in, half out of the card -->
-                        <button type="button" x-show="index > 0 && editable" @click="removeRow(index)"
-                                class="absolute -top-3 -left-3 w-6 h-6 rounded-full bg-red-500 hover:bg-red-600 text-white flex items-center justify-center shadow-md ring-2 ring-white transition-colors z-10">
-                            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                        </button>
-
-                        <div>
-                            <template x-if="index === 0">
-                                <div class="text-sm font-medium text-neutral-800 h-[38px] flex items-center gap-1.5">
-                                    <span x-text="unitMap[row.unit_id] || 'Select above'"></span>
-                                    <span class="text-[0.6rem] font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded shrink-0">BASE</span>
+                        <!-- TABLE ROWS -->
+                        <template x-for="(row, index) in grid" :key="row.id">
+                            <div class="grid items-center border-b border-neutral-100 last:border-b-0 group transition-colors"
+                                 :class="index === 0 ? 'bg-emerald-50/40' : 'bg-white hover:bg-neutral-50'"
+                                 style="grid-template-columns: var(--pkg-cols);">
+                                
+                                <!-- 1. UNIT CELL -->
+                                <div class="static md:sticky md:left-0 md:z-10 flex items-center justify-between px-3 h-12 border-r border-neutral-100 transition-colors"
+                                     :class="index === 0 ? 'bg-emerald-50/40 group-hover:bg-emerald-50' : 'bg-white group-hover:bg-neutral-50'">
+                                    <template x-if="index === 0">
+                                        <div class="flex items-center gap-2 w-full">
+                                            <!-- FIX 2 & 1: Use reactive getters -->
+                                            <span class="text-sm font-semibold text-neutral-800 truncate" 
+                                                  x-text="baseUnitName" 
+                                                  :title="baseUnitName"></span>
+                                            <span class="text-[0.6rem] font-bold text-emerald-700 bg-emerald-200/60 px-1.5 py-0.5 rounded shrink-0">BASE</span>
+                                        </div>
+                                    </template>
+                                    <template x-if="index > 0">
+                                        <select x-model="row.unit_id" @change="updateGridRow(row)" :disabled="!editable" class="w-full bg-transparent text-sm font-medium text-neutral-700 focus:outline-none cursor-pointer truncate disabled:opacity-60 disabled:cursor-not-allowed">
+                                            <option value="">Select Unit</option>
+                                            {% for u in units %}
+                                            <option value="{{ u.id }}" :disabled="grid.some((r, idx) => idx !== index && r.unit_id === '{{ u.id }}')">{{ u.name }} ({{ u.short_name }})</option>
+                                            {% endfor %}
+                                        </select>
+                                    </template>
                                 </div>
-                            </template>
-                            <template x-if="index > 0">
-                                <select x-model="row.unit_id" @change="updateGridRow(row)" :disabled="!editable" class="w-full px-2 py-2 text-sm border border-neutral-200 rounded-lg bg-white h-[38px]">
-                                    <option value="">Select Unit</option>
-                                    {% for u in units %}
-                                    <option value="{{ u.id }}" :disabled="grid.some((r, idx) => idx !== index && r.unit_id === '{{ u.id }}')">{{ u.name }}</option>
-                                    {% endfor %}
-                                </select>
-                            </template>
+
+                                <!-- 2. CONTAINS CELL -->
+                                <div class="flex items-center px-3 h-12 border-r border-neutral-100">
+                                    <template x-if="index === 0">
+                                        <span class="text-xs text-neutral-400 italic font-medium">— Base Unit —</span>
+                                    </template>
+                                    <template x-if="index > 0">
+                                        <div class="flex items-center gap-1.5 w-full text-sm">
+                                            <span class="text-neutral-400 font-mono font-bold">=</span>
+                                            <input type="number" x-model="row.factor" @input="recalculateFromBase(index)" 
+                                                   @blur="row.factor = fmt(row.factor)"
+                                                   step="0.01" min="0.01" placeholder="1" :disabled="!editable" 
+                                                   @keydown.arrow-up.prevent @keydown.arrow-down.prevent onwheel="this.blur()"
+                                                   @focus="requestAnimationFrame(() => $el.scrollIntoView({ inline: 'nearest', block: 'nearest' }))"
+                                                   class="w-16 px-1.5 py-1 bg-transparent border border-transparent rounded text-sm text-neutral-800 text-center font-medium hover:bg-white focus:bg-white focus:border-green-400 focus:ring-2 focus:ring-green-500/20 outline-none transition-all disabled:opacity-60 disabled:cursor-not-allowed">
+                                            <!-- FIX 1: Reactive short name instead of 'base' -->
+                                            <span class="text-neutral-500 truncate max-w-[60px] text-xs font-medium" 
+                                                  x-text="baseUnitShort" 
+                                                  :title="baseUnitName"></span>
+                                        </div>
+                                    </template>
+                                </div>
+
+                                <!-- 3. BARCODE CELL -->
+                                <div class="flex items-center px-3 h-12 border-r border-neutral-100">
+                                    <input type="text" x-model="row.barcode" :disabled="!editable" placeholder="Scan or type..." 
+                                           @focus="requestAnimationFrame(() => $el.scrollIntoView({ inline: 'nearest', block: 'nearest' }))"
+                                           class="w-full px-2 py-1.5 bg-transparent border border-transparent rounded-md text-sm text-neutral-800 placeholder-neutral-300 hover:bg-white/80 focus:bg-white focus:border-green-400 focus:ring-2 focus:ring-green-500/20 outline-none transition-all disabled:opacity-60 disabled:cursor-not-allowed">
+                                </div>
+
+                                <!-- 4. COST CELL -->
+                                <div class="flex items-center justify-end px-3 h-12 border-r border-neutral-100">
+                                    <div class="relative w-full max-w-[100px]">
+                                        <span class="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-neutral-400 pointer-events-none">Rs</span>
+                                        <input type="number" x-model="row.cost" @input="recalculateCost(index)" 
+                                               @blur="row.cost = fmt(row.cost)"
+                                               step="0.01" min="0" :disabled="!editable" placeholder="0.00"
+                                               @keydown.arrow-up.prevent @keydown.arrow-down.prevent onwheel="this.blur()"
+                                               @focus="requestAnimationFrame(() => $el.scrollIntoView({ inline: 'nearest', block: 'nearest' }))"
+                                               class="w-full pl-7 pr-2 py-1.5 bg-transparent border border-transparent rounded-md text-sm text-neutral-800 text-right hover:bg-white/80 focus:bg-white focus:border-green-400 focus:ring-2 focus:ring-green-500/20 outline-none transition-all disabled:opacity-60 disabled:cursor-not-allowed">
+                                    </div>
+                                </div>
+
+                                <!-- 5. TIER CELLS -->
+                                {% for tier in price_tiers %}
+                                <div class="flex items-center justify-end px-3 h-12 border-r border-neutral-100">
+                                    <div class="relative w-full max-w-[100px]">
+                                        <span class="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-neutral-400 pointer-events-none">Rs</span>
+                                        <input type="number" x-model="row.prices[{{ tier.id }}]" @input="recalculateTier(index, '{{ tier.id }}')" 
+                                               @blur="row.prices['{{ tier.id }}'] = fmt(row.prices['{{ tier.id }}'])"
+                                               step="0.01" min="0" :disabled="!editable" placeholder="0.00"
+                                               @keydown.arrow-up.prevent @keydown.arrow-down.prevent onwheel="this.blur()"
+                                               @focus="requestAnimationFrame(() => $el.scrollIntoView({ inline: 'nearest', block: 'nearest' }))"
+                                               class="w-full pl-7 pr-2 py-1.5 bg-transparent border border-transparent rounded-md text-sm text-neutral-800 text-right hover:bg-white/80 focus:bg-white focus:border-green-400 focus:ring-2 focus:ring-green-500/20 outline-none transition-all disabled:opacity-60 disabled:cursor-not-allowed">
+                                    </div>
+                                </div>
+                                {% endfor %}
+
+                                <!-- 6. ACTIONS CELL -->
+                                <div class="sticky md:right-0 md:z-10 flex items-center justify-center h-12 border-l border-neutral-100 transition-colors"
+                                     :class="index === 0 ? 'bg-emerald-50/40 group-hover:bg-emerald-50' : 'bg-white group-hover:bg-neutral-50'">
+                                    <button type="button" x-show="index > 0 && editable" @click="removeRow(index)"
+                                            class="opacity-40 group-hover:opacity-100 text-neutral-400 hover:text-red-500 transition-all p-1.5 rounded-md hover:bg-red-50" title="Delete Row">
+                                        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                                    </button>
+                                    <template x-if="index === 0">
+                                       <span class="text-[0.6rem] text-neutral-400 font-bold uppercase tracking-wider">Base</span>
+                                    </template>
+                                </div>
+
+                            </div>
+                        </template>
+
+                        <!-- ADD ROW FOOTER -->
+                        <div class="grid border-t border-neutral-100 bg-neutral-50/50" style="grid-template-columns: var(--pkg-cols);">
+                            <button type="button" x-show="editable" @click="addRow()" class="col-span-full py-3 text-sm font-semibold text-neutral-500 hover:text-green-600 hover:bg-green-50/50 transition-all flex items-center justify-center gap-2">
+                                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                                Add Pack Size Row
+                            </button>
                         </div>
 
-                        <div class="text-sm text-neutral-500 h-[38px] flex items-center">
-                            <template x-if="index === 0"><span class="text-neutral-400">—</span></template>
-                            <template x-if="index > 0">
-                                <span class="flex items-center gap-1">
-                                    = <input type="number" x-model="row.factor" @input="recalculateFromBase()" step="0.01" placeholder="e.g. 12" :disabled="!editable" class="w-20 px-1 py-1 text-sm border border-neutral-200 rounded-md">
-                                    <span x-text="unitMap[grid[0].unit_id] || 'Base'" class="truncate"></span>
-                                </span>
-                            </template>
-                        </div>
-
-                        <div>
-                            <input type="text" x-model="row.barcode" :disabled="!editable" class="w-full px-2 py-2 text-sm border border-neutral-200 rounded-lg bg-white h-[38px]">
-                        </div>
-
-                        <div>
-                            <input type="number" x-model="row.cost" @input="recalculateCost(index)" step="0.01" :disabled="!editable" class="w-full px-2 py-2 text-sm border border-neutral-200 rounded-lg bg-white text-right h-[38px]">
-                        </div>
-
-                        {% for tier in price_tiers %}
-                        <div>
-                            <input type="number" x-model="row.prices[{{ tier.id }}]" @input="recalculateTier(index, '{{ tier.id }}')" step="0.01" :disabled="!editable" class="w-full px-2 py-2 text-sm border border-neutral-200 rounded-lg bg-white text-right h-[38px]">
-                        </div>
-                        {% endfor %}
                     </div>
-                </template>
-                
-                <button type="button" x-show="editable" @click="addRow()" class="mt-1 text-xs font-semibold text-green-600 hover:text-green-700 flex items-center gap-1">
-                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                    Add Pack Size
-                </button>
+                </div>
+                <p class="text-[0.65rem] text-neutral-400 text-center py-2 bg-neutral-50 border-t border-neutral-100">Tip: Use <kbd class="px-1 bg-white border rounded text-[0.6rem]">Tab</kbd> key to move smoothly between cells without scrolling.</p>
             </div>
         </div>
 
