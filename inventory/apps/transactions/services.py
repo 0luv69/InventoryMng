@@ -2,12 +2,18 @@
 
 from django.db import transaction, models
 from django.core.exceptions import ValidationError
-from decimal import Decimal
 from django.db.models import F
 from apps.inventory.models import StockBatch, StockMovement
 from .models import PurchaseItemLine, SaleItemLine, SaleItemLineBatch
 from apps.catalog.models import Item
 from apps.core.utils import get_vat_rate
+from decimal import Decimal, ROUND_HALF_UP
+from datetime import date
+
+TWO_PLACES = Decimal('0.01')
+RUPEE = Decimal('1')
+
+
 class InventoryService:
     """ Handles all stock movements, MAC calculations, and validations """
     @staticmethod
@@ -60,11 +66,12 @@ class InventoryService:
     def process_sale_line(line):
         base_qty = line.quantity * line.conversion_factor
 
-        batches = StockBatch.objects.select_for_update().filter(
+        batches = list(StockBatch.objects.select_for_update().filter(
             company=line.company, item=line.item, warehouse=line.warehouse, quantity__gt=0
-        ).order_by('expiry_date', 'created_at')
+        ).order_by('created_at'))
+        batches.sort(key=lambda b: (b.expiry_date is None, b.expiry_date or date.max))
 
-        available_stock = batches.aggregate(total=models.Sum('quantity'))['total'] or 0
+        available_stock = sum(b.quantity for b in batches)
         if base_qty > available_stock:
             raise ValidationError(f"Insufficient stock for {line.item.name}. Available: {available_stock} {line.item.base_unit.short_name}")
 
@@ -115,17 +122,36 @@ class InventoryService:
         ).update(quantity=F('quantity') - base_qty)
         
         if not updated:
-            # Fallback if the batch was hard-deleted somehow
+            # Fallback if the batch was hard-deleted somehow (pre-flight makes this near-impossible)
             StockBatch.objects.create(
                 company=line.company, item=line.item, warehouse=line.warehouse,
-                batch_no=line.batch_no, quantity=-base_qty # Negative stock to flag the anomaly
+                batch_no=line.batch_no or f"ORPHAN-{line.invoice_id}-{line.id}",  # never blank
+                quantity=-base_qty # Negative stock to flag the anomaly
             )
 
         StockMovement.objects.create(
             company=line.company, item=line.item, warehouse=line.warehouse,
             batch_no=line.batch_no, movement_type='adjustment', quantity=-base_qty,
+            reference_model='PurchaseInvoice', reference_id=str(line.invoice_id),
             notes=f"Reversal of Purchase Line for Invoice {line.invoice_id}"
         )
+
+ 
+    @staticmethod
+    @transaction.atomic
+    def recompute_mac(item):
+        """
+        Rebuilds moving-average cost from live batch data (qty > 0).
+        Called after voids so cost_price self-heals to batch reality.
+        """
+        agg = StockBatch.objects.filter(item=item, quantity__gt=0).aggregate(
+            qty=models.Sum('quantity'),
+            value=models.Sum(models.F('quantity') * models.F('landing_cost')),
+        )
+        if not agg['qty']:
+            return  # No live stock left: keep last known cost, don't zero it
+        item.cost_price = (agg['value'] / agg['qty']).quantize(Decimal('0.01'), ROUND_HALF_UP)
+        item.save(update_fields=['cost_price', 'updated_at'])
 
     @staticmethod
     @transaction.atomic
@@ -161,25 +187,52 @@ class InventoryService:
 
     @staticmethod
     def recalculate_invoice_totals(invoice):
-        from decimal import Decimal, ROUND_HALF_UP
-        
-        subtotal = sum(line.line_total for line in invoice.lines.all())
-        
-        if invoice.discount_type == 'percentage':
-            inv_discount = subtotal * (invoice.discount_amount / Decimal('100'))
-        else:
-            inv_discount = invoice.discount_amount
-            
-        taxable_amount = max(subtotal - inv_discount, Decimal('0'))
+        """
+            All stored figures are NET of VAT. Works for Purchase and Sale invoices.
+            Lines' line_total must already be net (views net prices & fixed discounts
+            for VATable lines before storing). No intermediate rounding.
+        """
         vat_rate = get_vat_rate(invoice.company)
+        lines = list(invoice.lines.all())
 
-        
-        # FIX: Lines always store NET cost_price. We no longer branch on is_vat_inclusive.
-        invoice.subtotal = taxable_amount.quantize(Decimal('0.01'))
-        invoice.tax_amount = (taxable_amount * (vat_rate / Decimal('100'))).quantize(Decimal('0.01'))
-        invoice.grand_total = (invoice.subtotal + invoice.tax_amount).quantize(Decimal('0.01'))
-        
-        invoice.save(update_fields=['subtotal', 'tax_amount', 'grand_total', 'updated_at'])
+        net_subtotal = sum((l.line_total for l in lines), Decimal('0'))
+
+        if invoice.discount_type == 'percentage':
+            pct = min(invoice.discount_amount, Decimal('100'))
+            net_discount = net_subtotal * (pct / Decimal('100'))
+        else:
+            net_discount = invoice.discount_amount  # view already netted if inclusive
+
+        net_discount = min(net_discount, net_subtotal)          # defensive clamp
+        net_after_discount = net_subtotal - net_discount
+
+        # Proportional VATable share — mixed exempt/VATable bills handled automatically
+        vatable_net = sum((l.line_total for l in lines if l.is_vat_applicable), Decimal('0'))
+        vatable_after_discount = (vatable_net * (net_after_discount / net_subtotal)
+                                if net_subtotal > 0 else Decimal('0'))
+
+        tax_unrounded = vatable_after_discount * (vat_rate / Decimal('100'))
+
+        taxable = net_after_discount.quantize(TWO_PLACES, ROUND_HALF_UP)
+        tax = tax_unrounded.quantize(TWO_PLACES, ROUND_HALF_UP)
+
+        grand_unrounded = net_after_discount + tax_unrounded
+        if invoice.round_off_enabled:
+            invoice.grand_total = grand_unrounded.quantize(RUPEE, ROUND_HALF_UP)
+        else:
+            invoice.grand_total = grand_unrounded.quantize(TWO_PLACES, ROUND_HALF_UP)
+
+        # Absorbs both deliberate rounding AND residual paisa rounding:
+        invoice.round_off = invoice.grand_total - (taxable + tax)
+        invoice.subtotal = net_subtotal.quantize(TWO_PLACES, ROUND_HALF_UP)
+        invoice.tax_amount = tax
+        invoice.save(update_fields=['subtotal', 'tax_amount', 'grand_total',
+                                    'round_off', 'updated_at'])
+
+
+
+   
+
     @staticmethod
     @transaction.atomic
     def process_payment_allocation(allocation):

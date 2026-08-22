@@ -1,11 +1,17 @@
-<!-- inventory/templates/frontend/goods_in/_form.html -->
-<!-- Pass JSON safely via script tags -->
-<script id="items-data" type="application/json">
-{{ items_json|safe }}
-</script>
-<script id="invoice-lines-data" type="application/json">
-{{ lines_json|safe }}
-</script>
+{% load static %}
+<style>
+  .gi-grid-scroll::-webkit-scrollbar { width: 8px; height: 8px; }
+  .gi-grid-scroll::-webkit-scrollbar-track { background: #f8fafc; border-radius: 10px; }
+  .gi-grid-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+  .gi-grid-scroll::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+  .gi-grid-scroll { scrollbar-width: thin; scrollbar-color: #cbd5e1 #f8fafc; }
+  .gi-grid-scroll input[type=number]::-webkit-inner-spin-button,
+  .gi-grid-scroll input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+  .gi-grid-scroll input[type=number] { -moz-appearance: textfield; }
+</style>
+{{ items_data|json_script:"items-data" }}
+{{ lines_data|json_script:"invoice-lines-data" }}
+
 
 <form x-data="invoiceForm({{ invoice.id|default:'null' }}, {{ is_vat_inclusive|yesno:'true,false' }}, {{ vat_rate|default:'0' }})" 
       hx-post="{% url 'frontend:goods_in_save' %}" 
@@ -13,7 +19,8 @@
       hx-swap="innerHTML" 
       hx-on::after-request="
         if(event.detail.successful) { 
-            toast.success('Purchase saved! Stock updated.'); 
+            const ref = event.detail.xhr.getResponseHeader('X-Reference-No');
+            toast.success(ref ? 'Purchase ' + ref + ' saved! Stock updated.' : 'Purchase saved! Stock updated.'); 
             window.dispatchEvent(new CustomEvent('close-modal')); 
         } else {
             try {
@@ -80,139 +87,174 @@
         </div>
     </div>
 
-    <!-- Line Items Grid -->
+    <!-- LINE ITEMS GRID (spreadsheet) -->
     <div class="border border-neutral-200 rounded-xl overflow-hidden">
         <div class="flex items-center justify-between px-4 py-3 bg-neutral-50 border-b border-neutral-200">
             <h3 class="text-xs font-bold text-neutral-600 uppercase tracking-wider">Items Received</h3>
-            {% if not invoice %}
-            <button type="button" @click="addLine()" class="text-xs font-semibold text-green-600 hover:text-green-700 flex items-center gap-1">
+            <button type="button" @click="addLine()" x-show="!isViewMode" class="text-xs font-semibold text-green-600 hover:text-green-700 flex items-center gap-1">
                 <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                 Add Line
             </button>
-            {% endif %}
         </div>
-        
-        <div class="p-3 space-y-3">
-            <template x-for="(line, index) in lines" :key="index">
-                <div class="line-item-row grid grid-cols-12 gap-2 items-start p-2 bg-neutral-50 border border-neutral-200 rounded-lg relative">
-                    
-                    {% if not invoice %}
-                    <button type="button" @click="removeLine(index)" class="absolute top-1 right-1 text-red-400 hover:text-red-600 z-10">
-                        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-                    </button>
-                    {% endif %}
 
-                    <div class="col-span-12 md:col-span-5 relative">
-                        <label class="block text-[0.65rem] font-semibold text-neutral-500 mb-1">Item *</label>
-                        <div x-show="!line.item_id" @click="openItemPicker(index)">
-                            <div class="w-full px-3 py-2 text-sm text-neutral-400 bg-white border border-dashed border-neutral-300 rounded-lg cursor-pointer hover:border-green-500 hover:text-green-600 flex items-center gap-2">
-                                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                                Click to select item...
-                            </div>
+        <div class="gi-grid-scroll overflow-auto" style="max-height: 50vh;">
+            <div class="min-w-max" style="--gi-cols: 44px 250px 84px 122px 104px 130px 132px 138px 128px 40px;">
+
+                <!-- HEADER ROW -->
+                <div class="grid items-center text-[0.65rem] font-bold text-neutral-500 uppercase tracking-wider bg-neutral-50 border-b border-neutral-200 sticky top-0 z-20" style="grid-template-columns: var(--gi-cols);">
+                    <div class="px-2 h-10 flex items-center justify-center static md:sticky md:left-0 md:z-10 bg-neutral-50 border-r border-neutral-200">S.N.</div>
+                    <div class="px-3 h-10 flex items-center static md:sticky md:left-[44px] md:z-10 bg-neutral-50 border-r border-neutral-200">Item</div>
+                    <div class="px-3 h-10 flex items-center border-r border-neutral-200">Qty</div>
+                    <div class="px-3 h-10 flex items-center border-r border-neutral-200">UOM</div>
+                    <div class="px-3 h-10 flex items-center justify-end border-r border-neutral-200">Rate (Rs)</div>
+                    <div class="px-3 h-10 flex items-center justify-end border-r border-neutral-200">Discount</div>
+                    <div class="px-3 h-10 flex items-center border-r border-neutral-200">Batch</div>
+                    <div class="px-3 h-10 flex items-center border-r border-neutral-200">Expiry</div>
+                    <div class="px-3 h-10 flex items-center justify-end static md:sticky md:right-[40px] md:z-10 bg-neutral-50 border-r border-neutral-200">Amount (Rs)</div>
+                    <div class="px-2 h-10 flex items-center justify-center static md:sticky md:right-0 md:z-10 bg-neutral-50"></div>
+                </div>
+
+                <!-- DATA ROWS -->
+                <template x-for="(line, index) in lines" :key="line._rid">
+                    <div class="grid items-center border-b border-neutral-100 last:border-b-0 group hover:bg-neutral-50 transition-colors" style="grid-template-columns: var(--gi-cols);">
+
+                        <!-- 1. S.N. -->
+                        <div class="static md:sticky md:left-0 md:z-10 bg-white group-hover:bg-neutral-50 flex items-center justify-center px-2 h-12 border-r border-neutral-100 text-xs text-neutral-400 font-semibold" x-text="index + 1"></div>
+
+                        <!-- 2. ITEM (typeahead + browse) -->
+                        <div class="static md:sticky md:left-[44px] md:z-10 bg-white group-hover:bg-neutral-50 flex items-center gap-1 px-2 h-12 border-r border-neutral-100">
+                            <input type="text" :id="'gi-' + index + '-item'" x-model="line.search"
+                                   @input="onTypeahead(line, index, $event)"
+                                   @keydown.enter.prevent="onTAEnter(index)"
+                                   @keydown.arrow-down.prevent="moveHighlight(1)"
+                                   @keydown.arrow-up.prevent="moveHighlight(-1)"
+                                   @keydown.escape="closeTA()"
+                                   @blur="onTABlur()"
+                                   :disabled="isViewMode"
+                                   placeholder="Type name or scan barcode..." autocomplete="off"
+                                   class="w-full px-2.5 py-1.5 text-sm border border-neutral-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-green-500/30 focus:border-green-400 disabled:bg-neutral-50 disabled:text-neutral-500">
+                            <button type="button" tabindex="-1" @click="openItemPicker(index)" x-show="!isViewMode"
+                                    class="shrink-0 w-7 h-7 flex items-center justify-center rounded-lg text-neutral-400 hover:bg-neutral-100 hover:text-neutral-600" title="Browse all items">
+                                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                            </button>
+                            <input type="hidden" name="item_id[]" :value="line.item_id || ''">
                         </div>
-                        <div x-show="line.item_id" class="flex items-center justify-between h-[38px] px-3 bg-white border border-neutral-200 rounded-lg">
-                            <span class="text-sm font-medium text-neutral-800" x-text="line.item_name"></span>
-                            {% if not invoice %}<button type="button" @click="openItemPicker(index)" class="ml-2 text-xs text-blue-500 hover:text-blue-600">Change</button>{% endif %}
+
+                        <!-- 3. QTY -->
+                        <div class="flex items-center px-2 h-12 border-r border-neutral-100">
+                            <input type="number" :id="'gi-' + index + '-qty'" x-model="line.qty" name="qty[]" min="0" step="0.01"
+                                   @keydown.enter.prevent="advance(index, 'unit')" onwheel="this.blur()"
+                                   :disabled="isViewMode"
+                                   class="w-full px-2 py-1.5 text-sm text-center border border-transparent rounded-lg bg-transparent hover:bg-white focus:bg-white focus:border-green-400 focus:ring-2 focus:ring-green-500/25 outline-none transition-all disabled:bg-transparent disabled:text-neutral-500">
                         </div>
-                        <input type="hidden" name="item_id[]" :value="line.item_id">
-                    </div>
 
-                    <!-- UOM Dropdown -->
-                    <div class="col-span-4 md:col-span-3">
-                        <label class="block text-[0.65rem] font-semibold text-neutral-500 mb-1">UOM *</label>
-                        <select x-model="line.unit_id" @change="setUnit(line)" 
-                                :disabled="!line.item_id || isViewMode" 
-                                class="w-full px-2 py-2 text-sm border border-neutral-200 rounded-lg h-[38px] focus:outline-none focus:ring-1 focus:ring-green-500"
-                                :class="isViewMode ? 'bg-neutral-50 text-neutral-500 cursor-not-allowed' : 'bg-white'">
-                            <option value="">Select</option>
-                            <option :value="line.base_unit_id" x-text="line.base_unit_name + ' (Base)'"></option>
-                            <template x-for="uom in line.uoms" :key="uom.unit_id">
-                                <option :value="uom.unit_id" x-text="uom.name + ' (' + uom.factor + 'x)'"></option>
-                            </template>
-                        </select>
-                        <input type="hidden" name="unit_id[]" :value="line.unit_id">
-                        <p class="text-[0.65rem] text-green-600 font-medium mt-1" 
-                        x-show="line.unit_id && String(line.unit_id) !== String(line.base_unit_id)">
-                            = <span x-text="(parseFloat(line.qty||0) * line.conversion_factor).toFixed(2)"></span>
-                            <span x-text="line.base_unit_name"></span> added to stock
-                        </p>
-                    </div>
+                        <!-- 4. UOM -->
+                        <div class="flex items-center px-2 h-12 border-r border-neutral-100">
+                            <select :id="'gi-' + index + '-unit'" x-model="line.unit_id" @change="setUnit(line)"
+                                    @keydown.enter.prevent="advance(index, 'rate')"
+                                    :disabled="!line.item_id || isViewMode"
+                                    class="w-full px-1.5 py-1.5 text-sm border border-transparent rounded-lg bg-transparent hover:bg-white focus:bg-white focus:border-green-400 focus:ring-2 focus:ring-green-500/25 outline-none cursor-pointer disabled:opacity-60">
+                                <option value="">Select</option>
+                                <option :value="line.base_unit_id" x-text="line.base_unit_name + ' (Base)'"></option>
+                                <template x-for="uom in line.uoms" :key="uom.unit_id">
+                                    <option :value="uom.unit_id" x-text="uom.name + ' (' + uom.factor + 'x)'"></option>
+                                </template>
+                            </select>
+                            <input type="hidden" name="unit_id[]" :value="line.unit_id">
+                        </div>
 
-                    <div class="col-span-4 md:col-span-2">
-                        <label class="block text-[0.65rem] font-semibold text-neutral-500 mb-1">Qty *</label>
-                        <input type="number" x-model="line.qty" :id="'qty-input-' + index" name="qty[]" min="0" step="0.01" required 
-                               class="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-green-500 {% if invoice %}bg-neutral-50 text-neutral-500 cursor-not-allowed{% endif %}" 
-                               {% if invoice %}readonly{% endif %}>
-                    </div>
+                        <!-- 5. RATE -->
+                        <div class="flex items-center justify-end px-2 h-12 border-r border-neutral-100">
+                            <input type="number" :id="'gi-' + index + '-rate'" x-model="line.cost_price" name="cost_price[]" min="0" step="0.01"
+                                   @keydown.enter.prevent="advance(index, 'disc')" onwheel="this.blur()"
+                                   :disabled="isViewMode"
+                                   class="w-full px-2 py-1.5 text-sm text-right border border-transparent rounded-lg bg-transparent hover:bg-white focus:bg-white focus:border-green-400 focus:ring-2 focus:ring-green-500/25 outline-none transition-all disabled:bg-transparent disabled:text-neutral-500">
+                        </div>
 
-                    <div class="col-span-4 md:col-span-2">
-                        <label class="block text-[0.65rem] font-semibold text-neutral-500 mb-1">Cost *</label>
-                        <input type="number" x-model="line.cost_price" name="cost_price[]" min="0" step="0.01" required 
-                               class="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-green-500 {% if invoice %}bg-neutral-50 text-neutral-500 cursor-not-allowed{% endif %}" 
-                               {% if invoice %}readonly{% endif %}>
-                    </div>
-
-                    <!-- Discount -->
-                    <div class="col-span-6 md:col-span-3">
-                        <label class="block text-[0.65rem] font-semibold text-neutral-500 mb-1">Discount</label>
-                        <div class="flex gap-1">
-                            <input type="number" x-model="line.discount_amount" name="discount_amount[]" min="0" 
-                                :max="line.discount_type === 'percentage' ? 100 : null" step="0.01" placeholder="0"
-                                title="Discount applied to this line only, separate from the invoice-level discount."
-                                class="w-full px-2 py-2 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-green-500 {% if invoice %}bg-neutral-50 text-neutral-500 cursor-not-allowed{% endif %}"
-                                {% if invoice %}readonly{% endif %}>
-                            <select x-model="line.discount_type" name="discount_type[]"
-                                    class="w-16 px-1 py-2 text-xs border border-neutral-200 rounded-lg bg-white {% if invoice %}bg-neutral-50 text-neutral-500 cursor-not-allowed{% endif %}"
-                                    {% if invoice %}disabled{% endif %}>
+                        <!-- 6. DISCOUNT -->
+                        <div class="flex items-center justify-end gap-1 px-2 h-12 border-r border-neutral-100">
+                            <input type="number" :id="'gi-' + index + '-disc'" x-model="line.discount_amount" name="discount_amount[]" min="0" step="0.01" placeholder="0"
+                                   :max="line.discount_type === 'percentage' ? 100 : null"
+                                   @keydown.enter.prevent="advance(index, 'batch')" onwheel="this.blur()"
+                                   :disabled="isViewMode"
+                                   class="w-full px-2 py-1.5 text-sm text-right border border-transparent rounded-lg bg-transparent hover:bg-white focus:bg-white focus:border-green-400 focus:ring-2 focus:ring-green-500/25 outline-none transition-all disabled:bg-transparent disabled:text-neutral-500">
+                            <select x-model="line.discount_type" name="discount_type[]" :disabled="isViewMode"
+                                    class="w-11 px-0.5 py-1 text-[0.65rem] font-bold border border-transparent rounded bg-transparent hover:bg-white focus:bg-white focus:border-green-400 outline-none cursor-pointer text-neutral-500">
                                 <option value="fixed">Rs</option>
                                 <option value="percentage">%</option>
                             </select>
                         </div>
-                        <p class="text-[0.65rem] text-neutral-400 mt-1" x-show="parseFloat(line.discount_amount||0) > 0">
-                            − Rs. <span x-text="lineDiscountValue(line).toFixed(2)"></span> off
-                        </p>
-                    </div>
 
-                    <div class="col-span-6 md:col-span-3">
-                        <label class="block text-[0.65rem] font-semibold text-neutral-500 mb-1">Batch</label>
-                        <input type="text" x-model="line.batch_no" name="batch_no[]" 
-                               title="Batch number is optional. If left blank, it will be auto-generated."
-                               placeholder="Auto-generated if left blank"
-                               class="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-green-500 {% if invoice %}bg-neutral-50 text-neutral-500 cursor-not-allowed{% endif %}" 
-                               {% if invoice %}readonly{% endif %}>
-                    </div>
+                        <!-- 7. BATCH -->
+                        <div class="flex items-center px-2 h-12 border-r border-neutral-100">
+                            <input type="text" :id="'gi-' + index + '-batch'" x-model="line.batch_no" name="batch_no[]"
+                                   @keydown.enter.prevent="advance(index, 'expiry')"
+                                   :disabled="isViewMode" placeholder="Auto" autocomplete="off"
+                                   title="Optional. Auto-generated if left blank."
+                                   class="w-full px-2 py-1.5 text-sm border border-transparent rounded-lg bg-transparent hover:bg-white focus:bg-white focus:border-green-400 focus:ring-2 focus:ring-green-500/25 outline-none transition-all disabled:bg-transparent disabled:text-neutral-500">
+                        </div>
 
-                    <div class="col-span-6 md:col-span-3">
-                        <label class="block text-[0.65rem] font-semibold text-neutral-500 mb-1">Expiry Date</label>
-                        <input type="date" x-model="line.expiry_date" name="expiry_date[]" 
-                               class="w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-green-500 {% if invoice %}bg-neutral-50 text-neutral-500 cursor-not-allowed{% endif %}" 
-                               {% if invoice %}readonly{% endif %}>
-                    </div>
-                    
-                    <div class="col-span-12 md:col-span-1 flex items-end justify-end pb-2">
-                        <div class="text-right">
-                            <div class="text-[0.65rem] font-semibold text-neutral-500 mb-1">Total</div>
-                            <div class="text-[0.65rem] text-neutral-400 line-through" 
-                                x-show="parseFloat(line.discount_amount||0) > 0"
-                                x-text="'Rs. ' + (parseFloat(line.qty||0)*parseFloat(line.cost_price||0)).toFixed(2)"></div>
-                            <div class="text-sm font-bold text-neutral-800">
-                                Rs. <span x-text="lineTotal(line).toFixed(2)"></span>
-                            </div>
+                        <!-- 8. EXPIRY -->
+                        <div class="flex items-center px-2 h-12 border-r border-neutral-100">
+                            <input type="date" :id="'gi-' + index + '-expiry'" x-model="line.expiry_date" name="expiry_date[]"
+                                   @keydown.enter.prevent="advanceFromRowEnd(index)"
+                                   :disabled="isViewMode"
+                                   class="w-full px-1.5 py-1.5 text-xs border border-transparent rounded-lg bg-transparent hover:bg-white focus:bg-white focus:border-green-400 focus:ring-2 focus:ring-green-500/25 outline-none transition-all disabled:bg-transparent disabled:text-neutral-500">
+                        </div>
+
+                        <!-- 9. AMOUNT -->
+                        <div class="static md:sticky md:right-[40px] md:z-10 bg-white group-hover:bg-neutral-50 flex flex-col items-end justify-center px-3 h-12 border-r border-neutral-100">
+                            <div class="text-[0.65rem] text-neutral-400 line-through" x-show="lineDiscountValue(line) > 0"
+                                 x-text="((parseFloat(line.qty)||0) * (parseFloat(line.cost_price)||0)).toFixed(2)"></div>
+                            <div class="text-sm font-bold text-neutral-800" x-text="lineGross(line).toFixed(2)"></div>
+                            <div class="text-[0.6rem] text-neutral-400"
+                                 x-show="lineBeforeTax(line) !== null"
+                                 x-text="lineBeforeTax(line) !== null ? 'before tax: ' + lineBeforeTax(line).toFixed(2) : ''"></div>
+                        </div>
+
+                        <!-- 10. REMOVE -->
+                        <div class="static md:sticky md:right-0 md:z-10 bg-white group-hover:bg-neutral-50 flex items-center justify-center px-1 h-12">
+                            <button type="button" tabindex="-1" @click="removeLine(index)" x-show="!isViewMode"
+                                    class="w-7 h-7 flex items-center justify-center rounded-lg text-neutral-300 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all">
+                                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                            </button>
                         </div>
                     </div>
-                </div>
-            </template>
-            
-            <div x-show="lines.length === 0" class="px-6 py-10 text-center text-sm text-neutral-400 border border-dashed border-neutral-200 rounded-lg">
-                No items added. Click "Add Line" to start receiving stock.
+                </template>
             </div>
         </div>
+
+        <div class="px-4 py-2 bg-neutral-50/50 border-t border-neutral-100 text-[0.65rem] text-neutral-400 flex items-center justify-between">
+            <span>Tab / Enter to move · Enter on last column adds a new row</span>
+            <span x-text="lines.filter(l => l.item_id).length + ' item(s)'"></span>
+        </div>
+    </div>
+
+    <!-- TYPEAHEAD DROPDOWN (single, fixed position — never clipped by scroll containers) -->
+    <div x-show="ta.open" x-transition.opacity
+         :style="ta.style"
+         class="fixed z-[120] bg-white border border-neutral-200 rounded-xl shadow-2xl max-h-60 overflow-y-auto">
+        <template x-for="(s, si) in ta.suggestions" :key="s.id">
+            <div @mousedown.prevent="selectSuggestion(ta.index, s)"
+                 @mousemove="ta.highlight = si"
+                 class="px-3 py-2 flex items-center justify-between gap-3 cursor-pointer border-b border-neutral-50 last:border-b-0"
+                 :class="ta.highlight === si ? 'bg-green-50' : 'hover:bg-neutral-50'">
+                <div class="min-w-0">
+                    <div class="text-sm font-medium text-neutral-800 truncate" x-text="s.name"></div>
+                    <div class="text-[0.65rem] text-neutral-400 truncate" x-text="typeaheadMeta(s)"></div>
+                </div>
+                <div class="text-right shrink-0">
+                    <div class="text-xs text-neutral-600 font-medium" x-text="'Rs. ' + s.cost_price"></div>
+                    <div class="text-[0.65rem] font-semibold" :class="parseFloat(s.stock) > 0 ? 'text-green-600' : 'text-red-400'" x-text="s.stock + ' in stock'"></div>
+                </div>
+            </div>
+        </template>
     </div>
 
     <!-- Totals & Submit -->
     <div class="flex justify-end">
         <div class="w-full md:w-1/2 space-y-3 bg-neutral-50 p-4 rounded-xl border border-neutral-100">
-            
+
             {% if not invoice %}
             <!-- VAT Segmented Control -->
             <div class="flex items-center justify-between pb-2 border-b border-neutral-200">
@@ -223,20 +265,27 @@
                 </div>
             </div>
             {% else %}
-             <!-- In View Mode, Just show the status -->
-             <div class="flex items-center justify-between pb-2 border-b border-neutral-200">
+            <div class="flex items-center justify-between pb-2 border-b border-neutral-200">
                 <span class="text-sm font-semibold text-neutral-700">VAT Calculation</span>
                 <span class="px-2 py-1 text-[0.65rem] font-bold bg-neutral-200 text-neutral-600 border border-neutral-300 rounded-md" x-text="isVatInclusive ? 'Inclusive' : 'Exclusive'"></span>
             </div>
             {% endif %}
 
+            <!-- Subtotal -->
             <div class="flex justify-between text-sm">
-                <span class="text-neutral-500">Subtotal</span>
-                <span class="font-semibold text-neutral-800">Rs. <span x-text="subtotal.toFixed(2)"></span></span>
+                <span class="text-neutral-500" x-text="isVatInclusive ? 'Subtotal (Before Tax)' : 'Subtotal'"></span>
+                <span class="font-semibold text-neutral-800">Rs. {% if invoice %}{{ invoice.subtotal|floatformat:2 }}{% else %}<span x-text="subtotal.toFixed(2)"></span>{% endif %}</span>
             </div>
 
-            {% if not invoice %}
-            <!-- Invoice Level Discount -->
+            <!-- Invoice Discount -->
+            {% if invoice %}
+                {% if view_discount_value > 0 %}
+                <div class="flex justify-between text-sm">
+                    <span class="text-neutral-500">Invoice Discount{% if invoice.discount_type == 'percentage' %} ({{ invoice.discount_amount|floatformat:2 }}%){% endif %}</span>
+                    <span class="font-semibold text-neutral-600">− Rs. {{ view_discount_value|floatformat:2 }}</span>
+                </div>
+                {% endif %}
+            {% else %}
             <div class="flex justify-between items-center text-sm">
                 <div class="flex items-center gap-2">
                     <span class="text-neutral-500">Invoice Discount</span>
@@ -247,21 +296,43 @@
                 </div>
                 <input type="number" x-model="invDiscountAmount" min="0" step="0.01" class="w-24 px-2 py-1 text-sm text-right border border-neutral-200 rounded-md bg-white">
             </div>
-            <!-- Hidden inputs to send discount to Django -->
             <input type="hidden" name="discount_type" :value="invDiscountType">
             <input type="hidden" name="discount_amount" :value="invDiscountAmount || 0">
             {% endif %}
 
+            <!-- Taxable Amount -->
+            <div class="flex justify-between text-sm">
+                <span class="text-neutral-500">Taxable Amount</span>
+                <span class="font-semibold text-neutral-800">Rs. {% if invoice %}{{ view_taxable|floatformat:2 }}{% else %}<span x-text="taxableAmount.toFixed(2)"></span>{% endif %}</span>
+            </div>
+
+            <!-- VATable / Exempt split (only when the bill actually mixes) -->
+            <div class="flex justify-between text-[0.7rem] text-neutral-400" x-show="hasMixedVat">
+                <span>VATable / Exempt portion</span>
+                <span x-text="'Rs. ' + vatableNet.toFixed(2) + '  ·  Rs. ' + (subtotal - vatableNet).toFixed(2)"></span>
+            </div>
+
+            <!-- VAT -->
             <div class="flex justify-between text-sm">
                 <span class="text-neutral-500">VAT (<span x-text="vatRate"></span>%)</span>
-                <span class="font-semibold text-neutral-800">Rs. <span x-text="vatAmount.toFixed(2)"></span></span>
+                <span class="font-semibold text-neutral-800">Rs. {% if invoice %}{{ invoice.tax_amount|floatformat:2 }}{% else %}<span x-text="vatAmount.toFixed(2)"></span>{% endif %}</span>
             </div>
+
+            {% if invoice and invoice.round_off != 0 %}
+            <div class="flex justify-between text-sm">
+                <span class="text-neutral-500">Round Off</span>
+                <span class="font-semibold text-neutral-600">{% if invoice.round_off > 0 %}+{% endif %}Rs. {{ invoice.round_off|floatformat:2 }}</span>
+            </div>
+            {% endif %}
+
+            <!-- Grand Total -->
             <div class="flex justify-between text-base pt-2 border-t border-neutral-200">
                 <span class="font-bold text-neutral-900">Grand Total</span>
-                <span class="font-extrabold text-green-600">Rs. <span x-text="grandTotal.toFixed(2)"></span></span>
+                <span class="font-extrabold text-green-600">Rs. {% if invoice %}{{ invoice.grand_total|floatformat:2 }}{% else %}<span x-text="grandTotal.toFixed(2)"></span>{% endif %}</span>
             </div>
         </div>
     </div>
+
 
     <!-- Sticky Action Bar -->
     <div class="pt-4 border-t border-neutral-100 flex justify-end gap-3">

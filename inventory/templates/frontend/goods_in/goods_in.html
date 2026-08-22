@@ -1,6 +1,8 @@
 <!-- inventory/templates/frontend/goods_in/goods_in.html -->
 
 {% extends 'base.html' %}
+{% load static %}
+
 
 {% block title %}Goods In — InventoryChamps{% endblock %}
 {% block page_title %}Goods In (Purchases){% endblock %}
@@ -29,7 +31,7 @@
     </div>
 
     <!-- Toolbar (Search & Filter Dropdown) -->
-    <div class="bg-white border border-neutral-100 rounded-2xl p-4 flex items-center gap-3">
+    <div class="bg-white border border-neutral-100 rounded-2xl p-4 flex items-center gap-3 flex-wrap">
         <input type="text" name="search" placeholder="Search by Ref No or Supplier..." 
                hx-get="{% url 'frontend:goods_in_table' %}" 
                hx-trigger="keyup changed delay:400ms" 
@@ -141,7 +143,7 @@
     </div>
 
     <!-- Data Table Container -->
-    <div class="bg-white border border-neutral-100 rounded-2xl overflow-hidden">
+    <div class="bg-white border border-neutral-100 rounded-2xl overflow-x-auto">
         <div id="goodsin-table" hx-get="{% url 'frontend:goods_in_table' %}" hx-trigger="load" class="w-full">
             <div class="p-8 text-center text-sm text-neutral-400">Loading purchases...</div>
         </div>
@@ -197,7 +199,22 @@
             <!-- Changed to flex-col so buttons stack and never overlap -->
             <div class="flex flex-col gap-3">
                 <button @click="voidModal = false" class="w-full px-4 py-2.5 text-sm font-semibold text-neutral-600 bg-white border border-neutral-200 rounded-xl hover:bg-neutral-50 transition-all">Cancel</button>
-                <button @click="htmx.ajax('POST', `/goods-in/void/${voidId}/`, { target: '#goodsin-table', swap: 'innerHTML', values: { void_reason: voidReason } }); voidModal = false" 
+                <button @click="
+                    fetch(`{% url 'frontend:goods_in_void' invoice_id=0 %}`.replace('0', voidId), {
+                        method: 'POST',
+                        headers: { 'X-CSRFToken': getCsrfToken() },
+                        body: new URLSearchParams({ void_reason: voidReason })
+                    }).then(async res => {
+                        if (res.ok) {
+                            document.getElementById('goodsin-table').innerHTML = await res.text();
+                            toast.success('Invoice voided and stock reversed.');
+                            voidModal = false; voidReason = '';
+                        } else {
+                            const data = await res.json().catch(() => ({}));
+                            toast.error(data.message || 'Could not void this invoice.');
+                        }
+                    });
+                "
                         class="w-full px-4 py-2.5 text-sm font-semibold text-white bg-red-500 rounded-xl hover:bg-red-600 transition-all whitespace-nowrap">
                     Void &amp; Reverse Stock
                 </button>
@@ -208,147 +225,9 @@
 </div>
 
 <!-- MOVE THE SCRIPT HERE SO ALPINE ALWAYS SEES IT -->
+ <script src="{% static 'js/invoice-form.js' %}"></script>
 <script>
-function invoiceForm(invoiceId, initialVatInclusive, vatRate) {
-    return {
-        items: [],
-        lines: [],
-        isVatInclusive: initialVatInclusive || false,
-        vatRate: vatRate || 13,
-        isViewMode: invoiceId !== null, // FIX: Clean flag for disabling inputs in view mode
-        itemPicker: { open: false, search: '', category: '', activeIndex: null },
-        invDiscountType: 'fixed',
-        invDiscountAmount: 0,
-        
-        init() {
-            const dataEl = document.getElementById('items-data');
-            if (dataEl) { try { this.items = JSON.parse(dataEl.textContent); } catch (e) {} }
-            
-            const linesEl = document.getElementById('invoice-lines-data');
-            if (linesEl && linesEl.textContent.trim() !== '[]') {
-                try { this.lines = JSON.parse(linesEl.textContent); } catch (e) { this.addLine(); }
-            } else {
-                this.addLine();
-            }
-        },
-        
-        addLine() {
-            this.lines.push({
-                item_id: null, item_name: '', qty: 1, cost_price: 0, batch_no: '', expiry_date: '',
-                uoms: [], base_unit_id: null, base_unit_name: '', unit_id: '', conversion_factor: 1,
-                discount_type: 'fixed', discount_amount: 0   // NEW
-            });
-        },
 
-        removeLine(index) { this.lines.splice(index, 1); },
-        
-        get filteredItems() {
-            return this.items.filter(item => {
-                const matchSearch = !this.itemPicker.search || item.name.toLowerCase().includes(this.itemPicker.search.toLowerCase());
-                const matchCat = !this.itemPicker.category || item.category_id == this.itemPicker.category;
-                return matchSearch && matchCat;
-            });
-        },
-        openItemPicker(index) {
-            this.itemPicker.activeIndex = index;
-            this.itemPicker.open = true;
-            this.itemPicker.search = '';
-            this.itemPicker.category = '';
-            this.$nextTick(() => { this.$refs.pickerSearch.focus(); });
-        },
-        
-        selectItem(item) {
-            const index = this.itemPicker.activeIndex;
-            this.lines[index].item_id = item.id;
-            this.lines[index].item_name = item.name;
-            this.lines[index].uoms = item.uoms;
-            this.lines[index].base_unit_id = String(item.base_unit_id);
-            this.lines[index].base_unit_name = item.base_unit_name;
-            this.lines[index].unit_id = String(item.base_unit_id);
-            this.lines[index].conversion_factor = 1;
-            
-            // FIX: VAT-inclusive cost bug. Gross up the net cost if inclusive is on.
-            let cost = parseFloat(item.cost_price);
-            if (this.isVatInclusive) {
-                cost = cost * (1 + (this.vatRate / 100));
-            }
-            this.lines[index].cost_price = cost.toFixed(2);
-            
-            this.itemPicker.open = false;
-            this.$nextTick(() => {
-                const qtyInput = document.getElementById('qty-input-' + index);
-                if(qtyInput) qtyInput.focus();
-            });
-        },
 
-        // FIX: Handle UOM change and auto-calc cost
-        setUnit(line) {
-            if (!line.unit_id) return;
-            if (line.unit_id == line.base_unit_id) {
-                line.conversion_factor = 1;
-            } else {
-                const uom = line.uoms.find(u => String(u.unit_id) === String(line.unit_id));
-                if (uom) {
-                    line.conversion_factor = parseFloat(uom.factor);
-                    const item = this.items.find(i => i.id === line.item_id);
-                    if (item) {
-                        let baseCost = parseFloat(item.cost_price);
-                        // Gross up if VAT inclusive
-                        if (this.isVatInclusive) {
-                            baseCost = baseCost * (1 + (this.vatRate / 100));
-                        }
-                        line.cost_price = (baseCost * line.conversion_factor).toFixed(2);
-                    }
-                }
-            }
-        },
-        
-
-        lineDiscountValue(line) {
-            const gross = parseFloat(line.qty || 0) * parseFloat(line.cost_price || 0);
-            const amt = parseFloat(line.discount_amount || 0);
-            const value = line.discount_type === 'percentage' ? gross * (amt / 100) : amt;
-            return Math.min(value, gross);   // preview never implies a negative line
-        },
-
-        // Helper for Item Picker table
-        getItemUnitsString(item) {
-            if (!item.uoms || item.uoms.length === 0) return item.base_unit_name;
-            const shortNames = item.uoms.map(u => `${u.name}×${u.factor}`).join(' · ');
-            return `${item.base_unit_name} · ${shortNames}`;
-        },
-        
-        lineTotal(line) {
-            const gross = parseFloat(line.qty || 0) * parseFloat(line.cost_price || 0);
-            return Math.max(gross - this.lineDiscountValue(line), 0);
-        },
-        get subtotal() {
-            return this.lines.reduce((sum, line) => sum + this.lineTotal(line), 0);
-        },
-        get invDiscountValue() {
-            if (this.invDiscountType === 'percentage') {
-                return (this.subtotal * (parseFloat(this.invDiscountAmount) || 0)) / 100;
-            }
-            return parseFloat(this.invDiscountAmount) || 0;
-        },
-        get taxableAmount() {
-            return Math.max(0, this.subtotal - this.invDiscountValue);
-        },
-        get vatAmount() {
-            if (this.isVatInclusive) {
-                return this.taxableAmount * (this.vatRate / (100 + this.vatRate));
-            } else {
-                return this.taxableAmount * (this.vatRate / 100);
-            }
-        },
-        get grandTotal() {
-            if (this.isVatInclusive) {
-                return this.taxableAmount;
-            } else {
-                return this.taxableAmount + this.vatAmount;
-            }
-        }
-    }
-}
 </script>
 {% endblock %}

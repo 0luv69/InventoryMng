@@ -10,12 +10,13 @@
 </style>
 
 <!-- HIDDEN SCRIPT TAGS FOR SAFE JSON PASSING -->
-<script id="packaging-data" type="application/json">{{ packaging_json|safe }}</script>
-<script id="recent-cats-data" type="application/json">{{ recent_categories|safe }}</script>
-<script id="recent-units-data" type="application/json">{{ recent_units|safe }}</script>
-<script id="recent-sups-data" type="application/json">{{ recent_suppliers|safe }}</script>
-<script id="unit-map-data" type="application/json">{{ unit_map_json|safe }}</script>
-<script id="all-tier-ids-data" type="application/json">{{ tier_ids_json|safe }}</script>
+{{ packaging_data|json_script:"packaging-data" }}
+{{ recent_categories|json_script:"recent-cats-data" }}
+{{ recent_units|json_script:"recent-units-data" }}
+{{ recent_suppliers|json_script:"recent-sups-data" }}
+{{ unit_map|json_script:"unit-map-data" }}
+{{ tier_ids|json_script:"all-tier-ids-data" }}
+
 
 <form x-data="itemForm({{ item.id|default:'null' }}, {% if is_editable %}true{% else %}false{% endif %}, {% if is_locked %}true{% else %}false{% endif %})" 
       @input="changed = true"
@@ -40,6 +41,7 @@
 
     {% csrf_token %}
     <input type="hidden" name="id" value="{{ item.id|default:'' }}">
+    <input type="hidden" name="context" value="table">
     <input type="hidden" name="packaging_grid" :value="JSON.stringify(gridData())">
     <input type="hidden" id="item-name-input" value="{{ item.name|default:'' }}">
     <input type="hidden" id="item-category-select" value="{{ item.category_id|default:'' }}">

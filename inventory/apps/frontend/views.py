@@ -1,35 +1,41 @@
 # frontend.views
 
-
 from django.views import View
-from datetime import timedelta
+from django.http import JsonResponse, request
 from django.shortcuts import redirect, render, get_object_or_404
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.paginator import Paginator
 from django.core.serializers.json import DjangoJSONEncoder
 from django.db.models import Sum, F, Q, Prefetch
 from django.utils import timezone
+from datetime import timedelta
 import json
 from django.core.files.storage import default_storage
 from django.db import transaction, IntegrityError
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
+from django.core.exceptions import ValidationError, PermissionDenied
+from collections import defaultdict
+
 
 from apps.catalog.models import Item, Unit, Category, PriceTier, ItemUOM, ItemPrice
-from apps.transactions.models import PurchaseInvoice, PurchaseItemLine, SaleInvoice, SaleItemLine
+from apps.transactions.models import PurchaseInvoice, PurchaseItemLine, SaleInvoice, SaleItemLine, SaleItemLineBatch
 from apps.parties.models import Party
-from apps.inventory.models import Warehouse
+from apps.inventory.models import Warehouse, StockBatch
 from apps.transactions.services import InventoryService
-from django.http import JsonResponse, request
+from apps.core.utils import get_vat_rate, _net_cost, _stored_disc, _net_disc_value, next_reference_number
 
-from django.core.exceptions import ValidationError
-
-
-from apps.core.utils import get_vat_rate
+import logging
+logger = logging.getLogger(__name__)
 
 class BaseAppView(LoginRequiredMixin, View):
     pagination_size = 30
+
     def get_company(self):
-        return self.request.user.profile.company
+        profile = getattr(self.request.user, 'profile', None)
+        if profile and profile.company:
+            return profile.company
+        raise PermissionDenied("No company linked to this account.")
+
 
 # --- Main Pages ---
 class DashboardView(BaseAppView):
@@ -92,7 +98,7 @@ class ItemFormView(BaseAppView):
         item_id = request.GET.get('id')
         is_editable = request.GET.get('editable', '0') == '1'
         item = None
-        packaging_json = '[]'
+        packaging_data = []
 
         referenced_unit_ids = set()
         referenced_cat_ids = set()
@@ -126,7 +132,6 @@ class ItemFormView(BaseAppView):
                 'cost': str(item.cost_price.quantize(Decimal('0.01'))),
                 'prices': {str(p.price_tier_id): str(p.price) for p in prices if p.unit_id == item.base_unit_id}
             })
-            packaging_json = json.dumps(packaging_data)
 
         # Union in soft-deleted units/categories/suppliers referenced by this item
         units_qs = (Unit.objects.filter(company=company) | Unit.all_objects.filter(id__in=referenced_unit_ids)).distinct().order_by('name')
@@ -135,8 +140,6 @@ class ItemFormView(BaseAppView):
         tiers_qs = PriceTier.objects.filter(company=company)
         carton_unit = Unit.objects.filter(company=company, name__iexact='carton').first()
 
-
-
         context = {
             'item': item,
             'is_editable': is_editable,
@@ -144,14 +147,15 @@ class ItemFormView(BaseAppView):
             'categories': cats_qs,
             'suppliers': sups_qs,
             'price_tiers': tiers_qs,
-            'packaging_json': packaging_json,
-            'recent_categories': json.dumps([{'id': c.id, 'name': c.name} for c in Category.objects.filter(company=company).order_by('-created_at')[:4]]),
-            'recent_units': json.dumps([{'id': u.id, 'name': u.name} for u in Unit.objects.filter(company=company).order_by('-created_at')[:4]]),
-            'recent_suppliers': json.dumps([{'id': s.id, 'name': s.name} for s in Party.objects.filter(company=company, is_supplier=True).order_by('-created_at')[:4]]),
+            'packaging_data': packaging_data,
 
-            'unit_map_json': json.dumps({str(u.id): {'name': u.name, 'short_name': u.short_name} for u in units_qs}),
+            'recent_categories': [{'id': c.id, 'name': c.name} for c in Category.objects.filter(company=company).order_by('-created_at')[:4]],  # later: most-used 4
+            'recent_units': [{'id': u.id, 'name': u.name} for u in Unit.objects.filter(company=company).order_by('-created_at')[:4]],
+            'recent_suppliers': [{'id': s.id, 'name': s.name} for s in Party.objects.filter(company=company, is_supplier=True).order_by('-created_at')[:4]],
+
+            'unit_map': {str(u.id): {'name': u.name, 'short_name': u.short_name} for u in units_qs},
             'is_locked': item.is_locked if item else False,
-            'tier_ids_json': json.dumps([t.id for t in tiers_qs]),
+            'tier_ids': [t.id for t in tiers_qs],
             'carton_unit_id': carton_unit.id if carton_unit else '',
         }
         return render(request, 'frontend/items/_form.html', context)
@@ -195,12 +199,12 @@ class ItemsTableView(BaseAppView):
         context = {'items': page_obj.object_list, 'page_obj': page_obj, 'request': request}
         return render(request, 'frontend/items/_table.html', context)
 
-
 class ItemSaveView(BaseAppView):
     @transaction.atomic
     def post(self, request):
         company = self.get_company()
         item_id = request.POST.get('id')
+        context_mode = request.POST.get('context', 'table')
         
         # 1. Server-side required check for name
         name = request.POST.get('name', '').strip()
@@ -362,7 +366,29 @@ class ItemSaveView(BaseAppView):
         paginator = Paginator(items, self.pagination_size)
         page_obj = paginator.get_page(1)
         
+        if context_mode == 'json':
+            return JsonResponse({
+                'success': True,
+                'item': {
+                    'id': item.id,
+                    'name': item.name,
+                    'category_id': item.category_id,
+                    'category_name': item.category.name if item.category else 'Uncategorized',
+                    'cost_price': str(item.cost_price),
+                    'barcode': item.barcode,
+                    'base_unit_id': item.base_unit_id,
+                    'base_unit_name': item.base_unit.name,
+                    'vat': item.is_vat_applicable,
+                    'uoms': [{'unit_id': u.unit_id, 'factor': str(u.conversion_factor), 'name': u.unit.name}
+                             for u in item.uom_conversions.all()],
+                    'stock': str(item.total_stock or 0),
+                }
+            })
+
         return render(request, 'frontend/items/_table.html', {'items': page_obj.object_list, 'page_obj': page_obj, 'request': request})
+
+
+
 
 class ItemDeleteView(BaseAppView):
     def post(self, request, item_id):
@@ -445,7 +471,7 @@ class GoodsInFormView(BaseAppView):
         company = self.get_company()
         invoice_id = request.GET.get('id')
         invoice = None
-        lines_json = '[]'
+        lines_data = []
 
         if invoice_id:
             invoice = get_object_or_404(PurchaseInvoice, id=invoice_id, company=company)
@@ -459,7 +485,13 @@ class GoodsInFormView(BaseAppView):
                 'item_id': l.item_id,
                 'item_name': l.item.name,
                 'qty': str(l.quantity),
-                'cost_price': str((l.cost_price * vat_multiplier).quantize(Decimal('0.01'))) if invoice.is_vat_inclusive else str(l.cost_price),
+                'cost_price': str((l.cost_price * vat_multiplier).quantize(Decimal('0.01'), ROUND_HALF_UP))
+                            if (invoice.is_vat_inclusive and l.is_vat_applicable) else str(l.cost_price),
+                'discount_type': l.discount_type,
+                'discount_amount': str((l.discount_amount * vat_multiplier).quantize(Decimal('0.01'), ROUND_HALF_UP))
+                                if (invoice.is_vat_inclusive and l.is_vat_applicable and l.discount_type == 'fixed')
+                                else str(l.discount_amount),
+                'is_vat_applicable': l.is_vat_applicable,
                 'batch_no': l.batch_no or '',
                 'expiry_date': l.expiry_date.strftime('%Y-%m-%d') if l.expiry_date else '',
                 'unit_id': l.unit_id,
@@ -468,51 +500,59 @@ class GoodsInFormView(BaseAppView):
                 'uoms': [{'unit_id': u.unit_id, 'factor': str(u.conversion_factor), 'name': u.unit.name} 
                          for u in l.item.uom_conversions.all()]
             } for l in lines_qs]
-            lines_json = json.dumps(lines_list, cls=DjangoJSONEncoder)
+            lines_data = lines_list
 
         next_ref = ''
         if not invoice:
-            prefix = "PUR-"
-            last_inv = PurchaseInvoice.objects.filter(company=company).order_by('-reference_no').first()
-            if last_inv:
-                try: num = int(last_inv.reference_no.split('-')[1]) + 1
-                except: num = 1
-            else: num = 1
-
-            next_ref = f"{prefix}{num:04d}"
-            while PurchaseInvoice.objects.filter(company=company, reference_no=next_ref).exists():
-                num += 1
-                next_ref = f"{prefix}{num:04d}"
+            next_ref = next_reference_number(company, PurchaseInvoice, 'PUR-')
 
         suppliers = Party.objects.filter(company=company, is_supplier=True, is_deleted=False)
         warehouses = Warehouse.objects.filter(company=company, is_active=True)
 
-        items_qs = Item.objects.filter(company=company, status='active').select_related('category', 'base_unit').annotate(total_stock_calc=Sum('stock_batches__quantity'))
+        items_qs = Item.objects.filter(company=company, status='active').select_related(
+            'category', 'base_unit'
+        ).prefetch_related('uom_conversions__unit').annotate(total_stock_calc=Sum('stock_batches__quantity'))
         items_list = [{
             'id': i.id,
             'name': i.name,
             'category_id': i.category_id,
             'category_name': i.category.name if i.category else 'Uncategorized',
             'cost_price': str(i.cost_price),
+            'barcode': i.barcode,
             'base_unit_id': i.base_unit_id,
             'base_unit_name': i.base_unit.name,
+            'vat': i.is_vat_applicable,
             'uoms': [{'unit_id': u.unit_id, 'factor': str(u.conversion_factor), 'name': u.unit.name} for u in i.uom_conversions.all()],
             'stock': str(i.total_stock_calc or 0)
         } for i in items_qs]
 
         vat_rate = get_vat_rate(company)
 
+        view_discount_value = Decimal('0')
+        view_taxable = Decimal('0')
+        if invoice:
+            if invoice.discount_type == 'percentage':
+                view_discount_value = (invoice.subtotal * invoice.discount_amount / Decimal('100')).quantize(Decimal('0.01'), ROUND_HALF_UP)
+            else:
+                view_discount_value = invoice.discount_amount.quantize(Decimal('0.01'), ROUND_HALF_UP)
+            view_taxable = (invoice.subtotal - view_discount_value).quantize(Decimal('0.01'), ROUND_HALF_UP)
+
+
         context = {
-             'invoice': invoice,
+            'invoice': invoice,
             'suppliers': suppliers,
             'warehouses': warehouses,
             'today_str': timezone.now().date().strftime('%Y-%m-%d'),
             'categories': Category.objects.filter(company=company),
-            'items_json': json.dumps(items_list, cls=DjangoJSONEncoder),
-            'lines_json': lines_json,
+            'items_data': items_list,
+            'lines_data': lines_data,
             'next_ref': next_ref,
             'is_vat_inclusive': invoice.is_vat_inclusive if invoice else False,
             'vat_rate': str(vat_rate),
+            'inv_discount_type': invoice.discount_type if invoice else 'fixed',
+            'inv_discount_amount': str(invoice.discount_amount) if invoice else '0',
+            'view_discount_value': view_discount_value,
+            'view_taxable': view_taxable,
         }
         return render(request, 'frontend/goods_in/_form.html', context)
 
@@ -544,9 +584,22 @@ class GoodsInSaveView(BaseAppView):
         line_discount_types = request.POST.getlist('discount_type[]')     
         line_discount_amounts = request.POST.getlist('discount_amount[]') 
 
-        items_dict = {i.id: i for i in Item.objects.filter(id__in=item_ids, company=company)}
+
+        valid_ids = []
+        for v in item_ids:
+            try:
+                valid_ids.append(int(v))
+            except (TypeError, ValueError):
+                pass  # blank/garbage row — also skipped by the loop's guard
+        items_dict = {i.id: i for i in Item.objects.filter(
+            id__in=valid_ids, company=company, status='active'   # inactive items are not purchasable
+        ).prefetch_related('uom_conversions')}   # <- kills the per-line ItemUOM.get() query
+
+
         vat_rate = get_vat_rate(company)
         vat_multiplier = (vat_rate / Decimal('100')) + Decimal('1')
+        is_inclusive = request.POST.get('is_vat_inclusive') == 'true'
+
 
         parsed_lines = []
         try:
@@ -570,13 +623,17 @@ class GoodsInSaveView(BaseAppView):
 
                 try:
                     unit_id = int(unit_ids[i])
-                    if unit_id == item.base_unit_id:
-                        conversion_factor = Decimal('1.00')
-                    else:
-                        uom = ItemUOM.objects.get(item=item, unit_id=unit_id, company=company)
-                        conversion_factor = uom.conversion_factor
-                except (ValueError, ItemUOM.DoesNotExist):
-                    return JsonResponse({"success": False, "message": f"'{item.name}' is not configured for that unit."}, status=400)
+                except (ValueError, TypeError):
+                    return JsonResponse({"success": False, "message": f"Invalid unit for {item.name}."}, status=400)
+
+                if unit_id == item.base_unit_id:
+                    conversion_factor = Decimal('1.00')
+                else:
+                    uom = next((u for u in item.uom_conversions.all() if u.unit_id == unit_id), None)
+                    if uom is None:
+                        return JsonResponse({"success": False, "message": f"'{item.name}' is not configured for that unit."}, status=400)
+                    conversion_factor = uom.conversion_factor
+
 
                 raw_disc_type = line_discount_types[i] if i < len(line_discount_types) else 'fixed'
                 line_disc_type = raw_disc_type if raw_disc_type in ('fixed', 'percentage') else 'fixed'
@@ -590,16 +647,24 @@ class GoodsInSaveView(BaseAppView):
                 except (InvalidOperation, ValueError, TypeError):
                     return JsonResponse({"success": False, "message": f"Invalid discount for {item.name}."}, status=400)
 
+                gross_line_total = qty_val * gross_cost
+                if line_disc_type == 'fixed' and line_disc_amount > gross_line_total:
+                    return JsonResponse({"success": False,
+                        "message": f"Discount exceeds line total for {item.name}."}, status=400)
+
 
                 batch_no = batches[i].strip() if batches[i] else ''
                 if not batch_no:
-                    batch_no = f"AUTO-{request.POST.get('reference_no')}-B{i+1}"
+                    batch_no = None
 
                 parsed_lines.append({
                     'item': item, 'qty_val': qty_val, 'gross_cost': gross_cost,
                     'batch_no': batch_no, 'expiry_date': expiries[i] or None,
                     'unit_id': unit_id, 'factor': conversion_factor,
-                    'discount_type': line_disc_type, 'discount_amount': line_disc_amount,
+                    'discount_type': line_disc_type, 'discount_amount_gross': line_disc_amount,
+                    'is_vat_applicable': item.is_vat_applicable,
+                    '_inclusive': is_inclusive,      
+                    '_multiplier': vat_multiplier,
                 })
         except (ValueError, IndexError, TypeError, InvalidOperation):
             return JsonResponse({"success": False, "message": "Invalid data format in invoice lines."}, status=400)
@@ -611,11 +676,28 @@ class GoodsInSaveView(BaseAppView):
 
         discount_type = request.POST.get('discount_type', 'fixed')
         try:
-            discount_amount = Decimal(request.POST.get('discount_amount', '0') or '0').quantize(Decimal('0.01'))
-            if discount_amount < 0: raise ValueError
+            discount_amount_gross = Decimal(request.POST.get('discount_amount', '0') or '0')
+            if discount_amount_gross < 0: raise ValueError
         except (InvalidOperation, ValueError, TypeError):
             return JsonResponse({"success": False, "message": "Invalid discount amount."}, status=400)
 
+        if discount_type == 'percentage' and discount_amount_gross > 100:
+            return JsonResponse({"success": False, "message": "Invoice discount cannot exceed 100%."}, status=400)
+
+        gross_sum = sum(
+            (p['qty_val'] * p['gross_cost']
+            - (p['discount_amount_gross'] if p['discount_type'] == 'fixed'
+                else p['qty_val'] * p['gross_cost'] * p['discount_amount_gross'] / 100)
+            for p in parsed_lines), Decimal('0'))
+
+        if discount_type == 'fixed' and discount_amount_gross > gross_sum:
+            return JsonResponse({"success": False, "message": "Invoice discount exceeds invoice total."}, status=400)
+
+        if is_inclusive and discount_type == 'fixed' and gross_sum > 0:
+            net_sum = sum((p['qty_val'] * _net_cost(p) - _net_disc_value(p) for p in parsed_lines), Decimal('0'))
+            discount_amount = (discount_amount_gross * (net_sum / gross_sum))
+        else:
+            discount_amount = discount_amount_gross
 
         # 3. Mutate DB inside Atomic Block
         try:
@@ -624,36 +706,44 @@ class GoodsInSaveView(BaseAppView):
                 invoice.supplier_id = supplier_id
                 invoice.date_received = request.POST.get('date_received')
                 invoice.reference_no = request.POST.get('reference_no')
-                invoice.is_vat_inclusive = request.POST.get('is_vat_inclusive') == 'true'
+                invoice.is_vat_inclusive = is_inclusive
                 invoice.invoice_status = 'finalized'
                 invoice.payment_status = 'unpaid'
                 invoice.discount_type = discount_type
-                invoice.discount_amount = discount_amount
+                invoice.discount_amount = discount_amount.quantize(Decimal('0.01'), ROUND_HALF_UP)
                 invoice.created_by = request.user  
+                invoice.round_off_enabled = request.POST.get('round_off_enabled') == 'true'
 
-                try:
-                    invoice.full_clean()
-                    invoice.save()
-                except IntegrityError:
-                    raise ValidationError("Invoice with this reference no already exists.")
+                suggested_ref = (request.POST.get('reference_no') or '').strip()
+                final_ref = suggested_ref
+                saved = False
+                for _attempt in range(5):
+                    if not final_ref:
+                        final_ref = next_reference_number(company, PurchaseInvoice, 'PUR-')
+                    invoice.reference_no = final_ref
+                    try:
+                        with transaction.atomic():  # savepoint: a collision must not poison the outer transaction
+                            invoice.full_clean(exclude=['reference_no'])  # uniqueness handled by DB + retry
+                            invoice.save()
+                        saved = True
+                        break
+                    except IntegrityError:
+                        final_ref = None  # taken → regenerate
+                if not saved:
+                    raise ValidationError("Could not assign an invoice number. Please try again.")
 
-                for p in parsed_lines:
-                    if invoice.is_vat_inclusive:
-                        net_cost = (p['gross_cost'] / vat_multiplier).quantize(Decimal('0.01'))
-                    else:
-                        net_cost = p['gross_cost']
-
-
-                    line_subtotal_net = (p['qty_val'] * net_cost).quantize(Decimal('0.01'))
-                    if p['discount_type'] == 'fixed' and p['discount_amount'] > line_subtotal_net:
-                        raise ValidationError(f"Discount exceeds line total for {p['item'].name}.")
-
-
+                for n, p in enumerate(parsed_lines, start=1):
+                    net_cost = _net_cost(p)
+                    net_disc = _stored_disc(p)
+                    batch_no = p['batch_no'] or f"AUTO-{final_ref}-B{n}"
                     PurchaseItemLine.objects.create(
                         company=company, invoice=invoice, item=p['item'], created_by=request.user,
                         warehouse_id=warehouse_id, unit_id=p['unit_id'], conversion_factor=p['factor'],
-                        quantity=p['qty_val'], cost_price=net_cost, batch_no=p['batch_no'], expiry_date=p['expiry_date'],
-                        discount_type=p['discount_type'], discount_amount=p['discount_amount'],
+                        quantity=p['qty_val'], cost_price=net_cost.quantize(Decimal('0.01'), ROUND_HALF_UP),
+                        batch_no=batch_no, expiry_date=p['expiry_date'],
+                        discount_type=p['discount_type'],
+                        discount_amount=net_disc.quantize(Decimal('0.01'), ROUND_HALF_UP),
+                        is_vat_applicable=p['is_vat_applicable'],   # SNAPSHOT
                     )
 
                 InventoryService.recalculate_invoice_totals(invoice)
@@ -661,18 +751,19 @@ class GoodsInSaveView(BaseAppView):
 
                 InventoryService.apply_invoice_to_party_balance(invoice, 'supplier', sign=-1)
 
-
-
         except ValidationError as e:
             return JsonResponse({"success": False, "message": e.messages[0]}, status=400)
-        except Exception:
+        except Exception as e:
+            print(e)
             return JsonResponse({"success": False, "message": "An unexpected server error occurred."}, status=400)
         
         invoices = PurchaseInvoice.objects.filter(company=company).exclude(invoice_status='void').order_by('-date_received')
         paginator = Paginator(invoices, self.pagination_size)
         page_obj = paginator.get_page(1)
         
-        return render(request, 'frontend/goods_in/_table.html', {'invoices': page_obj.object_list, 'page_obj': page_obj, 'request': request, 'suppliers': Party.objects.filter(company=company, is_supplier=True, is_deleted=False)})
+        resp = render(request, 'frontend/goods_in/_table.html', {'invoices': page_obj.object_list, 'page_obj': page_obj, 'request': request, 'suppliers': Party.objects.filter(company=company, is_supplier=True, is_deleted=False)})
+        resp['X-Reference-No'] = final_ref  # the FINAL number (may differ from what the user typed)
+        return resp
 
 class GoodsInVoidView(BaseAppView):
     def post(self, request, invoice_id):
@@ -690,25 +781,60 @@ class GoodsInVoidView(BaseAppView):
                 # FIX 2: Idempotency guard - if it's already voided, do nothing and return error
                 if invoice.invoice_status != 'finalized':
                     return JsonResponse(
-                        {"success": False, "message": "Only finalized invoices can be voided."}, 
+                        {"success": False, "message": "Only finalized invoices can be voided. Your invoice status is currently: " + invoice.invoice_status}, 
                         status=400
                     )
 
+                # --- PRE-FLIGHT: refuse void if any purchased units were already sold ---
+                need = defaultdict(Decimal)
+                for line in invoice.lines.all():
+                    need[(line.item_id, line.warehouse_id, line.batch_no)] += line.quantity * line.conversion_factor
+
+                short = []
+                for (item_id, wh_id, batch_no), qty_needed in need.items():
+                    have = StockBatch.objects.filter(
+                        company=company, item_id=item_id, warehouse_id=wh_id, batch_no=batch_no
+                    ).aggregate(total=Sum('quantity'))['total'] or Decimal('0')
+                    if have < qty_needed:
+                        sold_refs = SaleItemLineBatch.objects.filter(
+                            stock_batch__company=company, stock_batch__item_id=item_id,
+                            stock_batch__warehouse_id=wh_id, stock_batch__batch_no=batch_no,
+                            sale_line__invoice__invoice_status='finalized',
+                        ).values_list('sale_line__invoice__reference_no', flat=True).distinct()[:3]
+                        item_name = Item.objects.filter(id=item_id).values_list('name', flat=True).first()
+                        short.append(f"{item_name} (sold via: {', '.join(sold_refs) or 'n/a'})")
+
+                if short:
+                    raise ValidationError(
+                        "Cannot void — stock already sold from these batches: "
+                        + "; ".join(short) + ". Void those sale(s) first if this purchase is truly wrong."
+                    )
+                # --- END PRE-FLIGHT ---
+
                 # Reverse stock
+                affected_items = set()
                 for line in invoice.lines.all():
                     InventoryService.reverse_purchase_line(line)
+                    affected_items.add(line.item_id)
+
+                # Rebuild moving-average cost from what's actually in stock now
+                for item in Item.objects.filter(id__in=affected_items):
+                    InventoryService.recompute_mac(item)
+
 
                 # Reverse AP balance safely
-                InventoryService.reverse_invoice_on_party_balance(invoice, 'supplier', sign=-1)
+                InventoryService.reverse_invoice_on_party_balance(invoice, 'supplier', sign=-1) # what to do on this line ?
 
                 # Void the invoice
                 invoice.invoice_status = 'void'
                 invoice.void_reason = reason
                 invoice.save()
                 
-        except Exception as e:
+        except ValidationError as e:
+            return JsonResponse({"success": False, "message": e.messages[0]}, status=400)
+        except Exception:
+            logger.exception("Void of purchase invoice %s failed", invoice_id)
             return JsonResponse({"success": False, "message": "An unexpected server error occurred."}, status=400)
-        
         invoices = PurchaseInvoice.objects.filter(company=company).exclude(invoice_status='void').order_by('-date_received')
         paginator = Paginator(invoices, self.pagination_size)
         page_obj = paginator.get_page(1)
@@ -887,7 +1013,8 @@ class GoodsOutSaveView(BaseAppView):
 
                 parsed_lines.append((item, qty_val, gross_price))
 
-        except (ValueError, IndexError, TypeError, InvalidOperation):
+        except (ValueError, IndexError, TypeError, InvalidOperation) as e:
+            print(e)
             return JsonResponse({"success": False, "message": "Invalid data format in invoice lines."}, status=400)
 
         if not parsed_lines:
@@ -940,6 +1067,7 @@ class GoodsOutSaveView(BaseAppView):
         except ValidationError as e:
             return JsonResponse({"success": False, "message": e.messages[0]}, status=400)
         except Exception as e:
+            print(e)
             return JsonResponse({"success": False, "message": "An unexpected server error occurred."}, status=400)
         
         invoices = SaleInvoice.objects.filter(company=company).exclude(invoice_status='void').order_by('-date_dispatched')

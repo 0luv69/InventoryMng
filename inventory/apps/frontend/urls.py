@@ -24,6 +24,7 @@ urlpatterns = [
 
 
 
+
     # Goods In
     path('goods-in/', views.GoodsInView.as_view(), name='goods_in'),
     path('goods-in/table/', views.GoodsInTableView.as_view(), name='goods_in_table'),

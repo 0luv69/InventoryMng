@@ -67,6 +67,7 @@ class Item(BaseModel):
         related_name='supplied_items', limit_choices_to={'is_supplier': True}
     )
     
+    is_vat_applicable = models.BooleanField(default=True, help_text="Uncheck for VAT-exempt goods (e.g. basic agri products)")
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.ACTIVE)
     delete_reason = models.TextField(blank=True, null=True, help_text="Reason for deleting/discontinuing the item")
     low_stock_threshold = models.PositiveIntegerField(default=10)

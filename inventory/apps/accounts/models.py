@@ -6,7 +6,7 @@ from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.db import models
 from django.conf import settings
 import uuid
-
+ 
 # ==========================================
 # 1. CUSTOM USER MANAGER & USER
 # ==========================================
@@ -63,7 +63,12 @@ class Company(models.Model):
     name = models.CharField(max_length=150, unique=True)
     slug = models.SlugField(max_length=180, unique=True, blank=True)
     logo = models.ImageField(upload_to="company_logos/", null=True, blank=True)
-    is_active = models.BooleanField(default=True) # SuperAdmin can suspend
+    is_active = models.BooleanField(default=True, help_text="Toggle to deactivate the company account")
+
+    address = models.CharField(max_length=255, blank=True)
+    phone = models.CharField(max_length=20, blank=True)
+    pan_vat = models.CharField("PAN/VAT Number", max_length=50, blank=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

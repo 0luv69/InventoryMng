@@ -44,9 +44,13 @@ class PurchaseInvoice(BaseModel):
 
     # VAT Inclusive Toggle
     is_vat_inclusive = models.BooleanField(default=False, help_text="If true, VAT is extracted from the total. If false, VAT is added on top.")
+
+    # NEW — signed: grand_total = calculated_total + round_off (e.g. +0.27 or -0.28)
+    round_off = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     
     # Void Reason
     void_reason = models.TextField(blank=True, null=True)
+    round_off_enabled = models.BooleanField(default=False) 
     
     # Statuses
     invoice_status = models.CharField(max_length=10, choices=InvoiceStatus.choices, default=InvoiceStatus.FINALIZED)
@@ -81,6 +85,8 @@ class PurchaseItemLine(BaseModel):
     discount_type = models.CharField(max_length=10, choices=DiscountType.choices, default=DiscountType.FIXED)
     discount_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     line_total = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+
+    is_vat_applicable = models.BooleanField(default=True)
     
     # Batch tracking (Auto-creates StockBatch based on these fields)
     batch_no = models.CharField(max_length=50, blank=True, null=True)
@@ -129,6 +135,9 @@ class SaleInvoice(BaseModel):
 
     is_vat_inclusive = models.BooleanField(default=False, help_text="If true, VAT is extracted from the total. If false, VAT is added on top.")
     void_reason = models.TextField(blank=True, null=True)
+
+    round_off = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    round_off_enabled = models.BooleanField(default=False) 
     
     notes = models.TextField(blank=True)
 
@@ -185,6 +194,8 @@ class SaleItemLine(BaseModel):
     discount_type = models.CharField(max_length=10, choices=DiscountType.choices, default=DiscountType.FIXED)
     discount_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     line_total = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+
+    is_vat_applicable = models.BooleanField(default=True)
     
     # If FEFO (First Expired First Out) is used, system assigns stock from specific batches here
     assigned_batch_no = models.CharField(max_length=50, blank=True, null=True, help_text="Auto-filled by FEFO logic")
